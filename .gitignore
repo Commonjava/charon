@@ -1,0 +1,8 @@
+.eggs
+*.egg-info
+venv
+*.pyc
+.coverage
+coverage
+.tox
+.idea
