@@ -1,6 +1,8 @@
 .eggs
 *.egg-info
 venv
+dist
+build
 *.pyc
 .coverage
 coverage
