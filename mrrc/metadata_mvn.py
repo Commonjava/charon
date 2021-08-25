@@ -26,7 +26,7 @@ class MavenMetadata(object):
 
 def get_mvn_template():
   home = os.environ['HOME']
-  template_file = os.path.join(home, '.mrrc', MVN_TEMPLATE)
+  template_file = os.path.join(home, '.mrrc/template', MVN_TEMPLATE)
   print(template_file)
   with open(template_file) as file_:
     return file_.read()
