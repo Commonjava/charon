@@ -6,9 +6,9 @@
   <versioning>
     {% if meta.latest_ver is defined %}<latest>{{ meta.latest_ver }}</latest>{% endif %}
     {% if meta.release_ver is defined %}<release>{{ meta.release_ver }}</release>{% endif %}
-    {% if meta.versions is defined %}
+    {% if meta.vers is defined %}
     <versions>
-      {% for ver in meta.versions -%}
+      {% for ver in meta.vers -%}
       <version>{{ ver }}</version>
       {% endfor %}
     </versions>
