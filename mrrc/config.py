@@ -15,7 +15,7 @@ class MrrcConfig(object):
   The configuration file will be named as mrrc-uploader.conf, and will be stored 
   in $HOME/.mrrc/ folder by default.
   """
-  def __init__(self, data):
+  def __init__(self, data: configparser.ConfigParser):
     self.aws_configs = {}
     self.aws_enabled = True
     self.aws_key_id = None
@@ -39,13 +39,13 @@ class MrrcConfig(object):
       logging('Warning: Missing AWS access secret key, aws related function can not work.')
       self.aws_enabled=False
 
-  def get_aws_key_id(self):
+  def get_aws_key_id(self) -> str:
     return self.aws_key_id
   
-  def get_aws_key(self):
+  def get_aws_key(self) -> str:
     return self.aws_key
 
-  def get_aws_configs(self):
+  def get_aws_configs(self) -> dict:
     return self.aws_configs
 
 

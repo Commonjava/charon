@@ -52,16 +52,16 @@ setup(
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
     install_requires=[
       "requests",
-      "lxml",
       "click",
-      "six",
+      "boto3",
+      "botocore",
     ],
     tests_require=test_deps,
     extras_require=extras,
     test_suite="tests",
     entry_points={
       'console_scripts': [
-        'mrrc-test = mrrc:test',
+        'mrrc = mrrc:cli'
       ],
     }
 )
