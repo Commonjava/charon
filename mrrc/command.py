@@ -2,9 +2,25 @@ from mrrc.metadata_mvn import MavenMetadata
 import click
 
 @click.command()
-def test():
-  meta = MavenMetadata("org.commonjava.indy", "indy-api").\
-    latest_version("2.0.0").release_version("1.9.9").\
-    versions("1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.5.0", "1.7.0", \
-    "1.9.0", "1.9.9", "2.0.0")
-  print(meta.generate_meta_file())
+def init():
+  print("init not yet implemented!")
+
+@click.command()
+def upload():
+  print("upload not yet implemented!")
+  
+@click.command()
+def delete():
+  print("delete not yet implemented!")
+  
+@click.command()
+def gen():
+  print("gen not yet implemented!")
+  
+@click.command()
+def ls():
+  print("ls not yet implemented!")
+
+@click.group()
+def cli():
+  pass
