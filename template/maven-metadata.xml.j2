@@ -1,34 +1,60 @@
 <metadata>
-  {% if meta.group_id is defined %}<groupId>{{ meta.group_id }}</groupId>{% endif %}
-  {% if meta.artifact_id is defined %}<artifactId>{{ meta.artifact_id }}</artifactId>{% endif %}
-  {% if meta.versioned is defined %}<version>{{ meta.versioned }}</version>{% endif %}
-  {% if meta.versions is defined or meta.snapshoted is defined %}
+  {%- if meta.group_id is defined %}
+  <groupId>{{ meta.group_id }}</groupId>
+  {%- endif %}
+  {%- if meta.artifact_id is defined %}
+  <artifactId>{{ meta.artifact_id }}</artifactId>
+  {%- endif %}
+  {%- if meta.versioned is defined %}
+  <version>{{ meta.versioned }}</version>
+  {%- endif %}
+  {%- if meta.versions is defined or meta.snapshoted is defined %}
   <versioning>
-    {% if meta.latest_ver is defined %}<latest>{{ meta.latest_ver }}</latest>{% endif %}
-    {% if meta.release_ver is defined %}<release>{{ meta.release_ver }}</release>{% endif %}
-    {% if meta.vers is defined %}
+    {%- if meta.latest_ver is defined %}
+    <latest>{{ meta.latest_ver }}</latest>
+    {%- endif %}
+    {%- if meta.release_ver is defined %}
+    <release>{{ meta.release_ver }}</release>
+    {%- endif %}
+    {%- if meta.vers is defined %}
     <versions>
       {% for ver in meta.vers -%}
       <version>{{ ver }}</version>
       {% endfor %}
     </versions>
-    {% endif %}
-    {%- if meta.last_upd_ver is defined %}<lastUpdated>{{ meta.last_upd_ver }}</lastUpdated>{% endif -%}
+    {%- endif %}
+    {%- if meta.last_upd_time is defined %}
+    <lastUpdated>{{ meta.last_upd_time }}</lastUpdated>
+    {%- endif %}
     {%- if meta.snapshoted is defined %}
     <snapshot>
-      {% if meta.snapshoted.time is defined %}<timestamp>{{ meta.snapshoted.time }}</timestamp>{% endif %}
-      {% if meta.snapshoted.build is defined %}<buildNumber>{{ meta.snapshoted.build }}</buildNumber>{% endif %}
-      {% if meta.snapshoted.localcopy is defined %}<localCopy>{{ meta.snapshoted.localcopy }}</localCopy>{% endif %}
+      {%- if meta.snapshoted.time is defined %}
+      <timestamp>{{ meta.snapshoted.time }}</timestamp>
+      {%- endif %}
+      {%- if meta.snapshoted.build is defined %}
+      <buildNumber>{{ meta.snapshoted.build }}</buildNumber>
+      {%- endif %}
+      {%- if meta.snapshoted.localcopy is defined %}
+      <localCopy>{{ meta.snapshoted.localcopy }}</localCopy>
+      {%- endif %}
     </snapshot>
-    {% endif -%}
+    {%- endif %}
     {%- if meta.snapshot_versions is defined %}
     <snapshotVersions>
       {% for snapshot_ver in meta.snapshot_versions -%}
       <snapshotVersion>
-        {% if snapshot_ver.classifier is defined %}<classifier>{{ snapshot_ver.classifier }}</classifier>{% endif %}
-        {% if snapshot_ver.ext is defined %}<extension>{{ snapshot_ver.ext }}</extension>{% endif %}
-        {% if snapshot_ver.val is defined %}<value>{{ snapshot_ver.val }}</value>{% endif %}
-        {% if snapshot_ver.upd is defined %}<updated>{{ snapshot_ver.upd }}</updated>{% endif %}
+        {%- if snapshot_ver.classifier is defined %}
+        <classifier>{{ snapshot_ver.classifier }}</classifier>
+        {%- endif %}
+        {%- if snapshot_ver.ext is defined %}
+        <extension>{{ snapshot_ver.ext }}</extension>
+        {%- endif %}
+        {%- if snapshot_ver.val is defined %}
+        <value>{{ snapshot_ver.val }}</value>
+        {%- endif %}
+        {%- if snapshot_ver.upd is defined %}
+        <updated>{{ snapshot_ver.upd }}</updated>
+        {%- endif %}
       </snapshotVersion>
       {% endfor %}
     </snapshotVersions>
@@ -46,5 +72,5 @@
     </plugin>
     {% endfor %}
   </plugins>
-  {% endif %}
+  {%- endif %}
 </metadata>
