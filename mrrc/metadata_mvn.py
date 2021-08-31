@@ -3,7 +3,7 @@ from jinja2 import Template
 from datetime import datetime
 import os
 
-MVN_TEMPLATE = 'maven-metadata.xml.j2'
+DEFAULT_MVN_TEMPLATE = os.path.join(os.environ['HOME'], '.mrrc/template/maven-metadata.xml.j2')
 class MavenMetadata(object):
     def __init__(self, group_id: str, artifact_id: str):
         self.group_id = group_id
@@ -31,11 +31,16 @@ class MavenMetadata(object):
 
 
 def get_mvn_template() -> str:
-    home = os.environ['HOME']
-    template_file = os.path.join(home, '.mrrc/template', MVN_TEMPLATE)
-    with open(template_file) as file_:
+    with open(DEFAULT_MVN_TEMPLATE) as file_:
         return file_.read()
 
+def scan_for_poms(full_path: str) -> List[str]:
+    # collect poms
+    all_pom_paths = list()
+    for (dir,_,names) in os.walk(full_path):
+        single_pom_paths=[os.path.join(dir,n) for n in names if n.endswith('.pom')]
+        all_pom_paths.extend(single_pom_paths)
+    return all_pom_paths
 
 def parse_ga(full_ga_path: str, root="/") -> Tuple[str, str]:
     slash_root = root
@@ -54,7 +59,7 @@ def parse_ga(full_ga_path: str, root="/") -> Tuple[str, str]:
     
     return group, artifact
 
-def parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
+def __parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
     slash_root = root
     if not root.endswith("/"):
         slash_root = slash_root + '/'
@@ -72,18 +77,10 @@ def parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
     
     return group, artifact, version
 
-def scan_for_poms(full_path: str) -> List[str]:
-    # collect poms
-    all_pom_paths = list()
-    for (dir,_,names) in os.walk(full_path):
-        single_pom_paths=[os.path.join(dir,n) for n in names if n.endswith('.pom')]
-        all_pom_paths.extend(single_pom_paths)
-    return all_pom_paths
-
 def parse_gavs(pom_paths:list, root='/') -> Dict[str, List[str]]:  
     gavs = dict()
     for pom in pom_paths:
-        (g, a, v) = parse_gav(pom, root)
+        (g, a, v) = __parse_gav(pom, root)
         key = g + "." + a
         vers = gavs.get(key, list())
         vers.append(v)
@@ -102,7 +99,7 @@ def gen_meta(ga: str, vers: list) -> MavenMetadata:
 def ver_cmp_key():
     'Used as key function for version sorting'
     class K:
-        def __init__(self, obj, *args):
+        def __init__(self, obj):
             self.obj = obj
         def __lt__(self, other):
             return self.__compare(other) < 0
@@ -134,6 +131,4 @@ def ver_cmp_key():
                 else:
                     continue
             return 0
-      
     return K
-
