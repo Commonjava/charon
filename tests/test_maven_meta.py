@@ -1,5 +1,5 @@
 import mrrc.metadata_mvn as mvn
-from .base import BaseMRRCTest
+from tests.base import BaseMRRCTest
 
 class MavenMetadataTest(BaseMRRCTest):
     # def test(self):
@@ -32,7 +32,7 @@ class MavenMetadataTest(BaseMRRCTest):
                      '/tmp/maven-repository/org/apache/maven/plugins/maven-plugin-plugin/1.0.1/maven-plugin-plugin-1.0.1.pom',
                      '/tmp/maven-repository/org/apache/maven/plugins/maven-plugin-plugin/1.2.0/maven-plugin-plugin-1.2.0.pom']
         parsed_gavs = mvn.parse_gavs(pom_paths, '/tmp/maven-repository')
-        self.assertEqual(['1.0.0','1.0.1','1.2.0'], parsed_gavs['org.apache.maven.plugins.maven-plugin-plugin'])
+        self.assertEqual(['1.0.0','1.0.1','1.2.0'], parsed_gavs['org.apache.maven.plugins']['maven-plugin-plugin'])
         
     def test_ver_cmp_key(self):
         comp_class = mvn.ver_cmp_key()

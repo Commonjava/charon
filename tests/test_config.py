@@ -1,5 +1,5 @@
 import mrrc.config as config
-from .base import BaseMRRCTest
+from tests.base import BaseMRRCTest
 import configparser
 import os
 import sys

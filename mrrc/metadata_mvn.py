@@ -59,6 +59,7 @@ def parse_ga(full_ga_path: str, root="/") -> Tuple[str, str]:
     
     return group, artifact
 
+
 def __parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
     slash_root = root
     if not root.endswith("/"):
@@ -77,24 +78,31 @@ def __parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
     
     return group, artifact, version
 
-def parse_gavs(pom_paths:list, root='/') -> Dict[str, List[str]]:  
+def parse_gavs(pom_paths:list, root='/') -> Dict[str, Dict[str, List[str]]]:  
     gavs = dict()
     for pom in pom_paths:
         (g, a, v) = __parse_gav(pom, root)
-        key = g + "." + a
-        vers = gavs.get(key, list())
+        avs = gavs.get(g, dict())
+        vers = avs.get(a, list())
         vers.append(v)
-        gavs[key]=vers
+        avs[a]=vers
+        gavs[g]=avs
     return gavs
 
-def gen_meta(ga: str, vers: list) -> MavenMetadata:  
+def gen_meta_content(g,a: str, vers: list) -> MavenMetadata:  
     sorted_vers = sorted(vers, key=ver_cmp_key())
-    _ga = ga.split('.')
-    g = '.'.join(_ga[:-1])
-    a = _ga[-1]
     meta = MavenMetadata(g,a)
     meta.latest_version(sorted_vers[-1]).release_version(sorted_vers[-1]).versions(*sorted_vers)
     return meta
+
+def gen_meta_file(g, a: str, vers:list, root="/"):
+    content = gen_meta_content(g, a, vers).generate_meta_file_content()
+    g_path = '/'.join(g.split("."))
+    final_meta_path = os.path.join(root, g_path, a, 'maven-metadata.xml')
+    try:
+        write_file(final_meta_path, content)
+    except FileNotFoundError:
+        print(f'Can not create file {final_meta_path} because of some missing folders')
     
 def ver_cmp_key():
     'Used as key function for version sorting'
@@ -132,3 +140,10 @@ def ver_cmp_key():
                     continue
             return 0
     return K
+
+def write_file(file_path:str, content:str):
+    if not os.path.isfile(file_path):
+        with open(file_path, mode='a'): 
+            pass
+    with open(file_path, mode='w') as f:
+        f.write(content)
