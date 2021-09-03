@@ -1,13 +1,13 @@
+import os
+import shutil
+import tempfile
+from xml.dom import minidom
+import zipfile
 import mrrc.metadata_mvn as mvn
+import mrrc.archive as archive
 from tests.base import BaseMRRCTest
 
 class MavenMetadataTest(BaseMRRCTest):
-    # def test(self):
-    #     root = '/tmp/tmp_zip'
-    #     poms = mvn.scan_for_poms('/tmp/tmp_zip/')
-    #     gav_dict = mvn.parse_gavs(poms, root)
-    #     for key, vers in gav_dict.items():
-    #         print(mvn.gen_meta(key, vers).generate_meta_file_content())
     
     def test_parse_ga(self):
         g, a = mvn.parse_ga('org/apache/maven/plugins/maven-plugin-plugin', '')
@@ -16,16 +16,6 @@ class MavenMetadataTest(BaseMRRCTest):
         g, a = mvn.parse_ga('/tmp/maven-repository/org/apache/maven/plugins/maven-plugin-plugin', '/tmp/maven-repository')
         self.assertEqual('org.apache.maven.plugins', g)
         self.assertEqual('maven-plugin-plugin', a)
-    
-    # def test_parse_gav(self):
-    #     g, a, v = mvn.parse_gav('org/apache/maven/plugins/maven-plugin-plugin/1.0/maven-plugin-plugin-1.0.pom', '')
-    #     self.assertEqual('org.apache.maven.plugins', g)
-    #     self.assertEqual('maven-plugin-plugin', a)
-    #     self.assertEqual('1.0', v)
-    #     g, a, v = mvn.parse_gav('/tmp/maven-repository/org/apache/maven/plugins/maven-plugin-plugin/1.0/maven-plugin-plugin-1.0.pom', '/tmp/maven-repository')
-    #     self.assertEqual('org.apache.maven.plugins', g)
-    #     self.assertEqual('maven-plugin-plugin', a)
-    #     self.assertEqual('1.0', v)
     
     def test_parse_gavs(self):
         pom_paths = ['/tmp/maven-repository/org/apache/maven/plugins/maven-plugin-plugin/1.0.0/maven-plugin-plugin-1.0.0.pom',
@@ -42,3 +32,27 @@ class MavenMetadataTest(BaseMRRCTest):
         self.assertEqual(comp_class('1.0.1'), comp_class('1.0.1'))
         self.assertEqual(comp_class('1.0.1'), comp_class('1.0.1'))
         self.assertGreater(comp_class('2.0.1'), comp_class('1.0.1'))
+        
+    def test_gen_meta_file(self):
+        zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests-input/commons-lang3.zip'))
+        temp_root = os.path.join(self.tempdir, 'tmp_zip')
+        os.mkdir(temp_root)
+        archive.extract_zip_all(zip, temp_root)
+        root = os.path.join(temp_root, 'apache-commons-maven-repository/maven-repository')
+        poms = mvn.scan_for_poms(root)
+        gav_dict = mvn.parse_gavs(poms, root)
+        for g, avs in gav_dict.items():
+            for a, vers in avs.items():
+                mvn.gen_meta_file(g, a, vers, root)
+        maven_meta_file = os.path.join(root, 'org/apache/commons/commons-lang3/maven-metadata.xml')
+        if not os.path.isfile(maven_meta_file):
+            self.fail("maven-metadata is not generated correctly!")
+        meta_doc = minidom.parse(maven_meta_file)
+        groupId = meta_doc.getElementsByTagName('groupId')[0].firstChild.data
+        self.assertEqual('org.apache.commons', groupId)
+        artifactId = meta_doc.getElementsByTagName('artifactId')[0].firstChild.data
+        self.assertEqual('commons-lang3', artifactId)
+        versions = list(filter(lambda e: e.firstChild is not None, meta_doc.getElementsByTagName('versions')[0].childNodes))
+        self.assertEqual(len(versions), 13)
+        
+        shutil.rmtree(temp_root)
