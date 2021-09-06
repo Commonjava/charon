@@ -1,4 +1,7 @@
 jinja2
 boto3
 botocore
+moto
 virtualenv
+tox
+nose

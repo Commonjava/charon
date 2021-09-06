@@ -28,8 +28,7 @@ test_deps = [
 extras = {
   'test': test_deps,
   'build': ['tox'],
-  'ci': ['coverage'],
-  ':python_version<"3.0"': ['enum34'],
+  'ci': ['coverage']
 }
 
 setup(
