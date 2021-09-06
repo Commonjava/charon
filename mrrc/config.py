@@ -1,4 +1,8 @@
 import configparser
+import os
+import sys
+
+CONFIG_FILE = "mrrc-uploader.conf"
 
 SECTION_AWS = 'aws'
 SECTION_MRRC = 'mrrc'
@@ -51,3 +55,11 @@ class MrrcConfig(object):
 def logging(msg):
     # TODO: Will use logging libs instead later
     print(msg)
+    
+def mrrc_config():
+    parser = configparser.ConfigParser()
+    config_file = os.path.join(os.environ['HOME'],'.mrrc', CONFIG_FILE)
+    if not parser.read(config_file):
+        sys.stderr.write(f'Error: not existed config file {config_file})')
+        sys.exit(1)
+    return MrrcConfig(parser)
