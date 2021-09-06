@@ -1,16 +1,9 @@
 import mrrc.config as config
 from tests.base import BaseMRRCTest
-import configparser
-import os
-import sys
 
 class ConfigTest(BaseMRRCTest):
     def test_config(self):
-        parser = configparser.ConfigParser()
-        config_file = os.path.join(os.environ['HOME'],'.mrrc', 'mrrc-uploader.conf')
-        if not parser.read(config_file):
-            self.fail(f'Error: not existed config file {config_file})')
-        conf = config.MrrcConfig(parser)
+        conf = config.mrrc_config()
         self.assertEqual('FakeKey', conf.get_aws_key_id())
         self.assertEqual('FakePassword', conf.get_aws_key())
         aws_configs = conf.get_aws_configs()
