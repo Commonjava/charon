@@ -1,0 +1,78 @@
+{
+  "name": "{%- if meta.name is defined %}{{ meta.name }}{%- endif %}",
+  "description": "{%- if meta.description is defined %}{{ meta.description }}{%- endif %}",
+  "dist_tags": {
+  {%- if meta.dist_tags is defined %}
+    {% for tag in meta.dist_tags -%}
+      "{{ tag }}": "{{ meta.dist_tags[tag] }}"{%- if not loop.last %},{%- endif %}
+    {% endfor %}
+  {%- endif %}},
+  "versions": {
+  {%- if meta.versions is defined %}
+    {% for v in meta.versions -%}
+      "{{ v }}": {
+        "name": "{{ meta.versions[v].name }}",
+        "version": "{{ meta.versions[v].version }}",
+        "title": "{%- if meta.versions[v].title %}{{ meta.versions[v].title }}{%- endif %}",
+        "description": "{%- if meta.versions[v].description %}{{ meta.versions[v].description }}{%- endif %}",
+        "license": "{%- if meta.versions[v].license %}{{ meta.versions[v].license }}{%- endif %}",
+        "files": [
+          {%- if meta.versions[v].files %}
+          {% for f in meta.versions[v].files -%}
+          "{{ f }}"{%- if not loop.last %},{%- endif %}
+          {% endfor %}
+          {%- endif %}],
+        "main": "{%- if meta.versions[v].main %}{{ meta.versions[v].main }}{%- endif %}",
+        "url": "{%- if meta.versions[v].url %}{{ meta.versions[v].url }}{%- endif %}",
+        "homepage": "{%- if meta.versions[v].homepage %}{{ meta.versions[v].homepage }}{%- endif %}",
+        "author": "{%- if meta.versions[v].author %}{{ meta.versions[v].author }}{%- endif %}",
+        "repository": {
+          {%- if meta.versions[v].repository %}
+          {% for r in meta.versions[v].repository -%}
+          "{{ r }}": "{{ meta.versions[v].repository[r] }}"{%- if not loop.last %},{%- endif %}
+          {% endfor %}
+          {%- endif %}},
+        "dependencies": {
+          {%- if meta.versions[v].dependencies %}
+          {% for d in meta.versions[v].dependencies -%}
+          "{{ d }}": "{{ meta.versions[v].dependencies[d] }}"{%- if not loop.last %},{%- endif %}
+          {% endfor %}
+          {%- endif %}},
+        "scripts": {
+          {%- if meta.versions[v].scripts %}
+          {% for s in meta.versions[v].scripts -%}
+          "{{ s }}": "{{ meta.versions[v].scripts[s] }}"{%- if not loop.last %},{%- endif %}
+          {% endfor %}
+          {%- endif %}},
+        "babel": {
+          {%- if meta.versions[v].babel %}
+          {% for b in meta.versions[v].babel -%}
+          "{{ b }}": "{{ meta.versions[v].babel[b] }}"{%- if not loop.last %},{%- endif %}
+          {% endfor %}
+          {%- endif %}}
+      }{%- if not loop.last %},{%- endif %}
+    {% endfor %}
+  {%- endif %}},
+  "author": "{%- if meta.author is defined %}{{ meta.author }}{%- endif %}",
+  "license": "{%- if meta.license is defined %}{{ meta.license }}{%- endif %}",
+  "repository": {
+  {%- if meta.repository is defined %}
+    {% for repo in meta.repository -%}
+      "{{ repo }}": "{{ meta.repository[repo] }}"{%- if not loop.last %},{%- endif %}
+    {% endfor %}
+  {%- endif %}},
+  "maintainers": [
+  {%- if meta.maintainers is defined %}
+    {% for m in meta.maintainers -%}
+      "{{ m }}"{%- if not loop.last %},{%- endif %}
+    {% endfor %}
+  {%- endif %}],
+  "keywords": [
+  {%- if meta.keywords is defined %}
+    {% for key in meta.keywords -%}
+      "{{ key }}"{%- if not loop.last %},{%- endif %}
+    {% endfor %}
+  {%- endif %}],
+  "bugs": "{%- if meta.bugs is defined %}{{ meta.bugs }}{%- endif %}",
+  "homepage": "{%- if meta.homepage is defined %}{{ meta.homepage }}{%- endif %}"
+}

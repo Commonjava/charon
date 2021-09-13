@@ -1,4 +1,5 @@
 from mrrc.metadata_mvn import MavenMetadata
+from mrrc.metadata_package_npm import NPMPackageMetadata
 import click
 
 @click.command()

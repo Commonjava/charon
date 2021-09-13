@@ -5,3 +5,4 @@ moto
 virtualenv
 tox
 nose
+marshmallow-dataclass
