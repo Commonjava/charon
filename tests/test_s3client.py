@@ -1,11 +1,12 @@
 from mrrc.s3client import S3Client
 from tests.base import BaseMRRCTest
 from mrrc.config import mrrc_config, AWS_ENDPOINT
+from mrrc.archive import extract_zip_all
 import boto3
-import botocore
 from moto import mock_s3
 import os
-import tempfile
+import zipfile
+import shutil
 
 MY_BUCKET = "my_bucket"
 MY_PREFIX = "mock_folder"
@@ -14,8 +15,8 @@ MY_PREFIX = "mock_folder"
 class S3ClientTest(BaseMRRCTest):
     def setUp(self):
         super().setUp()
-        self.s3 = self.__prepare_s3()
-        self.s3.create_bucket(Bucket=MY_BUCKET)
+        self.mock_s3 = self.__prepare_s3()
+        self.mock_s3.create_bucket(Bucket=MY_BUCKET)
         self.s3_client = S3Client()
         
     def tearDown(self):
@@ -41,7 +42,7 @@ class S3ClientTest(BaseMRRCTest):
             )
         
     def test_get_files(self):
-        bucket = self.s3.Bucket(MY_BUCKET)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
         bucket.put_object(Key='org/foo/bar/1.0/foo-bar-1.0.pom', Body='test content pom')
         bucket.put_object(Key='org/foo/bar/1.0/foo-bar-1.0.jar', Body='test content jar')
         bucket.put_object(Key='org/x/y/1.0/x-y-1.0.pom', Body='test content pom')
@@ -59,3 +60,18 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn('org/x/y/1.0/x-y-1.0.pom', files)
         self.assertNotIn('org/x/y/1.0/x-y-1.0.jar', files)
 
+    def test_upload_files(self):
+        zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests-input/commons-lang3.zip'))
+        temp_root = os.path.join(self.tempdir, 'tmp_zip')
+        os.mkdir(temp_root)
+        extract_zip_all(zip, temp_root)
+        root = os.path.join(temp_root, 'apache-commons-maven-repository/maven-repository')
+        all_files = []
+        for (dir,_,names) in os.walk(temp_root):
+            all_files.extend([os.path.join(dir,n) for n in names])
+        self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, root=root)
+        
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        self.assertEqual(13, len(list(bucket.objects.all())))
+        
+        shutil.rmtree(temp_root)
