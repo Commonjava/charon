@@ -3,9 +3,8 @@ import json
 import shutil
 import marshmallow_dataclass
 import mrrc.archive as archive
-import mrrc.metadata_version_npm as npm_version
-import mrrc.metadata_package_npm as npm_package
-from mrrc.metadata_package_npm import NPMPackageMetadata
+import mrrc.metadata_npm as metadata_npm
+from mrrc.metadata_npm import NPMPackageMetadata
 from tests.base import BaseMRRCTest
 
 
@@ -13,7 +12,7 @@ class NPMMetadataTest(BaseMRRCTest):
 
     def test_scan_for_version(self):
         version_json_file_path = os.path.join(os.getcwd(), 'tests-input/code-frame_7.14.5.json')
-        version = npm_version.scan_for_version(version_json_file_path)
+        version = metadata_npm.scan_for_version(version_json_file_path)
         self.assertEqual('@babel/code-frame', version.get_name())
         self.assertEqual('7.14.5', version.get_version())
         self.assertEqual('MIT', version.get_license())
@@ -25,8 +24,8 @@ class NPMMetadataTest(BaseMRRCTest):
         os.mkdir(temp_root)
         tarball_test_path = os.path.join(os.getcwd(), 'tests-input/kogito-tooling-workspace-0.9.0-3.tgz')
         version_path = archive.extract_npm_tarball(tarball_test_path, temp_root)
-        version = npm_version.scan_for_version(version_path)
-        npm_package.gen_package_meatadata_file(version, temp_root)
+        version = metadata_npm.scan_for_version(version_path)
+        metadata_npm.gen_package_meatadata_file(version, temp_root)
 
         npm_meta_file = os.path.join(temp_root, '@redhat/kogito-tooling-workspace/package.json')
         if not os.path.isfile(npm_meta_file):

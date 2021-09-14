@@ -1,8 +1,9 @@
 import os
-from jinja2 import Template
+import json
+import marshmallow_dataclass
 from typing import Optional
 from dataclasses import dataclass, field
-from mrrc.metadata_version_npm import NPMVersionMetadata
+from marshmallow import ValidationError
 
 
 @dataclass
@@ -10,11 +11,6 @@ class NPMPackageMetadata(object):
     """ This NPMPackageMetadata will represent the npm package(not version) package.json which will be
         used in jinja2 or other places
     """
-
-    def generate_meta_file_content(self) -> str:
-        template = Template(get_npm_template())
-        return template.render(meta=self)
-
     name: str
     dist_tags: Optional[dict] = field(default_factory=dict)
     versions: Optional[dict] = field(default_factory=dict)
@@ -94,17 +90,99 @@ class NPMPackageMetadata(object):
         return f'{self.name}\n{self.description}\n{self.author}\n{self.readme}\n{self.homepage}\n{self.license}\n\n'
 
 
+@dataclass
+class NPMVersionMetadata:
+    """ This NPMVersionMetadata represents the npm version package.json
+    """
+    name: str
+    version: str
+    title: Optional[str] = field(default='')
+    description: Optional[str] = field(default='')
+    main: Optional[str] = field(default='')
+    url: Optional[str] = field(default='')
+    homepage: Optional[str] = field(default='')
+    keywords: Optional[list] = field(default_factory=list)
+    author: Optional[str] = field(default='')
+    contributors: Optional[list] = field(default_factory=list)
+    maintainers: Optional[list] = field(default_factory=list)
+    repository: Optional[dict] = field(default_factory=dict)
+    bugs: Optional[str] = field(default='')
+    license: Optional[str] = field(default='')
+    dependencies: Optional[dict] = field(default_factory=dict)
+    devDependencies: Optional[dict] = field(default_factory=dict)
+    jsdomVersions: Optional[dict] = field(default_factory=dict)
+    scripts: Optional[dict] = field(default_factory=dict)
+    dist: Optional[dict] = field(default_factory=dict)
+    directories: Optional[dict] = field(default_factory=dict)
+    commitplease: Optional[dict] = field(default_factory=dict)
+    engines: Optional[dict] = field(default_factory=dict)
+    engineSupported: Optional[bool] = field(default='')
+    files: Optional[list] = field(default_factory=list)
+    deprecated: Optional[str] = field(default='')
+    lib: Optional[str] = field(default='')
+    gitHead: Optional[str] = field(default='')
+    _shasum: Optional[str] = field(default='')
+    _from: Optional[str] = field(default='')
+    _npmVersion: Optional[str] = field(default='')
+    _nodeVersion: Optional[str] = field(default='')
+    _npmUser: Optional[dict] = field(default_factory=dict)
+    _npmJsonOpts: Optional[dict] = field(default_factory=dict)
+    _npmOperationalInternal: Optional[dict] = field(default_factory=dict)
+    _defaultsLoaded: Optional[bool] = field(default='')
+    publishConfig: Optional[dict] = field(default_factory=dict)
+    _id: Optional[str] = field(default='')
+    _hasShrinkwrap: Optional[bool] = field(default='')
+    babel: Optional[dict] = field(default_factory=dict)
+
+    def get_name(self):
+        return self.name
+
+    def get_version(self):
+        return self.version
+
+    def get_keywords(self):
+        return self.keywords
+
+    def get_description(self):
+        return self.description
+
+    def get_author(self):
+        return self.author
+
+    def get_license(self):
+        return self.license
+
+    def get_repository(self):
+        return self.repository
+
+    def get_bugs(self):
+        return self.bugs
+
+    def get_dist(self):
+        return self.dist
+
+    def get_maintainers(self):
+        return self.maintainers
+
+    def get_homepage(self):
+        return self.homepage
+
+
 def logging(msg):
     # TODO: Will use logging libs instead later
     print(msg)
 
 
-def get_npm_template() -> str:
-    """Gets the jinja2 template file content for package.json generation
+def scan_for_version(path: str) -> NPMVersionMetadata:
+    """Scan a file path and find version metadata
     """
-    DEFAULT_NPM_TEMPLATE = os.path.join(os.environ['HOME'], '.mrrc/template/package.json.j2')
-    with open(DEFAULT_NPM_TEMPLATE) as file_:
-        return file_.read()
+    try:
+        with open(path) as version_meta_file:
+            version_meta_data = json.load(version_meta_file)
+        version_schema = marshmallow_dataclass.class_schema(NPMVersionMetadata)()
+        return version_schema.load(version_meta_data)
+    except ValidationError:
+        logging('Error: Failed to validate version metadata!')
 
 
 def gen_package_meatadata_file(version_metadata: NPMVersionMetadata, root='/'):
@@ -136,21 +214,13 @@ def gen_package_meatadata_file(version_metadata: NPMVersionMetadata, root='/'):
     package_metadata.set_dist_tags(tags_dict)
 
     version_dict = dict()
-    version_dict[version_metadata.get_version()] = version_metadata
+    version_dict[version_metadata.get_version()] = version_metadata.__dict__
     package_metadata.set_versions(version_dict)
 
     logging(package_metadata.__str__())
-
     final_package_metadata_path = os.path.join(root, package_metadata.get_name(), 'package.json')
     try:
-        write_file(final_package_metadata_path, package_metadata.generate_meta_file_content())
+        with open(final_package_metadata_path, mode='w') as f:
+            json.dump(package_metadata.__dict__, f)
     except FileNotFoundError:
         logging(f'Can not create file {final_package_metadata_path} because of some missing folders')
-
-
-def write_file(file_path: str, content: str):
-    if not os.path.isfile(file_path):
-        with open(file_path, mode='a'):
-            pass
-    with open(file_path, mode='w') as f:
-        f.write(content)
