@@ -13,6 +13,7 @@ AWS_ENDPOINT = 'endpoint_url'
 AWS_REGION = 'region'
 AWS_RETRY_MAX = 'retry_max_attempts'
 AWS_RETRY_MODE = 'retry_mode'
+AWS_BUCKET = "bucket"
 
 class MrrcConfig(object):
     """ MrrcConfig is used to store all configurations for mrrc-uploader tools.
@@ -24,6 +25,7 @@ class MrrcConfig(object):
         self.aws_enabled = True
         self.aws_key_id = None
         self.aws_key = None
+        self.aws_region = None
         aws_configs = data.options(SECTION_AWS)
         if aws_configs is not None:
             for option in aws_configs:
@@ -33,6 +35,8 @@ class MrrcConfig(object):
                     self.aws_key_id = val
                 if option==AWS_KEY:
                     self.aws_key = val
+                if option==AWS_REGION:
+                    self.aws_region = val
         else:
             self.aws_enabled=False
 
@@ -48,6 +52,9 @@ class MrrcConfig(object):
     
     def get_aws_key(self) -> str:
         return self.aws_key
+    
+    def get_aws_region(self) -> str:
+        return self.aws_region
 
     def get_aws_configs(self) -> dict:
         return self.aws_configs
