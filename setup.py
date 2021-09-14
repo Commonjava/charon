@@ -54,6 +54,7 @@ setup(
       "click",
       "boto3",
       "botocore",
+      "marshmallow-dataclass",
     ],
     tests_require=test_deps,
     extras_require=extras,
