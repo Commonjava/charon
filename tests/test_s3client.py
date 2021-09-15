@@ -76,7 +76,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn('org/x/y/1.0/x-y-1.0.pom', files)
         self.assertNotIn('org/x/y/1.0/x-y-1.0.jar', files)
 
-    def test_upload_files(self):
+    def test_upload_and_delete_files(self):
         zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests-input/commons-lang3.zip'))
         temp_root = os.path.join(self.tempdir, 'tmp_zip')
         os.mkdir(temp_root)
@@ -90,4 +90,10 @@ class S3ClientTest(BaseMRRCTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         self.assertEqual(26, len(list(bucket.objects.all())))
         
+        self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, root=root)
+        
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        self.assertEqual(0, len(list(bucket.objects.all())))
+        
         shutil.rmtree(temp_root)
+    

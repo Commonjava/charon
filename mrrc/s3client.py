@@ -1,7 +1,7 @@
 from mrrc.config import mrrc_config, AWS_ENDPOINT, AWS_BUCKET, AWS_RETRY_MAX, AWS_RETRY_MODE
 import boto3
 from botocore.config import Config
-from typing import List
+from typing import Callable, List
 
 class S3Client(object):
     """The S3Client is a wrapper of the original boto3 s3 client, which will provide
@@ -27,7 +27,7 @@ class S3Client(object):
     
     def upload_files(self, file_paths: List[str], bucket_name=None, root="/"):
         """ Upload a list of files to s3 bucket. Use the cut down file path as s3 key.
-            The cut down way is move root from the file path.
+            The cut down way is move root from the file path if it starts with root.
             Example: if file_path is /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo
             Then the key will be org/apache/.....
         """
@@ -39,7 +39,24 @@ class S3Client(object):
             path = full_path
             if path.startswith(slash_root):
                 path = path[len(slash_root):]
-            bucket.upload_file(full_path, path)
+        self.__do_path_cut_and(
+            file_paths=file_paths,
+            fn=lambda f,p: bucket.upload_file(f, p),
+            root=root)   
+            
+    def delete_files(self, file_paths: List[str], bucket_name=None, root="/"):
+        """ Deletes a list of files to s3 bucket. Use the cut down file path as s3 key.
+            The cut down way is move root from the file path if it starts with root.
+            Example: if file_path is /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo
+            Then the key will be org/apache/.....
+        """
+        bucket = self.__get_bucket(bucket_name)
+        s3_objs= []
+        self.__do_path_cut_and(
+            file_paths=file_paths,
+            fn=lambda f,p: s3_objs.append({'Key':p}),
+            root=root)   
+        bucket.delete_objects(Delete={'Objects':s3_objs})
     
     def get_files(self, bucket_name=None, prefix=None, suffix=None)-> List[str]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
@@ -57,11 +74,21 @@ class S3Client(object):
         else:
             files = [i.key for i in objs]    
         return files
-    
+
     def __get_bucket(self, bucket_name=None):
         b_name = bucket_name
         if not bucket_name or bucket_name.strip() == "":
             mrrc_conf = mrrc_config()
             b_name = mrrc_conf.get_aws_configs()[AWS_BUCKET]
         return self.client.Bucket(b_name)
-        
+    
+    def __do_path_cut_and(self, file_paths: List[str], fn: Callable[[str,str], None], root="/"):
+        slash_root = root
+        if not root.endswith("/"):
+            slash_root = slash_root + '/'
+        for full_path in file_paths:
+            path = full_path
+            if path.startswith(slash_root):
+                path = path[len(slash_root):]
+            fn(full_path, path)
+
