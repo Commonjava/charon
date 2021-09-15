@@ -1,3 +1,4 @@
+from .util import logging
 import os
 import json
 import marshmallow_dataclass
@@ -166,11 +167,6 @@ class NPMVersionMetadata:
 
     def get_homepage(self):
         return self.homepage
-
-
-def logging(msg):
-    # TODO: Will use logging libs instead later
-    print(msg)
 
 
 def scan_for_version(path: str) -> NPMVersionMetadata:

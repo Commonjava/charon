@@ -1,3 +1,4 @@
+from .util import write_file
 from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime
@@ -161,9 +162,3 @@ def ver_cmp_key():
             return 0
     return K
 
-def write_file(file_path:str, content:str):
-    if not os.path.isfile(file_path):
-        with open(file_path, mode='a'): 
-            pass
-    with open(file_path, mode='w') as f:
-        f.write(content)

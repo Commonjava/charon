@@ -1,3 +1,4 @@
+from .util import logging
 import configparser
 import os
 import sys
@@ -59,10 +60,6 @@ class MrrcConfig(object):
     def get_aws_configs(self) -> dict:
         return self.aws_configs
 
-def logging(msg):
-    # TODO: Will use logging libs instead later
-    print(msg)
-    
 def mrrc_config():
     parser = configparser.ConfigParser()
     config_file = os.path.join(os.environ['HOME'],'.mrrc', CONFIG_FILE)
