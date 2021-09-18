@@ -85,13 +85,47 @@ class S3ClientTest(BaseMRRCTest):
         all_files = []
         for (dir,_,names) in os.walk(temp_root):
             all_files.extend([os.path.join(dir,n) for n in names])
+        
+        # First, test upload without any products
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, root=root)
-        
         bucket = self.mock_s3.Bucket(MY_BUCKET)
-        self.assertEqual(26, len(list(bucket.objects.all())))
+        objects = list(bucket.objects.all())
+        self.assertEqual(26, len(objects))
         
+        # Second, test upload existed files with the product. The product will be added to metadata    
+        self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="apache-commons", root=root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(26, len(objects))
+        for obj in objects:
+            self.assertEqual("apache-commons",obj.Object().metadata["rh-products"])
+        
+        # Third, test upload existed files with extra product. The extra product will be added to metadata   
+        self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3", root=root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(26, len(objects))
+        for obj in objects:
+            self.assertEqual("apache-commons,commons-lang3",obj.Object().metadata["rh-products"])
+        
+        # Fourth, test delete files without product. The file will not be deleted and no product metadata will be changed.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, root=root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(26, len(objects))
+        for obj in objects:
+            self.assertEqual("apache-commons,commons-lang3",obj.Object().metadata["rh-products"])
         
+        # Fifth, test delete files with one prodct. The file will not be deleted, but the product will be removed from metadata.
+        self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons", root=root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(26, len(objects))
+        for obj in objects:
+            self.assertEqual("commons-lang3",obj.Object().metadata["rh-products"])
+        
+        # Finally, test delete files with left prodct. The file will be deleted, because all products have been removed from metadata.
+        self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3", root=root)
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         self.assertEqual(0, len(list(bucket.objects.all())))
         

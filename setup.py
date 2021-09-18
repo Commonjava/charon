@@ -4,10 +4,10 @@ from setuptools import setup, find_packages
 import sys
 
 # handle python 3
-if sys.version_info >= (3,):
-    use_2to3 = True
-else:
-    use_2to3 = False
+# if sys.version_info >= (3,):
+#     use_2to3 = True
+# else:
+#     use_2to3 = False
 
 version = "1.0.0"
 
@@ -33,7 +33,7 @@ extras = {
 
 setup(
     zip_safe=True,
-    use_2to3=use_2to3,
+    # use_2to3=use_2to3,
     name='mrrc-uploader',
     version=version,
     long_description=long_description,
