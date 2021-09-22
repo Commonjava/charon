@@ -3,7 +3,7 @@ import shutil
 import tempfile
 from xml.dom import minidom
 import zipfile
-import mrrc.metadata_mvn as mvn
+import mrrc.maven as mvn
 import mrrc.archive as archive
 from tests.base import BaseMRRCTest
 

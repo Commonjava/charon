@@ -1,5 +1,5 @@
 from mrrc.config import mrrc_config, AWS_ENDPOINT, AWS_BUCKET, AWS_RETRY_MAX, AWS_RETRY_MODE
-import boto3
+from boto3 import session
 from botocore.config import Config
 from botocore.errorfactory import ClientError
 from typing import Callable, Dict, List
@@ -12,18 +12,20 @@ class S3Client(object):
     def __init__(self, extra_conf=None) -> None:
         mrrc_conf = mrrc_config()
         aws_configs = mrrc_conf.get_aws_configs()
+        s3_session = session.Session(
+            aws_access_key_id=mrrc_conf.get_aws_key_id(),
+            aws_secret_access_key=mrrc_conf.get_aws_key(),
+            region_name=mrrc_conf.get_aws_region()
+        )
         s3_extra_conf = Config(
             retries = {
                 'max_attempts': int(aws_configs.get(AWS_RETRY_MAX, '10')),
                 'mode': aws_configs.get(AWS_RETRY_MODE, 'standard')
             }
         )
-        self.client = boto3.resource(
-            's3',
+        self.client = s3_session.resource(
+            's3', 
             config=s3_extra_conf,
-            aws_access_key_id=mrrc_conf.get_aws_key_id(),
-            aws_secret_access_key=mrrc_conf.get_aws_key(),
-            region_name=mrrc_conf.get_aws_region(),
             endpoint_url=aws_configs[AWS_ENDPOINT] if AWS_ENDPOINT in aws_configs else None
         )
     
