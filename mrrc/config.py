@@ -1,5 +1,5 @@
 from .util import logging
-import configparser
+from configparser import ConfigParser, NoSectionError
 import os
 import sys
 
@@ -21,49 +21,44 @@ class MrrcConfig(object):
     The configuration file will be named as mrrc-uploader.conf, and will be stored 
     in $HOME/.mrrc/ folder by default.
     """
-    def __init__(self, data: configparser.ConfigParser):
-        self.aws_configs = {}
-        self.aws_enabled = True
-        self.aws_key_id = None
-        self.aws_key = None
-        self.aws_region = None
-        aws_configs = data.options(SECTION_AWS)
-        if aws_configs is not None:
-            for option in aws_configs:
-                val = data.get(SECTION_AWS, option, fallback=None)
-                self.aws_configs[option] = val
-                if option==AWS_KEY_ID:
-                    self.aws_key_id = val
-                if option==AWS_KEY:
-                    self.aws_key = val
-                if option==AWS_REGION:
-                    self.aws_region = val
-        else:
-            self.aws_enabled=False
+    def __init__(self, data: ConfigParser):
+        self._aws_enabled = True
+        try:
+            self._aws_configs = dict(data.items(SECTION_AWS))
+        except NoSectionError:
+            logging('Warning: Missing AWS section, aws related function can not work.')
+            self._aws_enabled = False
 
-        if self.aws_key_id is None:
-            logging('Warning: Missing AWS access key id, aws related function can not work.')
-            self.aws_enabled=False
-        if self.aws_key is None:
-            logging('Warning: Missing AWS access secret key, aws related function can not work.')
-            self.aws_enabled=False
+        if self._aws_enabled:
+            if AWS_KEY_ID not in self._aws_configs:
+                logging('Warning: Missing AWS access key id, aws related function can not work.')
+                self._aws_enabled=False
+            if AWS_KEY not in self._aws_configs:
+                logging('Warning: Missing AWS access secret key, aws related function can not work.')
+                self._aws_enabled=False
 
     def get_aws_key_id(self) -> str:
-        return self.aws_key_id
+        return self.__val_or_none(AWS_KEY_ID)
     
     def get_aws_key(self) -> str:
-        return self.aws_key
+        return self.__val_or_none(AWS_KEY)
     
     def get_aws_region(self) -> str:
-        return self.aws_region
+        return self.__val_or_none(AWS_REGION)
 
     def get_aws_configs(self) -> dict:
-        return self.aws_configs
+        return self._aws_configs
+    
+    def is_aws_enabled(self) -> bool:
+        return self._aws_enabled
+    
+    def __val_or_none(self, key: str):
+        return self._aws_configs[key] if self._aws_enabled and key in self._aws_configs else None
 
 def mrrc_config():
-    parser = configparser.ConfigParser()
+    parser = ConfigParser()
     config_file = os.path.join(os.environ['HOME'],'.mrrc', CONFIG_FILE)
     if not parser.read(config_file):
-        sys.stderr.write(f'Error: not existed config file {config_file})')
+        logging(f'Error: not existed config file {config_file})')
         sys.exit(1)
     return MrrcConfig(parser)
