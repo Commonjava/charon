@@ -1,5 +1,5 @@
 from genericpath import isdir
-import mrrc.metadata_mvn as mvn
+import mrrc.maven as mvn
 import unittest
 import tempfile
 import os

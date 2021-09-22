@@ -3,7 +3,7 @@ import json
 import shutil
 import marshmallow_dataclass
 import mrrc.archive as archive
-from mrrc.metadata_npm import NPMPackageMetadata, scan_for_version, gen_package_meatadata_file
+from mrrc.npm import NPMPackageMetadata, scan_for_version, gen_package_meatadata_file
 from tests.base import BaseMRRCTest
 
 
