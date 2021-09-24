@@ -1,11 +1,14 @@
-from .util import logging
-import os
-import json
-import marshmallow_dataclass
+from mrrc.mrrc_logger import DEFAULT_LOGGER
 from typing import Optional
 from dataclasses import dataclass, field
 from marshmallow import ValidationError
+import os
+import json
+import marshmallow_dataclass
+import logging
 
+
+logger = logging.getLogger(DEFAULT_LOGGER)
 
 @dataclass
 class NPMPackageMetadata(object):
@@ -178,7 +181,7 @@ def scan_for_version(path: str) -> NPMVersionMetadata:
         version_schema = marshmallow_dataclass.class_schema(NPMVersionMetadata)()
         return version_schema.load(version_meta_data)
     except ValidationError:
-        logging('Error: Failed to validate version metadata!')
+        logger.error('Error: Failed to validate version metadata!')
 
 
 def gen_package_meatadata_file(version_metadata: NPMVersionMetadata, root='/'):
@@ -213,10 +216,10 @@ def gen_package_meatadata_file(version_metadata: NPMVersionMetadata, root='/'):
     version_dict[version_metadata.get_version()] = version_metadata.__dict__
     package_metadata.set_versions(version_dict)
 
-    logging(package_metadata.__str__())
+    logger.debug(package_metadata.__str__())
     final_package_metadata_path = os.path.join(root, package_metadata.get_name(), 'package.json')
     try:
         with open(final_package_metadata_path, mode='w') as f:
             json.dump(package_metadata.__dict__, f)
     except FileNotFoundError:
-        logging(f'Can not create file {final_package_metadata_path} because of some missing folders')
+        logger.error(f'Can not create file {final_package_metadata_path} because of some missing folders')

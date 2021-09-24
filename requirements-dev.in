@@ -5,5 +5,5 @@ botocore
 moto
 virtualenv
 tox
-nose
+pytest
 marshmallow-dataclass
