@@ -1,11 +1,10 @@
 import os
 import shutil
-import tempfile
-from xml.dom import minidom
 import zipfile
-import mrrc.maven as mvn
-import mrrc.archive as archive
+import mrrc.pkgs.maven as mvn
+import mrrc.utils.archive as archive
 from tests.base import BaseMRRCTest
+from xml.dom import minidom
 
 class MavenMetadataTest(BaseMRRCTest):
     

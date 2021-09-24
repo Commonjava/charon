@@ -1,7 +1,6 @@
-
+from mrrc.utils.files import digest,read_sha1, HashType
 import os
 import unittest
-from mrrc.util import digest,read_sha1, HashType
 
 class UtilTest(unittest.TestCase):
     def test_digest(self):

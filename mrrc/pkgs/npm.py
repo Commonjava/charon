@@ -1,7 +1,8 @@
-from mrrc.logs import DEFAULT_LOGGER
+from mrrc.utils.logs import DEFAULT_LOGGER
 from typing import Optional
 from dataclasses import dataclass, field
 from marshmallow import ValidationError
+from typing import Optional
 import os
 import json
 import marshmallow_dataclass

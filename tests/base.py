@@ -1,5 +1,4 @@
 from genericpath import isdir
-import mrrc.maven as mvn
 import unittest
 import tempfile
 import os

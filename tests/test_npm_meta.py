@@ -2,8 +2,8 @@ import os
 import json
 import shutil
 import marshmallow_dataclass
-import mrrc.archive as archive
-from mrrc.npm import NPMPackageMetadata, scan_for_version, gen_package_meatadata_file
+import mrrc.utils.archive as archive
+from mrrc.pkgs.npm import NPMPackageMetadata, scan_for_version, gen_package_meatadata_file
 from tests.base import BaseMRRCTest
 
 

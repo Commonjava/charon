@@ -1,5 +1,5 @@
-from mrrc.logs import DEFAULT_LOGGER
-from mrrc.util import write_file
+from mrrc.utils.logs import DEFAULT_LOGGER
+from mrrc.utils.files import write_file
 from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime

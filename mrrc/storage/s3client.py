@@ -1,6 +1,6 @@
 from mrrc.config import mrrc_config, AWS_ENDPOINT, AWS_BUCKET, AWS_RETRY_MAX, AWS_RETRY_MODE
-from mrrc.util import read_sha1
-from mrrc.logs import DEFAULT_LOGGER
+from mrrc.utils.files import read_sha1
+from mrrc.utils.logs import DEFAULT_LOGGER
 
 from boto3 import session
 from botocore.config import Config
