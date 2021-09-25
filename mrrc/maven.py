@@ -1,8 +1,12 @@
-from .util import write_file
+from mrrc.logs import DEFAULT_LOGGER
+from mrrc.util import write_file
 from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime
 import os
+import logging
+
+logger = logging.getLogger(DEFAULT_LOGGER)
 
 class MavenMetadata(object):
     """ This MavenMetadata will represent a maven-metadata.xml data content which will be
@@ -123,7 +127,7 @@ def gen_meta_file(g, a: str, vers:list, root="/"):
     try:
         write_file(final_meta_path, content)
     except FileNotFoundError:
-        print(f'Can not create file {final_meta_path} because of some missing folders')
+        logger.error(f'Error: Can not create file {final_meta_path} because of some missing folders')
     
 def ver_cmp_key():
     'Used as key function for version sorting'

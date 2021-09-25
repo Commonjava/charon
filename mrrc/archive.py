@@ -1,10 +1,11 @@
-from __future__ import print_function
-
+from mrrc.logs import DEFAULT_LOGGER
 import os
 import tarfile
 import zipfile
 import json
+import logging
 
+logger = logging.getLogger(DEFAULT_LOGGER)
 
 def extract_zip_all(zf: zipfile.ZipFile, target_dir: str):
     zf.extractall(target_dir)
@@ -14,9 +15,9 @@ def extract_zip_with_files(zf: zipfile.ZipFile, target_dir: str, file_suffix: st
     names = zf.namelist()
     filtered = list(filter(lambda n: n.endswith(file_suffix), names))
     if debug:
-        print(f'Filtered files list as below with {file_suffix}')
+        logger.debug(f'Filtered files list as below with {file_suffix}')
         for name in filtered:
-            print(name)
+            logger.debug(name)
     zf.extractall(target_dir, members=filtered)
 
 

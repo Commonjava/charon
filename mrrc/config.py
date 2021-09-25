@@ -1,5 +1,5 @@
 from configparser import ConfigParser, NoSectionError
-from mrrc.mrrc_logger import DEFAULT_LOGGER 
+from mrrc.logs import DEFAULT_LOGGER 
 import os
 import sys
 import logging

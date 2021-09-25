@@ -1,5 +1,5 @@
-from .command import init,upload,delete,gen,ls,cli
-from .mrrc_logger import set_logging
+from mrrc.command import init,upload,delete,gen,ls,cli
+from mrrc.logs import set_logging
 import logging
 
 # override this however you want

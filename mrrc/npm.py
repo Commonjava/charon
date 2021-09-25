@@ -1,4 +1,4 @@
-from mrrc.mrrc_logger import DEFAULT_LOGGER
+from mrrc.logs import DEFAULT_LOGGER
 from typing import Optional
 from dataclasses import dataclass, field
 from marshmallow import ValidationError
@@ -216,7 +216,7 @@ def gen_package_meatadata_file(version_metadata: NPMVersionMetadata, root='/'):
     version_dict[version_metadata.get_version()] = version_metadata.__dict__
     package_metadata.set_versions(version_dict)
 
-    logger.debug(package_metadata.__str__())
+    logger.debug(f'NPM metadata will generate: {package_metadata}')
     final_package_metadata_path = os.path.join(root, package_metadata.get_name(), 'package.json')
     try:
         with open(final_package_metadata_path, mode='w') as f:
