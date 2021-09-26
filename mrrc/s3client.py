@@ -1,10 +1,17 @@
+import os
 from mrrc.config import mrrc_config, AWS_ENDPOINT, AWS_BUCKET, AWS_RETRY_MAX, AWS_RETRY_MODE
+from mrrc.util import read_sha1
 from boto3 import session
 from botocore.config import Config
 from botocore.errorfactory import ClientError
 from typing import Callable, Dict, List
+from mrrc.logs import DEFAULT_LOGGER
+import logging
+
+logger = logging.getLogger(DEFAULT_LOGGER)
 
 PRODUCT_META_KEY = "rh-products"
+CHECKSUM_META_KEY = "checksum"
 class S3Client(object):
     """The S3Client is a wrapper of the original boto3 s3 client, which will provide
        some convenient methods to be used in the mrrc uploader. 
@@ -42,6 +49,9 @@ class S3Client(object):
             the new product. For example, if an exited file with new product "commons-lang3" is uploaded based on existed 
             metadata "apache-commons", the file will not be overrided, but the metadata will be changed to 
             "rh-products": "apache-commons,commons-lang3"
+            
+            * Every file has sha1 checksum in "checksum" metadata. When uploading existed files, if the checksum does not
+            match the existed one, will not upload it and report error.
         """
         bucket = self.__get_bucket(bucket_name)
         slash_root = root
@@ -52,28 +62,46 @@ class S3Client(object):
             if path.startswith(slash_root):
                 path = path[len(slash_root):]
                 
-        def path_handler(full_path: str, path: str):
+        def path_handler(full_file_path: str, path: str) -> bool:
+            if not os.path.isfile(full_file_path):
+                #TODO: think about how to handle file not exists here for batch uploading
+                logger.warn(f'Warning: file {full_file_path} does not exist during uploading. Product: {product}')
+                return False
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
+            sha1 = read_sha1(full_file_path)
+                
             if not existed:
+                f_meta = {}
+                if sha1.strip()!="":
+                    f_meta[CHECKSUM_META_KEY] = sha1
                 if product:
-                    fileObject.put(Body=full_path, Metadata={PRODUCT_META_KEY: product})
+                    f_meta[PRODUCT_META_KEY] = product
+                if len(f_meta) > 0:
+                    fileObject.put(Body=full_file_path, Metadata=f_meta)
                 else:
-                    fileObject.upload_file(full_path)
+                    fileObject.upload_file(full_file_path)
             else:
+                metadata = fileObject.metadata
+                checksum = metadata[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in metadata else ""
+                if checksum != "" and checksum.strip() != sha1:
+                    logger.error(f'Error: checksum check failed. The file {path} is different from the one in S3. Product: {product}')
+                    return False
                 prods = []
                 try:
-                    prods = fileObject.metadata[PRODUCT_META_KEY].split(",")
+                    prods = metadata[PRODUCT_META_KEY].split(",")
                 except KeyError:
                     pass
                 if product not in prods:
                     prods.append(product)
                     self.__update_file_metadata(fileObject, bucket_name, path,{PRODUCT_META_KEY:",".join(prods)}) 
+                    
+                return True 
                 
         self.__do_path_cut_and(
             file_paths=file_paths,
             fn=path_handler,
-            root=root)   
+            root=root)
             
     def delete_files(self, file_paths: List[str], bucket_name=None, product=None, root="/"):
         """ Deletes a list of files to s3 bucket. 

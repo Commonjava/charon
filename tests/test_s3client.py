@@ -1,4 +1,4 @@
-from mrrc.s3client import S3Client
+from mrrc.s3client import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseMRRCTest
 from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.archive import extract_zip_all
@@ -98,7 +98,8 @@ class S3ClientTest(BaseMRRCTest):
         objects = list(bucket.objects.all())
         self.assertEqual(26, len(objects))
         for obj in objects:
-            self.assertEqual("apache-commons",obj.Object().metadata["rh-products"])
+            self.assertEqual("apache-commons",obj.Object().metadata[PRODUCT_META_KEY])
+            self.assertNotEqual("",obj.Object().metadata[CHECKSUM_META_KEY])
         
         # Third, test upload existed files with extra product. The extra product will be added to metadata   
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3", root=root)
@@ -107,6 +108,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertEqual(26, len(objects))
         for obj in objects:
             self.assertEqual("apache-commons,commons-lang3",obj.Object().metadata["rh-products"])
+            self.assertNotEqual("",obj.Object().metadata[CHECKSUM_META_KEY])
         
         # Fourth, test delete files without product. The file will not be deleted and no product metadata will be changed.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, root=root)
@@ -115,6 +117,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertEqual(26, len(objects))
         for obj in objects:
             self.assertEqual("apache-commons,commons-lang3",obj.Object().metadata["rh-products"])
+            self.assertNotEqual("",obj.Object().metadata[CHECKSUM_META_KEY])
         
         # Fifth, test delete files with one prodct. The file will not be deleted, but the product will be removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons", root=root)
@@ -123,6 +126,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertEqual(26, len(objects))
         for obj in objects:
             self.assertEqual("commons-lang3",obj.Object().metadata["rh-products"])
+            self.assertNotEqual("",obj.Object().metadata[CHECKSUM_META_KEY])
         
         # Finally, test delete files with left prodct. The file will be deleted, because all products have been removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3", root=root)
