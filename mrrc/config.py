@@ -1,7 +1,8 @@
-from .util import logging
 from configparser import ConfigParser, NoSectionError
+from mrrc.logs import DEFAULT_LOGGER 
 import os
 import sys
+import logging
 
 CONFIG_FILE = "mrrc-uploader.conf"
 
@@ -16,6 +17,7 @@ AWS_RETRY_MAX = 'retry_max_attempts'
 AWS_RETRY_MODE = 'retry_mode'
 AWS_BUCKET = "bucket"
 
+logger = logging.getLogger(DEFAULT_LOGGER)
 class MrrcConfig(object):
     """ MrrcConfig is used to store all configurations for mrrc-uploader tools.
     The configuration file will be named as mrrc-uploader.conf, and will be stored 
