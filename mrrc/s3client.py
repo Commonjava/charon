@@ -8,7 +8,6 @@ from botocore.errorfactory import ClientError
 from typing import Callable, Dict, List
 import os
 import logging
-import re
 
 logger = logging.getLogger(DEFAULT_LOGGER)
 
@@ -61,6 +60,7 @@ class S3Client(object):
                 #TODO: think about how to handle file not exists here for batch uploading
                 logger.warn(f'Warning: file {full_file_path} does not exist during uploading. Product: {product}')
                 return False
+            logger.info(f'Uploading {full_file_path} to bucket {bucket_name}')
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
             sha1 = read_sha1(full_file_path)
@@ -75,20 +75,24 @@ class S3Client(object):
                 else:
                     fileObject.upload_file(full_file_path)
             else:
+                logger.info(f'File {full_file_path} already exists, check if need to update product.')
                 f_meta = fileObject.metadata
                 checksum = f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
                 if checksum != "" and checksum.strip() != sha1:
                     logger.error(f'Error: checksum check failed. The file {path} is different from the one in S3. Product: {product}')
                     return False
+                
                 prods = []
                 try:
                     prods = f_meta[PRODUCT_META_KEY].split(",")
                 except KeyError:
                     pass
                 if product not in prods:
+                    logger.info(f'File {full_file_path} has new product, updating the product {product}')
                     prods.append(product)
                     self.__update_file_metadata(fileObject, bucket_name, path,{PRODUCT_META_KEY:",".join(prods)}) 
-                    
+                
+                logger.info(f'Uploaded {full_file_path} to bucket {bucket_name}')
                 return True 
                 
         self.__do_path_cut_and(
@@ -108,6 +112,7 @@ class S3Client(object):
                 #TODO: think about how to handle file not exists here for batch uploading
                 logger.warn(f'Warning: file {full_file_path} does not exist during uploading. Product: {product}')
                 return False
+            logger.info(f'Updating metadata {path} to bucket {bucket_name}')
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
             f_meta = {}
@@ -126,6 +131,8 @@ class S3Client(object):
                 fileObject.put(Body=open(full_file_path, 'rb'), Metadata=f_meta)
             else:
                 self.__update_file_metadata(fileObject, bucket_name, path, f_meta) 
+            
+            logger.info(f'Updated metadata {path} to bucket {bucket_name}')
             return True 
                 
         self.__do_path_cut_and(
@@ -145,7 +152,8 @@ class S3Client(object):
             the metadata is all cleared, the file will be finally removed from bucket.
         """
         bucket = self.__get_bucket(bucket_name)
-        def path_delete_handler(full_path: str, path: str):
+        def path_delete_handler(full_path: str, path: str) -> bool:
+            logger.info(f'Deleting {path} from bucket {bucket_name}')
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
             if existed:
@@ -157,9 +165,11 @@ class S3Client(object):
                 if product and product in prods:
                     prods.remove(product)
                     if len(prods)>0:
+                        logger.info(f'File {path} has other products overlapping, will remove {product} from its metadata')
                         self.__update_file_metadata(fileObject, bucket_name, path,{PRODUCT_META_KEY:",".join(prods)}) 
             if len(prods)==0:
                 bucket.delete_objects(Delete={'Objects':[{'Key':path}]})
+                logger.info(f'Deleted {path} from bucket {bucket_name}')
 
         self.__do_path_cut_and(
             file_paths=file_paths,
