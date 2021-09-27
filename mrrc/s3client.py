@@ -92,8 +92,8 @@ class S3Client(object):
                     prods.append(product)
                     self.__update_file_metadata(fileObject, bucket_name, path,{PRODUCT_META_KEY:",".join(prods)}) 
                 
-                logger.info(f'Uploaded {full_file_path} to bucket {bucket_name}')
-                return True 
+            logger.info(f'Uploaded {full_file_path} to bucket {bucket_name}')
+            return True 
                 
         self.__do_path_cut_and(
             file_paths=file_paths,
