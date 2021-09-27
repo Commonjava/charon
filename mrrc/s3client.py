@@ -54,15 +54,7 @@ class S3Client(object):
             match the existed one, will not upload it and report error.
         """
         bucket = self.__get_bucket(bucket_name)
-        slash_root = root
-        if not root.endswith("/"):
-            slash_root = slash_root + '/'
-        for full_path in file_paths:
-            path = full_path
-            if path.startswith(slash_root):
-                path = path[len(slash_root):]
-                
-        def path_handler(full_file_path: str, path: str) -> bool:
+        def path_upload_handler(full_file_path: str, path: str) -> bool:
             if not os.path.isfile(full_file_path):
                 #TODO: think about how to handle file not exists here for batch uploading
                 logger.warn(f'Warning: file {full_file_path} does not exist during uploading. Product: {product}')
@@ -100,7 +92,7 @@ class S3Client(object):
                 
         self.__do_path_cut_and(
             file_paths=file_paths,
-            fn=path_handler,
+            fn=path_upload_handler,
             root=root)
             
     def delete_files(self, file_paths: List[str], bucket_name=None, product=None, root="/"):
@@ -115,7 +107,7 @@ class S3Client(object):
             the metadata is all cleared, the file will be finally removed from bucket.
         """
         bucket = self.__get_bucket(bucket_name)
-        def path_handler(full_path: str, path: str):
+        def path_delete_handler(full_path: str, path: str):
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
             if existed:
@@ -133,7 +125,7 @@ class S3Client(object):
 
         self.__do_path_cut_and(
             file_paths=file_paths,
-            fn=path_handler,
+            fn=path_delete_handler,
             root=root)   
     
     def get_files(self, bucket_name=None, prefix=None, suffix=None)-> List[str]:
