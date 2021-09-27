@@ -114,20 +114,22 @@ def parse_gavs(pom_paths:list, root='/') -> Dict[str, Dict[str, List[str]]]:
         gavs[g] = avs
     return gavs
 
-def gen_meta_content(g,a: str, vers: list) -> MavenMetadata:  
-    sorted_vers = sorted(vers, key=ver_cmp_key())
-    meta = MavenMetadata(g,a)
+def gen_meta_content(groupd_id, artifact_id: str, versions: list) -> MavenMetadata:  
+    sorted_vers = sorted(versions, key=ver_cmp_key())
+    meta = MavenMetadata(groupd_id,artifact_id)
     meta.latest_version(sorted_vers[-1]).release_version(sorted_vers[-1]).versions(*sorted_vers)
     return meta
 
-def gen_meta_file(g, a: str, vers:list, root="/"):
-    content = gen_meta_content(g, a, vers).generate_meta_file_content()
-    g_path = '/'.join(g.split("."))
-    final_meta_path = os.path.join(root, g_path, a, 'maven-metadata.xml')
+def gen_meta_file(group_id, artifact_id: str, versions:list, root="/") -> str:
+    content = gen_meta_content(group_id, artifact_id, versions).generate_meta_file_content()
+    g_path = '/'.join(group_id.split("."))
+    final_meta_path = os.path.join(root, g_path, artifact_id, 'maven-metadata.xml')
     try:
         write_file(final_meta_path, content)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logger.error(f'Error: Can not create file {final_meta_path} because of some missing folders')
+        raise e
+    return final_meta_path
     
 def ver_cmp_key():
     'Used as key function for version sorting'
