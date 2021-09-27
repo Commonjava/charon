@@ -1,4 +1,4 @@
-from mrrc.logs import DEFAULT_LOGGER
+from mrrc.utils.logs import DEFAULT_LOGGER
 import os
 import tarfile
 import zipfile

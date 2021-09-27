@@ -1,10 +1,10 @@
-from mrrc.s3client import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
-from mrrc.util import write_file, read_sha1
-from tests.base import BaseMRRCTest
+from mrrc.utils.files import write_file, read_sha1
+from mrrc.storage.s3client import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.utils.archive import extract_zip_all
 from mrrc.config import mrrc_config, AWS_ENDPOINT
-from mrrc.archive import extract_zip_all
-import boto3
+from tests.base import BaseMRRCTest
 from moto import mock_s3
+import boto3
 import os
 import sys
 import zipfile

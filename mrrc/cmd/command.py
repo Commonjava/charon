@@ -1,9 +1,6 @@
-import logging
-from mrrc.logs import set_logging, DEFAULT_LOGGER
-from mrrc.maven import MavenMetadata
-from mrrc.npm import  NPMPackageMetadata
-from mrrc.config import mrrc_config
+from mrrc.utils.logs import set_logging, DEFAULT_LOGGER
 import click
+import logging
 
 logger = logging.getLogger(DEFAULT_LOGGER)
 
@@ -50,10 +47,7 @@ def delete(repo: str, product: str, version: str, ga=False, debug=False):
 def gen(debug=False):
     if debug:
         set_logging(level=logging.DEBUG)
-    logger.debug("This is a debug msg")
-    logger.info("This is a info msg")
-    logger.warning("This is a warn msg")
-    logger.error("This is an error msg")
+    logger.info("gen not yet implemented!")
 
 @click.option('--debug', '-D', is_flag=True, default=False)
 @click.command()
