@@ -1,4 +1,5 @@
 from mrrc.s3client import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.util import write_file, read_sha1
 from tests.base import BaseMRRCTest
 from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.archive import extract_zip_all
@@ -15,8 +16,10 @@ MY_PREFIX = "mock_folder"
 class S3ClientTest(BaseMRRCTest):
     def setUp(self):
         super().setUp()
+        # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
         self.mock_s3.create_bucket(Bucket=MY_BUCKET)
+        # s3_client is the client we will test
         self.s3_client = S3Client()
         
     def tearDown(self):
@@ -134,4 +137,37 @@ class S3ClientTest(BaseMRRCTest):
         self.assertEqual(0, len(list(bucket.objects.all())))
         
         shutil.rmtree(temp_root)
-    
+        
+    def test_upload_with_checksum(self):
+        temp_root = os.path.join(self.tempdir, 'tmp_upd')
+        os.mkdir(temp_root)
+        path = "org/foo/bar/1.0"
+        os.makedirs(os.path.join(temp_root, path))
+        file = os.path.join(temp_root, path, "foo-bar-1.0.txt")
+        
+        content = "This is foo bar 1.0 1"
+        write_file(file, content)
+        sha1_1 = read_sha1(file)
+        self.s3_client.upload_files([file], bucket_name=MY_BUCKET, product="foo-bar-1.0", root=temp_root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(1, len(objects))
+        obj = objects[0]
+        self.assertEqual("foo-bar-1.0",obj.Object().metadata[PRODUCT_META_KEY])
+        self.assertEqual(sha1_1,obj.Object().metadata[CHECKSUM_META_KEY])
+        
+        os.remove(file)
+        
+        content = "This is foo bar 1.0 2"
+        write_file(file, content)
+        sha1_2 = read_sha1(file)
+        self.assertNotEqual(sha1_1, sha1_2)
+        self.s3_client.upload_files([file], bucket_name=MY_BUCKET, product="foo-bar-1.0-2", root=temp_root)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        objects = list(bucket.objects.all())
+        self.assertEqual(1, len(objects))
+        obj = objects[0]
+        self.assertEqual("foo-bar-1.0",obj.Object().metadata[PRODUCT_META_KEY])
+        self.assertEqual(sha1_1,obj.Object().metadata[CHECKSUM_META_KEY])
+        
+        shutil.rmtree(temp_root)
