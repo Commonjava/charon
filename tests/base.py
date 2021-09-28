@@ -1,4 +1,3 @@
-from genericpath import isdir
 import unittest
 import tempfile
 import os
@@ -7,7 +6,7 @@ import shutil
 class BaseMRRCTest(unittest.TestCase):
     def setUp(self):
         self.old_environ = os.environ.copy()
-        self.tempdir = tempfile.mkdtemp(prefix='mrrc-')
+        self.tempdir = tempfile.mkdtemp(prefix='mrrc-test-')
         # Configure environment and copy config files and templates
         os.environ['HOME'] = self.tempdir
         mrrc_config_base = os.path.join(self.tempdir, '.mrrc' )
