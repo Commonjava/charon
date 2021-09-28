@@ -24,11 +24,9 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client = S3Client()
         
     def tearDown(self):
-        s3 = self.__prepare_s3()
-        bucket = s3.Bucket(MY_BUCKET)
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
         try:
-            for key in bucket.objects.all():
-                key.delete()
+            bucket.objects.all().delete()
             bucket.delete()
         except:
             pass
