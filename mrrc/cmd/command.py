@@ -14,35 +14,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from mrrc.utils.logs import set_logging, DEFAULT_LOGGER
-import click
+from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
+from mrrc.pkgs.maven import handle_maven_uploading
+from mrrc.config import mrrc_config
+from click import command, option, argument, group, Path
 import logging
 
 logger = logging.getLogger(DEFAULT_LOGGER)
 
 
-@click.option("--debug", "-D", is_flag=True, default=False)
-@click.command()
-def init(debug=False):
-    if debug:
-        set_logging(level=logging.DEBUG)
-    logger.info("upload not yet implemented!")
+@command()
+def init():
+    print("init not yet implemented!")
 
 
-@click.argument("repo", type=click.Path(exists=True))
-@click.option(
+@argument("repo", type=Path(exists=True))
+@option(
     "--product",
     "-p",
     help="The product key, used to lookup profileId from the configuration",
     nargs=1,
     required=True,
 )
-@click.option(
+@option(
     "--version",
     "-v",
     help="The product version, used in repository definition metadata",
     multiple=False,
 )
-@click.option(
+@option(
     "--ga",
     "-g",
     is_flag=True,
@@ -50,31 +50,38 @@ def init(debug=False):
     multiple=False,
     help="Push content to the GA group (as opposed to earlyaccess)",
 )
-# @click.option('--type', '-t', default="maven", multiple=False,
-#               help='The package type of the product archive, default is maven')
-@click.option("--debug", "-D", is_flag=True, default=False)
-@click.command()
+@option("--debug", "-D", is_flag=True, default=False)
+@command()
 def upload(repo: str, product: str, version: str, ga=False, debug=False):
     if debug:
         set_logging(level=logging.DEBUG)
-    logger.info("upload not yet implemented!")
+    conf = mrrc_config()
+    npm_archive_type = detect_npm_archive(repo)
+    product_key = f"{product}-{version}"
+    if npm_archive_type != NpmArchiveType.NOT_NPM:
+        # if any npm archive types....
+        # Reminder: do npm repo handling here
+        logger.info("This is a npm archive")
+    else:
+        logger.info("This is a maven archive")
+        handle_maven_uploading(conf, repo, product_key, ga)
 
 
-@click.argument("repo", type=click.Path(exists=True))
-@click.option(
+@argument("repo", type=Path(exists=True))
+@option(
     "--product",
     "-p",
     help="The product key, used to lookup profileId from the configuration",
     nargs=1,
     required=True,
 )
-@click.option(
+@option(
     "--version",
     "-v",
     help="The product version, used in repository definition metadata",
     multiple=False,
 )
-@click.option(
+@option(
     "--ga",
     "-g",
     is_flag=True,
@@ -82,32 +89,31 @@ def upload(repo: str, product: str, version: str, ga=False, debug=False):
     multiple=False,
     help="Push content to the GA group (as opposed to earlyaccess)",
 )
-# @click.option('--type', '-t', is_flag=True, default="maven", multiple=False,
+# @option('--type', '-t', is_flag=True, default="maven", multiple=False,
 #               help='The package type of the product archive, default is maven')
-@click.option("--debug", "-D", is_flag=True, default=False)
-@click.command()
+@option("--debug", "-D", is_flag=True, default=False)
+@command()
 def delete(repo: str, product: str, version: str, ga=False, debug=False):
     if debug:
         set_logging(level=logging.DEBUG)
     logger.info("delete not yet implemented!")
 
 
-@click.option("--debug", "-D", is_flag=True, default=False)
-@click.command()
-def gen(debug=False):
-    if debug:
-        set_logging(level=logging.DEBUG)
-    logger.info("gen not yet implemented!")
+# @option('--debug', '-D', is_flag=True, default=False)
+# @command()
+# def gen(debug=False):
+#     if debug:
+#         set_logging(level=logging.DEBUG)
+#     logger.info("gen not yet implemented!")
+
+# @option('--debug', '-D', is_flag=True, default=False)
+# @command()
+# def ls(debug=False):
+#     if debug:
+#         set_logging(level=logging.DEBUG)
+#     logger.info("ls not yet implemented!")
 
 
-@click.option("--debug", "-D", is_flag=True, default=False)
-@click.command()
-def ls(debug=False):
-    if debug:
-        set_logging(level=logging.DEBUG)
-    logger.info("delete not yet implemented!")
-
-
-@click.group()
+@group()
 def cli():
     pass

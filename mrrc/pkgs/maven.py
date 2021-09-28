@@ -15,12 +15,19 @@ limitations under the License.
 """
 from mrrc.utils.logs import DEFAULT_LOGGER
 from mrrc.utils.files import write_file
+from mrrc.utils.archive import extract_zip_all
+from mrrc.storage.s3client import S3Client
+from mrrc.config import MrrcConfig
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
 from distutils.version import StrictVersion
+from zipfile import ZipFile
+from tempfile import mkdtemp
 import os
+import sys
 import logging
+import re
 
 logger = logging.getLogger(DEFAULT_LOGGER)
 
@@ -129,7 +136,7 @@ def __parse_gav(full_artifact_path: str, root="/") -> Tuple[str, str, str]:
     return group, artifact, version
 
 
-def parse_gavs(pom_paths: list, root="/") -> Dict[str, Dict[str, List[str]]]:
+def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]]:
     """Give a list of paths with pom files and parse the maven groupId, artifactId and version
     from them. The result will be a dict like {groupId: {artifactId: [versions list]}}.
     Root is like a prefix of the path which is not part of the maven GAV
@@ -160,3 +167,117 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/") -> str:
         )
         raise e
     return final_meta_path
+
+
+def handle_maven_uploading(
+    conf: MrrcConfig, repo: str, prod_key: str, ga: bool, bucket_name=None
+):
+    # 1. extract tarball
+    logger.info("Extracting tarball %s", repo)
+    repo_zip = ZipFile(repo)
+    tmp_root = mkdtemp(prefix="mrrc-")
+    extract_zip_all(repo_zip, tmp_root)
+
+    # 2. scan for paths and filter out the ignored paths,
+    # and also collect poms for later metadata generation
+    logger.info("Scan %s to collect files", tmp_root)
+    ignore_patterns = conf.get_ignore_patterns()
+    top_level = "maven-repository"
+    valid_paths, ignored_paths, valid_poms = [], [], []
+    for root, dirs, names in os.walk(tmp_root):
+        for directory in dirs:
+            if directory == top_level:
+                top_level = os.path.join(root, directory)
+                break
+        for name in names:
+            path = os.path.join(root, name)
+            if is_ignored(name, ignore_patterns):
+                ignored_paths.append(name)
+                continue
+            valid_paths.append(path)
+            if name.strip().endswith(".pom"):
+                logger.debug("Found pom %s", name)
+                valid_poms.append(path)
+    logger.info("Files scanning done.\n")
+
+    if ignore_patterns and len(ignore_patterns) > 0:
+        logger.info(
+            "Ignored paths with ignore_patterns %s as below:\n%s\n",
+            ignore_patterns, "\n".join(ignored_paths)
+        )
+
+    # This prefix is a subdir under top-level directory in tarball
+    # or root before real GAV dir structure
+    if not os.path.isdir(top_level):
+        logger.error("Error: the extracted top-level path %s does not exist.", top_level)
+        sys.exit(1)
+
+    # 3. do validation for the files, like product version checking
+    logger.info("Validating paths with rules.")
+    (err_msgs, passed) = validate_maven(valid_paths)
+    if not passed:
+        handle_error(err_msgs)
+        # Question: should we exit here?
+
+    # 4. Do uploading
+    logger.info("Start uploading files to s3")
+    s3_client = S3Client()
+    bucket = bucket_name if bucket_name else conf.get_aws_bucket()
+    s3_client.upload_files(
+        file_paths=valid_paths, bucket_name=bucket, product=prod_key, root=top_level
+    )
+    logger.info("Files uploading done\n")
+
+    # 5. Collect GAVs and generating maven-metadata.xml. As all valid poms has been
+    # uploaded to s3 bucket, what we should do here is:
+    # * Scan and get the GA for the uploaded poms this time
+    # * Search all poms in s3 based on the GA
+    # * Use searched poms to generate maven-metadata to refresh
+    logger.info("Start generating maven-metadata.xml files for all artifacts")
+    gas_dict = {}
+    logger.debug("Valid poms: %s", valid_poms)
+    valid_gavs_dict = parse_gavs(valid_poms, top_level)
+    for g, avs in valid_gavs_dict.items():
+        for a in avs.keys():
+            logger.debug("G: %s, A: %s", g, a)
+            g_path = "/".join(g.split("."))
+            gas_dict[os.path.join(g_path, a)] = True
+    ga_paths = gas_dict.keys()
+    all_poms = []
+    for path in ga_paths:
+        poms = s3_client.get_files(bucket, path, ".pom")
+        logger.debug("Got poms in s3 bucket %s for GA path %s: %s", bucket, path, poms)
+        all_poms.extend(poms)
+    gav_dict = parse_gavs(all_poms)
+    meta_files = []
+    for g, avs in gav_dict.items():
+        for a, vers in avs.items():
+            meta_file = gen_meta_file(g, a, vers, top_level)
+            logger.debug("Generated metadata file %s for %s:%s", meta_file, g, a)
+            meta_files.append(meta_file)
+    logger.info("maven-metadata.xml files generation done\n")
+
+    # 6. Upload all maven-metadata.xml
+    logger.info("Start uploading maven-metadata.xml to s3")
+    s3_client.upload_metadatas(
+        meta_file_paths=meta_files, bucket_name=bucket, product=prod_key, root=top_level
+    )
+    logger.info("maven-metadata.xml uploading done")
+
+
+def is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
+    if ignore_patterns:
+        for dirs in ignore_patterns:
+            if re.search(dirs, filename):
+                return True
+    return False
+
+
+def validate_maven(paths: List[str]) -> Tuple[List[str], str]:
+    # Reminder: need to implement later
+    return (list(), True)
+
+
+def handle_error(err_msgs: List[str]):
+    # Reminder: will implement later
+    pass
