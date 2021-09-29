@@ -16,7 +16,6 @@ limitations under the License.
 import json
 import logging
 import os
-from json import JSONDecodeError
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ def scan_for_version(path: str):
     try:
         with open(path, encoding='utf-8') as version_meta_file:
             return json.load(version_meta_file)
-    except JSONDecodeError:
+    except json.JSONDecodeError:
         logger.error('Error: Failed to validate version metadata!')
 
 
