@@ -1,11 +1,10 @@
-import json
 import logging
 import os
 from dataclasses import dataclass, field
-from json import JSONDecodeError
+from json import load, dump, JSONDecodeError
 from typing import Optional
 
-import marshmallow_dataclass
+from marshmallow_dataclass import class_schema
 from marshmallow import ValidationError
 from semantic_version import compare
 
@@ -244,8 +243,8 @@ def scan_for_version(path: str) -> NPMVersionMetadata:
     """
     try:
         with open(path) as version_meta_file:
-            version_meta_data = json.load(version_meta_file)
-        version_schema = marshmallow_dataclass.class_schema(NPMVersionMetadata)()
+            version_meta_data = load(version_meta_file)
+        version_schema = class_schema(NPMVersionMetadata)()
         return version_schema.load(version_meta_data)
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
@@ -258,8 +257,8 @@ def read_package_metadata_value(path: str) -> NPMPackageMetadata:
     """
     try:
         with open(path) as package_file:
-            package_metadata = json.load(package_file)
-        package_schema = marshmallow_dataclass.class_schema(NPMPackageMetadata)()
+            package_metadata = load(package_file)
+        package_schema = class_schema(NPMPackageMetadata)()
         return package_schema.load(package_metadata)
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
@@ -370,7 +369,7 @@ def __write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root=
     final_package_metadata_path = os.path.join(root, package_metadata.get_name(), PACKAGE_JSON)
     try:
         with open(final_package_metadata_path, mode='w') as f:
-            json.dump(package_metadata.__dict__, f)
+            dump(package_metadata.__dict__, f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(f'Can not create file {final_package_metadata_path} because of some missing folders')
