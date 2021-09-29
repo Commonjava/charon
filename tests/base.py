@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import unittest
-import tempfile
 import os
 import shutil
+import tempfile
+import unittest
+
 
 class BaseMRRCTest(unittest.TestCase):
     def setUp(self):
@@ -24,13 +25,14 @@ class BaseMRRCTest(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp(prefix='mrrc-test-')
         # Configure environment and copy config files and templates
         os.environ['HOME'] = self.tempdir
-        mrrc_config_base = os.path.join(self.tempdir, '.mrrc' )
-        mrrc_template_path = os.path.join(mrrc_config_base, 'template' )
+        mrrc_config_base = os.path.join(self.tempdir, '.mrrc')
+        mrrc_template_path = os.path.join(mrrc_config_base, 'template')
         os.mkdir(mrrc_config_base)
-        shutil.copytree(os.path.join(os.getcwd(),"template"), mrrc_template_path)
+        shutil.copytree(os.path.join(os.getcwd(), "template"), mrrc_template_path)
         if not os.path.isdir(mrrc_template_path):
             self.fail("Template initilization failed!")
-        shutil.copyfile(os.path.join(os.getcwd(), "config/mrrc-uploader.conf"), os.path.join(mrrc_config_base, "mrrc-uploader.conf"))
+        shutil.copyfile(os.path.join(os.getcwd(), "config/mrrc-uploader.conf"),
+                        os.path.join(mrrc_config_base, "mrrc-uploader.conf"))
         if not os.path.isfile(os.path.join(mrrc_config_base, "mrrc-uploader.conf")):
             self.fail("Configuration initilization failed!")
 

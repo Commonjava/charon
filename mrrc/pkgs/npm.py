@@ -16,7 +16,6 @@ limitations under the License.
 import json
 import logging
 import os
-from dataclasses import dataclass
 from json import JSONDecodeError
 
 logger = logging.getLogger(__name__)
