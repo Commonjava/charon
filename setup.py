@@ -65,6 +65,6 @@ setup(
     install_requires=_get_requirements('requirements.txt'),
     test_suite="tests",
     entry_points={
-        "console_scripts": ["mrrc = mrrc:cli"],
-    },
+      'console_scripts': ['mrrc = mrrc.cli.main:run'],
+    }
 )
