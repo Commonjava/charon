@@ -18,14 +18,10 @@ See [AWS CLi V2 installation](https://docs.aws.amazon.com/cli/latest/userguide/i
 Clone this git repo and install MRRC using python installer:
 
 ```bash
-python -m pip install pip virtualenv --upgrade --user
-virtualenv ./venv
-source ./venv/bin/activate
-python setup.py install
+git clone https://github.com/Commonjava/mrrc-uploader.git
+cd mrrc-uploader
+sudo pip install .
 ```
-
-This will build & install the tool into ./venv/ folder with virtual environment
-to start using in a sandbox
 
 ## Command guide
 
@@ -39,16 +35,8 @@ to configure AWS access credentials.
 usage: mrrc init
 ```
 
-The configuration will include two parts of configurations
-
-* [aws]: the AWS related information to access S3 service, like aws_service_url,
-  app_key, access_token or something similar for the AWS libs to use.
-  See [AWS configurations](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html)
-
-* [mrrc]: mrrc-uploader tool related information, TBH for more.
-
 The command will be executed in verbose mode with several steps of prompt to let
-user to input some mandantory items. These information will stored in
+user input some mandatory items. This information will be stored in
 $HOME/.mrrc/config.json(or yaml or something similar) after command execution
 for the following usage. All following command will check this config.json for
 valid configurations, and if invalid will ask user to do the mrrc-init for
@@ -90,7 +78,7 @@ usage: mrrc delete $tarball|$pathfile --product ${prod} --version ${ver} [--ga] 
 This command will delete some paths from repo in S3.
 
 * Scan tarball or read pathfile for the paths to delete
-* During or after the paths deletion, regenerate the metadata files and index
+* During or after the paths' deletion, regenerate the metadata files and index
   files for both types.
 
 ### (Optional?) mrrc-gen: Generate metadata files
@@ -105,7 +93,7 @@ This command will generate or refresh metadata files
   versions, and re-generate the maven-metadata.xml based on the scan result
 * For type npm, it will scan the NpmPkg path(Question: what's structure?) and
   re-generate the versions in existed package.json based on the scan result.
-* For type index, it scan the specified path and re-gnerate the index files (
+* For type index, it scans the specified path and regenerate the index files (
   recursively?) in that path to refresh index file in CDN.
 
 ### (Optional?)mrrc-ls: List files of repo in S3

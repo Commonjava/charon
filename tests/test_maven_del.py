@@ -1,9 +1,7 @@
-from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
-from mrrc.storage.s3client import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseMRRCTest
 from moto import mock_s3
-from unittest.mock import MagicMock
 import boto3
 import os
 
@@ -55,26 +53,15 @@ class MavenDeleteTest(BaseMRRCTest):
         super().tearDown()
 
     def __prepare_s3(self):
-        conf = mrrc_config()
-        aws_configs = conf.get_aws_configs()
-        return boto3.resource(
-            "s3",
-            region_name=conf.get_aws_region(),
-            aws_access_key_id=conf.get_aws_key_id(),
-            aws_secret_access_key=conf.get_aws_key(),
-            endpoint_url=aws_configs[AWS_ENDPOINT]
-            if AWS_ENDPOINT in aws_configs
-            else None,
-        )
+        return boto3.resource("s3")
 
     def test_maven_deletion(self):
         self.__prepare_content()
 
-        conf = mrrc_config()
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
-            conf, test_zip, product_456, True, bucket_name=TEST_BUCKET
+            test_zip, product_456, True, bucket_name=TEST_BUCKET
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -121,7 +108,7 @@ class MavenDeleteTest(BaseMRRCTest):
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
-            conf, test_zip, product_459, True, bucket_name=TEST_BUCKET
+            test_zip, product_459, True, bucket_name=TEST_BUCKET
         )
 
         objs = list(test_bucket.objects.all())
@@ -133,12 +120,10 @@ class MavenDeleteTest(BaseMRRCTest):
         product_459 = "commons-client-4.5.9"
         product_mix = set([product_456, product_459])
 
-        conf = mrrc_config()
-        conf.get_ignore_patterns = MagicMock(return_value=[".*.sha1"])
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
 
         handle_maven_del(
-            conf, test_zip, product_456, True, bucket_name=TEST_BUCKET
+            test_zip, product_456, True, ignore_patterns=[".*.sha1"], bucket_name=TEST_BUCKET
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -183,15 +168,14 @@ class MavenDeleteTest(BaseMRRCTest):
             self.assertNotIn(f, actual_files)
 
     def __prepare_content(self):
-        conf = mrrc_config()
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            conf, test_zip, product_456, True, bucket_name=TEST_BUCKET
+            test_zip, product_456, True, bucket_name=TEST_BUCKET
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            conf, test_zip, product_459, True, bucket_name=TEST_BUCKET
+            test_zip, product_459, True, bucket_name=TEST_BUCKET
         )

@@ -1,9 +1,7 @@
-from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.pkgs.maven import handle_maven_uploading
-from mrrc.storage.s3client import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseMRRCTest
 from moto import mock_s3
-from unittest.mock import MagicMock
 import boto3
 import os
 
@@ -55,23 +53,12 @@ class MavenUploadTest(BaseMRRCTest):
         super().tearDown()
 
     def __prepare_s3(self):
-        conf = mrrc_config()
-        aws_configs = conf.get_aws_configs()
-        return boto3.resource(
-            "s3",
-            region_name=conf.get_aws_region(),
-            aws_access_key_id=conf.get_aws_key_id(),
-            aws_secret_access_key=conf.get_aws_key(),
-            endpoint_url=aws_configs[AWS_ENDPOINT]
-            if AWS_ENDPOINT in aws_configs
-            else None,
-        )
+        return boto3.resource('s3')
 
     def test_fresh_upload(self):
-        conf = mrrc_config()
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
-        handle_maven_uploading(conf, test_zip, product, True, bucket_name=TEST_BUCKET)
+        handle_maven_uploading(test_zip, product, True, bucket_name=TEST_BUCKET)
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
@@ -112,17 +99,16 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
     def test_overlap_upload(self):
-        conf = mrrc_config()
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            conf, test_zip, product_456, True, bucket_name=TEST_BUCKET
+            test_zip, product_456, True, bucket_name=TEST_BUCKET
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            conf, test_zip, product_459, True, bucket_name=TEST_BUCKET
+            test_zip, product_459, True, bucket_name=TEST_BUCKET
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -187,12 +173,10 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
     def test_ignore_upload(self):
-        conf = mrrc_config()
-        conf.get_ignore_patterns = MagicMock(return_value=[".*.sha1"])
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            conf, test_zip, product_456, True, bucket_name=TEST_BUCKET
+            test_zip, product_456, True, [".*.sha1"], bucket_name=TEST_BUCKET
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
