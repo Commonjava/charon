@@ -15,7 +15,6 @@ limitations under the License.
 """
 from typing import List
 from configparser import ConfigParser, NoSectionError
-from mrrc.utils.logs import DEFAULT_LOGGER 
 import os
 import sys
 import logging
@@ -39,7 +38,7 @@ AWS_DEFAULT_BUCKET = "mrrc"
 
 AWS_DEFAULT_BUCKET="mrrc"
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 class MrrcConfig(object):
     """ MrrcConfig is used to store all configurations for mrrc-uploader tools.
@@ -56,15 +55,15 @@ class MrrcConfig(object):
         try:
             self.__aws_configs = dict(data.items(SECTION_AWS))
         except NoSectionError:
-            logging('Warning: Missing AWS section, aws related function can not work.')
+            logger.warning('Missing AWS section, aws related function can not work.')
             self.__aws_enabled = False
 
         if self.__aws_enabled:
             if AWS_KEY_ID not in self.__aws_configs:
-                logging('Warning: Missing AWS access key id, aws related function can not work.')
+                logger.warning('Missing AWS access key id, aws related function can not work.')
                 self.__aws_enabled=False
             if AWS_KEY not in self.__aws_configs:
-                logging('Warning: Missing AWS access secret key, aws related function can not work.')
+                logger.warning('Missing AWS access secret key, aws related function can not work.')
                 self.__aws_enabled=False
 
     def get_aws_key_id(self) -> str:
@@ -99,6 +98,6 @@ def mrrc_config():
     parser = ConfigParser()
     config_file = os.path.join(os.environ['HOME'],'.mrrc', CONFIG_FILE)
     if not parser.read(config_file):
-        logging(f'Error: not existed config file {config_file})')
+        logger.error(f'Config file {config_file} doesn\'t exist')
         sys.exit(1)
     return MrrcConfig(parser)

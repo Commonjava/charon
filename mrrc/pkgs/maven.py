@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.logs import DEFAULT_LOGGER
 from mrrc.utils.files import write_file
 from typing import Dict, List, Tuple, Union
 from jinja2 import Template
@@ -21,7 +20,7 @@ from datetime import datetime
 import os
 import logging
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 class MavenMetadata(object):
     """ This MavenMetadata will represent a maven-metadata.xml data content which will be

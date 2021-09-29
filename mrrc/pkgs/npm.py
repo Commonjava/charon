@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.logs import DEFAULT_LOGGER
 from typing import Optional
 from dataclasses import dataclass, field
 from marshmallow import ValidationError
@@ -24,7 +23,7 @@ import marshmallow_dataclass
 import logging
 
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class NPMPackageMetadata(object):

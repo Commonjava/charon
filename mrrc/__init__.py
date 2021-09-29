@@ -13,20 +13,65 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.cmd.command import init,upload,delete,gen,ls,cli
-from mrrc.utils.logs import set_logging
 import logging
+import sys
+from locale import nl_langinfo, CODESET
+from os import fdopen, dup
 
-# override this however you want
-set_logging(level=logging.INFO)
+from mrrc.constants import MRRC_LOGGING_FMT
 
-# init group command
-cli.add_command(init)
-cli.add_command(upload)
-cli.add_command(delete)
-cli.add_command(gen)
-cli.add_command(ls)
 
-__all__ = [
-    'cli'
-]
+class EncodedStream(object):
+    # The point of this class is to force python to encode UTF-8
+    # over stderr.  Normal techniques were not working, so we dup
+    # the file handler and force it UTF-8.  :-(
+    def __init__(self, fileno, encoding):
+        self.binarystream = fdopen(dup(fileno), 'wb')
+        self.encoding = encoding
+
+    def write(self, text):
+        if not isinstance(text, bytes):
+            self.binarystream.write(text.encode(self.encoding))
+        else:
+            self.binarystream.write(text)
+        # We need to flush regularly, because launching plugins or running
+        # subprocess calls breaks serialization of logging output otherwise
+        self.binarystream.flush()
+
+    def __del__(self):
+        try:
+            self.binarystream.close()
+        except AttributeError:
+            pass
+
+
+def set_logging(name="mrrc", level=logging.DEBUG, handler=None):
+    # create logger
+    logger = logging.getLogger(name)
+    for hdlr in list(logger.handlers):  # make a copy so it doesn't change
+        logger.removeHandler(hdlr)
+
+    logger.setLevel(level)
+
+    # create formatter
+    formatter = logging.Formatter(fmt=MRRC_LOGGING_FMT)
+
+    if not handler:
+        # create console handler and set level to debug
+        log_encoding = nl_langinfo(CODESET)
+        encoded_stream = EncodedStream(sys.stderr.fileno(), log_encoding)
+        handler = logging.StreamHandler(encoded_stream)
+        handler.setLevel(logging.DEBUG)
+
+        # add formatter to ch
+        handler.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(handler)
+
+    logger = logging.getLogger('mrrc')
+    for hdlr in list(logger.handlers):  # make a copy so it doesn't change
+        hdlr.setFormatter(formatter)
+
+
+set_logging(level=logging.WARNING)  # override this however you want

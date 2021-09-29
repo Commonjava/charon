@@ -13,14 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.logs import DEFAULT_LOGGER
 from zipfile import ZipFile
 import os
 import tarfile
 import json
 import logging
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 def extract_zip_all(zf: ZipFile, target_dir: str):
     zf.extractall(target_dir)
