@@ -4,3 +4,4 @@ boto3
 botocore
 moto
 marshmallow-dataclass
+semantic_version

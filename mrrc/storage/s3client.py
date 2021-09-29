@@ -193,6 +193,19 @@ class S3Client(object):
             files = [i.key for i in objs]    
         return files
 
+    def download_file(self, bucket_name=None, key=None, download_path=None):
+        """ Download the file into a local path from S3 storage
+        """
+        try:
+            bucket = self.__get_bucket(bucket_name)
+            bucket.download_file(key, download_path)
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                return False
+            else:
+                raise
+
     def __get_bucket(self, bucket_name=None):
         b_name = bucket_name
         if not bucket_name or bucket_name.strip() == "":

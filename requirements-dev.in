@@ -7,3 +7,4 @@ virtualenv
 tox
 pytest
 marshmallow-dataclass
+semantic_version

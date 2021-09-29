@@ -78,6 +78,21 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn('org/x/y/1.0/x-y-1.0.pom', files)
         self.assertNotIn('org/x/y/1.0/x-y-1.0.jar', files)
 
+    def test_download_file(self):
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        bucket.put_object(Key='org/foo/bar/1.0/foo-bar-1.0.pom', Body='test content pom11')
+
+        foo_pom = self.s3_client.download_file(bucket_name=MY_BUCKET, key="org/foo/bar/1.0/foo-bar-1.0.pom",
+                                               download_path="temp.pom")
+        foo_jar = self.s3_client.download_file(bucket_name=MY_BUCKET, key="org/foo/bar/1.0/foo-bar-1.0.jar",
+                                               download_path="temp.jar")
+        self.assertTrue(foo_pom)
+        self.assertFalse(foo_jar)
+
+        download_path = os.path.join(os.getcwd(), 'temp.pom')
+        if not os.path.isfile(download_path):
+            self.fail('Failed to download the file from s3!')
+
     def test_upload_and_delete_files(self):
         zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests-input/commons-lang3.zip'))
         temp_root = os.path.join(self.tempdir, 'tmp_zip')

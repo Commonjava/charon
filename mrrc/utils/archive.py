@@ -1,11 +1,13 @@
 from mrrc.utils.logs import DEFAULT_LOGGER
 from zipfile import ZipFile
+from json import JSONDecodeError
 import os
 import tarfile
 import json
 import logging
 
 logger = logging.getLogger(DEFAULT_LOGGER)
+
 
 def extract_zip_all(zf: ZipFile, target_dir: str):
     zf.extractall(target_dir)
@@ -47,7 +49,10 @@ def extract_npm_tarball(path: str, target_dir: str) -> str:
 
 
 def __parse_npm_package_version_paths(path: str) -> list:
-    with open(path) as version_package:
-        data = json.load(version_package)
-    package_version_paths = [data['name'], data['version']]
-    return package_version_paths
+    try:
+        with open(path) as version_package:
+            data = json.load(version_package)
+        package_version_paths = [data['name'], data['version']]
+        return package_version_paths
+    except JSONDecodeError:
+        logger.error('Error: Failed to parse json!')

@@ -55,6 +55,7 @@ setup(
       "boto3",
       "botocore",
       "marshmallow-dataclass",
+      "semantic_version",
     ],
     tests_require=test_deps,
     extras_require=extras,
