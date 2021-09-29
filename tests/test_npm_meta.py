@@ -13,30 +13,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os
 import json
+import os
 import shutil
-import marshmallow_dataclass
+
 import mrrc.utils.archive as archive
-from mrrc.pkgs.npm import NPMPackageMetadata, scan_for_version, gen_package_meatadata_file
+from mrrc.pkgs.npm import scan_for_version, gen_package_meatadata_file
 from tests.base import BaseMRRCTest
 
 
 class NPMMetadataTest(BaseMRRCTest):
 
     def test_scan_for_version(self):
-        version_json_file_path = os.path.join(os.getcwd(), 'tests-input/code-frame_7.14.5.json')
+        version_json_file_path = 'tests/input/code-frame_7.14.5.json'
         version = scan_for_version(version_json_file_path)
-        self.assertEqual('@babel/code-frame', version.get_name())
-        self.assertEqual('7.14.5', version.get_version())
-        self.assertEqual('MIT', version.get_license())
-        self.assertEqual('https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.14.5.tgz', version.get_dist()['tarball'])
-        self.assertEqual(4, version.get_dist()['fileCount'])
+        self.assertEqual('@babel/code-frame', version.get('name'))
+        self.assertEqual('7.14.5', version.get('version'))
+        self.assertEqual('MIT', version.get('license'))
+        self.assertEqual('https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.14.5.tgz',
+                         version.get('dist')['tarball'])
+        self.assertEqual(4, version.get('dist')['fileCount'])
 
     def test_gen_package_meta_file(self):
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
-        tarball_test_path = os.path.join(os.getcwd(), 'tests-input/kogito-tooling-workspace-0.9.0-3.tgz')
+        tarball_test_path = 'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
         version_path = archive.extract_npm_tarball(tarball_test_path, temp_root)
         version = scan_for_version(version_path)
         gen_package_meatadata_file(version, temp_root)
@@ -44,15 +45,13 @@ class NPMMetadataTest(BaseMRRCTest):
         npm_meta_file = os.path.join(temp_root, '@redhat/kogito-tooling-workspace/package.json')
         if not os.path.isfile(npm_meta_file):
             self.fail('package.json is not generated correctly!')
-        with open(npm_meta_file) as verified_package_meta_file:
+        with open(npm_meta_file, encoding='utf-8') as verified_package_meta_file:
             verified_package_meta_data = json.load(verified_package_meta_file)
-        package_schema = marshmallow_dataclass.class_schema(NPMPackageMetadata)()
-        verified_package = package_schema.load(verified_package_meta_data)
-        name = verified_package.name
+        name = verified_package_meta_data.get('name')
         self.assertEqual('@redhat/kogito-tooling-workspace', name)
-        license = verified_package.license
-        self.assertEqual('Apache-2.0', license)
-        repo = verified_package.repository
+        _license = verified_package_meta_data.get('license')
+        self.assertEqual('Apache-2.0', _license)
+        repo = verified_package_meta_data.get('repository')
         self.assertEqual('git', repo['type'])
         self.assertEqual('https://github.com/kiegroup/kogito-tooling.git', repo['url'])
 

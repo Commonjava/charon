@@ -1,0 +1,5 @@
+setuptools-rust
+jinja2
+boto3
+botocore
+moto

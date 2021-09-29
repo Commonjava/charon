@@ -13,12 +13,12 @@
     {%- if meta.latest_ver is defined %}
     <latest>{{ meta.latest_ver }}</latest>
     {%- endif %}
-    {%- if meta.release_ver is defined %}
-    <release>{{ meta.release_ver }}</release>
+    {%- if meta.release_version is defined %}
+    <release>{{ meta.release_version }}</release>
     {%- endif %}
-    {%- if meta.vers is defined %}
+    {%- if meta.versions is defined %}
     <versions>
-      {% for ver in meta.vers -%}
+      {% for ver in meta.versions -%}
       <version>{{ ver }}</version>
       {% endfor %}
     </versions>
@@ -61,7 +61,7 @@
     {%- endif %}
   </versioning>
   {%- endif %}
-  
+
   {%- if meta.plugins is defined %}
   <plugins>
     {% for plugin in meta.plugins -%}

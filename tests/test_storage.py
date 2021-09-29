@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from mrrc.utils.files import write_file, read_sha1
-from mrrc.storage.s3client import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from mrrc.utils.archive import extract_zip_all
 from mrrc.config import mrrc_config, AWS_ENDPOINT
 from tests.base import BaseMRRCTest
@@ -94,7 +94,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn('org/x/y/1.0/x-y-1.0.jar', files)
 
     def test_upload_and_delete_files(self):
-        zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests-input/commons-lang3.zip'))
+        zip = zipfile.ZipFile(os.path.join(os.getcwd(),'tests/input/commons-lang3.zip'))
         temp_root = os.path.join(self.tempdir, 'tmp_zip')
         os.mkdir(temp_root)
         extract_zip_all(zip, temp_root)
