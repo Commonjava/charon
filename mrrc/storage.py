@@ -18,10 +18,8 @@ import os
 from typing import Callable, Dict, List
 
 from boto3 import session
-from botocore.config import Config
 from botocore.errorfactory import ClientError
 
-from mrrc.config import mrrc_config, AWS_ENDPOINT, AWS_BUCKET, AWS_RETRY_MAX, AWS_RETRY_MODE
 from mrrc.utils.files import read_sha1
 
 logger = logging.getLogger(__name__)
@@ -36,26 +34,13 @@ class S3Client(object):
     """
 
     def __init__(self, extra_conf=None) -> None:
-        mrrc_conf = mrrc_config()
-        aws_configs = mrrc_conf.get_aws_configs()
-        s3_session = session.Session(
-            aws_access_key_id=mrrc_conf.get_aws_key_id(),
-            aws_secret_access_key=mrrc_conf.get_aws_key(),
-            region_name=mrrc_conf.get_aws_region()
-        )
-        s3_extra_conf = Config(
-            retries={
-                'max_attempts': int(aws_configs.get(AWS_RETRY_MAX, '10')),
-                'mode': aws_configs.get(AWS_RETRY_MODE, 'standard')
-            }
-        )
+        s3_session = session.Session()
         self.client = s3_session.resource(
             's3',
-            config=s3_extra_conf,
-            endpoint_url=aws_configs[AWS_ENDPOINT] if AWS_ENDPOINT in aws_configs else None
+            config=extra_conf,
         )
 
-    def upload_files(self, file_paths: List[str], bucket_name=None, product=None, root="/"):
+    def upload_files(self, file_paths: List[str], bucket_name: str, product: str, root="/"):
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
@@ -77,11 +62,11 @@ class S3Client(object):
         """
         bucket = self.__get_bucket(bucket_name)
 
-        def path_upload_handler(full_file_path: str, path: str) -> bool:
+        def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
                 logger.warning('Warning: file %s does not exist during uploading. Product: %s',
                                full_file_path, product)
-                return False
+                return
             logger.info('Uploading %s to bucket %s', full_file_path, bucket_name)
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
@@ -104,7 +89,7 @@ class S3Client(object):
                 if checksum != "" and checksum.strip() != sha1:
                     logger.error('Error: checksum check failed. The file %s is different from the '
                                  'one in S3. Product: %s', path, product)
-                    return False
+                    return
 
                 prods = []
                 try:
@@ -119,14 +104,14 @@ class S3Client(object):
                                                 {PRODUCT_META_KEY: ",".join(prods)})
 
             logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
-            return True
+            return
 
         self.__do_path_cut_and(
             file_paths=file_paths,
             fn=path_upload_handler,
             root=root)
 
-    def upload_metadatas(self, meta_file_paths: List[str], bucket_name=None, product=None,
+    def upload_metadatas(self, meta_file_paths: List[str], bucket_name: str, product: str,
                          root="/"):
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
@@ -136,11 +121,11 @@ class S3Client(object):
         """
         bucket = self.__get_bucket(bucket_name)
 
-        def path_upload_handler(full_file_path: str, path: str) -> bool:
+        def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
                 logger.warning('Warning: file %s does not exist during uploading. Product: %s',
                                full_file_path, product)
-                return False
+                return
             logger.info('Updating metadata %s to bucket %s', path, bucket_name)
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
@@ -163,14 +148,14 @@ class S3Client(object):
                 self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
 
             logger.info('Updated metadata %s to bucket %s', path, bucket_name)
-            return True
+            return
 
         self.__do_path_cut_and(
             file_paths=meta_file_paths,
             fn=path_upload_handler,
             root=root)
 
-    def delete_files(self, file_paths: List[str], bucket_name=None, product=None, root="/"):
+    def delete_files(self, file_paths: List[str], bucket_name: str, product: str, root="/"):
         """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
@@ -184,7 +169,7 @@ class S3Client(object):
         """
         bucket = self.__get_bucket(bucket_name)
 
-        def path_delete_handler(full_path: str, path: str) -> bool:
+        def path_delete_handler(full_file_path: str, path: str):
             logger.info('Deleting %s from bucket %s', path, bucket_name)
             fileObject = bucket.Object(path)
             existed = self.__file_exists(fileObject)
@@ -210,7 +195,7 @@ class S3Client(object):
             fn=path_delete_handler,
             root=root)
 
-    def get_files(self, bucket_name=None, prefix=None, suffix=None) -> List[str]:
+    def get_files(self, bucket_name: str, prefix=None, suffix=None) -> List[str]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
            files wanted.
         """
@@ -227,12 +212,8 @@ class S3Client(object):
             files = [i.key for i in objs]
         return files
 
-    def __get_bucket(self, bucket_name=None):
-        b_name = bucket_name
-        if not bucket_name or bucket_name.strip() == "":
-            mrrc_conf = mrrc_config()
-            b_name = mrrc_conf.get_aws_configs()[AWS_BUCKET]
-        return self.client.Bucket(b_name)
+    def __get_bucket(self, bucket_name: str):
+        return self.client.Bucket(bucket_name)
 
     def __file_exists(self, fileObject):
         try:

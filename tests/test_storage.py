@@ -21,7 +21,6 @@ import zipfile
 import boto3
 from moto import mock_s3
 
-from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from mrrc.utils.archive import extract_zip_all
 from mrrc.utils.files import write_file, read_sha1
@@ -51,15 +50,7 @@ class S3ClientTest(BaseMRRCTest):
         super().tearDown()
 
     def __prepare_s3(self):
-        conf = mrrc_config()
-        aws_configs = conf.get_aws_configs()
-        return boto3.resource(
-            "s3",
-            region_name=conf.get_aws_region(),
-            aws_access_key_id=conf.get_aws_key_id(),
-            aws_secret_access_key=conf.get_aws_key(),
-            endpoint_url=aws_configs[AWS_ENDPOINT] if AWS_ENDPOINT in aws_configs else None
-        )
+        return boto3.resource('s3')
 
     def test_get_files(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
@@ -108,12 +99,7 @@ class S3ClientTest(BaseMRRCTest):
 
         bucket = self.mock_s3.Bucket(MY_BUCKET)
 
-        # First, test upload without any products
-        self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, root=root)
-        objects = list(bucket.objects.all())
-        self.assertEqual(26, len(objects))
-
-        # Second, test upload existed files with the product. The product will be added to metadata
+        # test upload existed files with the product. The product will be added to metadata
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
@@ -122,8 +108,7 @@ class S3ClientTest(BaseMRRCTest):
             self.assertEqual("apache-commons", obj.Object().metadata[PRODUCT_META_KEY])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
 
-        # Third, test upload existed files with extra product. The extra product will be added to
-        # metadata
+        # test upload existed files with extra product. The extra product will be added to metadata
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
         objects = list(bucket.objects.all())
@@ -133,18 +118,8 @@ class S3ClientTest(BaseMRRCTest):
                              set(obj.Object().metadata["rh-products"].split(",")))
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
 
-        # Fourth, test delete files without product. The file will not be deleted and no product
-        # metadata will be changed.
-        self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, root=root)
-        objects = list(bucket.objects.all())
-        self.assertEqual(26, len(objects))
-        for obj in objects:
-            self.assertEqual(set("apache-commons,commons-lang3".split(",")),
-                             set(obj.Object().metadata["rh-products"].split(",")))
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
-
-        # Fifth, test delete files with one prodct. The file will not be deleted, but the product
-        # will be removed from metadata.
+        # test delete files with one product. The file will not be deleted, but the product will
+        # be removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
@@ -153,8 +128,8 @@ class S3ClientTest(BaseMRRCTest):
             self.assertEqual("commons-lang3", obj.Object().metadata["rh-products"])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
 
-        # Finally, test delete files with left prodct. The file will be deleted, because all
-        # products have been removed from metadata.
+        # test delete files with left product. The file will be deleted, because all products
+        # have been removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
         self.assertEqual(0, len(list(bucket.objects.all())))
@@ -206,7 +181,7 @@ class S3ClientTest(BaseMRRCTest):
         file = os.path.join(temp_root, path, "maven-metadata.xml")
         bucket = self.mock_s3.Bucket(MY_BUCKET)
 
-        # First, upload a metadata file
+        # upload a metadata file
         content1 = "<metadata><groupId>org.foo</groupId><artifactId>bar</artifactId><versioning>" \
                    "<versions><version>1.0</version></versions></versioning></metadata>"
         write_file(file, content1)
@@ -220,7 +195,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertEqual(sha1_1, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(content1, str(obj.get()['Body'].read(), sys.getdefaultencoding()))
 
-        # Second, upload this metadata file again with diferrent product
+        # upload this metadata file again with different product
         sha1_1_repeated = read_sha1(file)
         self.assertEqual(sha1_1, sha1_1_repeated)
         self.s3_client.upload_metadatas([file], bucket_name=MY_BUCKET,
@@ -235,7 +210,7 @@ class S3ClientTest(BaseMRRCTest):
 
         os.remove(file)
 
-        # Third, upload the metadata with same file path but different content and product
+        # upload the metadata with same file path but different content and product
         content2 = "<metadata><groupId>org.foo</groupId><artifactId>bar</artifactId>" \
                    "<versioning><versions><version>1.0</version><version>1.0.1</version>" \
                    "</versions></versioning></metadata>"
