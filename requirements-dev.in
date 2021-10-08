@@ -1,9 +1,0 @@
-click
-jinja2
-boto3
-botocore
-moto
-virtualenv
-tox
-pytest
-marshmallow-dataclass
