@@ -264,6 +264,11 @@ class S3Client(object):
             files = [i.key for i in objs]
         return files
 
+    def read_file_content(self, bucket_name=None, key=None):
+        bucket = self.__get_bucket(bucket_name)
+        fileObject = bucket.Object(key)
+        return str(fileObject.get()['Body'].read(), 'utf-8')
+
     def __get_bucket(self, bucket_name=None):
         b_name = bucket_name
         if not bucket_name or bucket_name.strip() == "":
