@@ -14,8 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from mrrc.utils.logs import DEFAULT_LOGGER
-from zipfile import ZipFile
+from zipfile import ZipFile, is_zipfile
+from enum import Enum
 import os
+import sys
 import tarfile
 import json
 import logging
@@ -71,3 +73,49 @@ def __parse_npm_package_version_paths(path: str) -> list:
         data = json.load(version_package)
     package_version_paths = [data["name"], data["version"]]
     return package_version_paths
+
+
+class NpmArchiveType(Enum):
+    """Possible types of detected archive"""
+
+    NOT_NPM = 0
+    DIRECTORY = 1
+    ZIP_FILE = 2
+    TAR_FILE = 3
+
+
+def detect_npm_archive(repo):
+    """Detects, if the archive needs to have npm workflow.
+    :parameter repo repository directory
+    :return NpmArchiveType value
+    """
+
+    expanded_repo = os.path.expanduser(repo)
+    if not os.path.exists(expanded_repo):
+        logger.error("Repository %s does not exist!", expanded_repo)
+        sys.exit(1)
+
+    if os.path.isdir(expanded_repo):
+        # we have archive repository
+        repo_path = "".join((expanded_repo, "/package.json"))
+        if os.path.isfile(repo_path):
+            return NpmArchiveType.DIRECTORY
+    elif is_zipfile(expanded_repo):
+        # we have a ZIP file to expand
+        with ZipFile(expanded_repo) as zz:
+            try:
+                if zz.getinfo("package.json"):
+                    return NpmArchiveType.ZIP_FILE
+            except KeyError:
+                pass
+    elif tarfile.is_tarfile(expanded_repo):
+        with tarfile.open(expanded_repo) as tt:
+            try:
+                if tt.getmember("package/package.json").isfile():
+                    return (
+                        NpmArchiveType.TAR_FILE
+                    )  # it is a tar file and has package.json in the right place
+            except KeyError:
+                pass
+
+    return NpmArchiveType.NOT_NPM

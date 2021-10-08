@@ -59,31 +59,32 @@ configmap/secrets or similar stuff)
 ### mrrc-upload: upload a repo to S3
 
 ```bash
-usage: mrrc upload $tarball --type ${maven|npm} --force
+usage: mrrc upload $tarball --product ${prod} --version ${ver} [--ga] [--debug]
 ```
 
 This command will upload the repo in tarball to S3.
+It will auto-detect if the tarball is for maven or npm
 
 * For maven type, it will:
   * Scan the tarball for all paths and collect them all.
   * Check the existence in S3 for all those paths.
   * Filter out the paths in tarball based on:
-    * --force is false(Which means will not overwrite in S3)
     * filter_pattern in config.json
-  * Generate/refresh all maven-metadata.xml for all GA combined with both S3 and
-    local filtered pom.xml
-  * Upload these artifacts to S3 and then refresh the CDN content of these
-    artifacts.
+  * Generate/refresh all maven-metadata.xml for all GA combined
+    with both S3 and local filtered pom.xml
+  * Upload these artifacts to S3 and then refresh the CDN
+    content of these artifacts.
 
-* NPM type (TBH): We need to know the exact tarball structure of npm repo
+* NPM type (TBH): We need to know the exact tarball structure
+  of npm repo
 
-* For both types, after uploading the files, regenerate/refresh the index files
-  for these paths.
+* For both types, after uploading the files, regenerate/refresh
+  the index files for these paths.
 
 ### mrrc-delete: delete repo/paths from S3
 
 ```bash
-usage: mrrc delete $tarball|$pathfile
+usage: mrrc delete $tarball|$pathfile --product ${prod} --version ${ver} [--ga] [--debug]
 ```
 
 This command will delete some paths from repo in S3.

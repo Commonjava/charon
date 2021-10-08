@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.cmd.command import init, upload, delete, gen, ls, cli
+from mrrc.cmd.command import cli, init, upload, delete
 from mrrc.utils.logs import set_logging
 import logging
 
@@ -24,7 +24,7 @@ set_logging(level=logging.INFO)
 cli.add_command(init)
 cli.add_command(upload)
 cli.add_command(delete)
-cli.add_command(gen)
-cli.add_command(ls)
+# cli.add_command(gen)
+# cli.add_command(ls)
 
 __all__ = ["cli"]

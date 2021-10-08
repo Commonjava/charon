@@ -58,17 +58,19 @@ class MrrcConfig(object):
         try:
             self.__aws_configs = dict(data.items(SECTION_AWS))
         except NoSectionError:
-            logging("Warning: Missing AWS section, aws related function can not work.")
+            logger.warning(
+                "Warning: Missing AWS section, aws related function can not work."
+            )
             self.__aws_enabled = False
 
         if self.__aws_enabled:
             if AWS_KEY_ID not in self.__aws_configs:
-                logging(
+                logger.warning(
                     "Warning: Missing AWS access key id, aws related function can not work."
                 )
                 self.__aws_enabled = False
             if AWS_KEY not in self.__aws_configs:
-                logging(
+                logger.warning(
                     "Warning: Missing AWS access secret key, aws related function can not work."
                 )
                 self.__aws_enabled = False
@@ -106,6 +108,6 @@ def mrrc_config():
     parser = ConfigParser()
     config_file = os.path.join(os.environ["HOME"], ".mrrc", CONFIG_FILE)
     if not parser.read(config_file):
-        logging(f"Error: not existed config file {config_file})")
+        logger.error("Error: not existed config file %s", config_file)
         sys.exit(1)
     return MrrcConfig(parser)

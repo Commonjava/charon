@@ -103,7 +103,9 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
     def test_upload_and_delete_files(self):
-        test_zip = zipfile.ZipFile(os.path.join(os.getcwd(), 'tests/input/commons-lang3.zip'))
+        test_zip = zipfile.ZipFile(
+            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+        )
         temp_root = os.path.join(self.tempdir, "tmp_zip")
         os.mkdir(temp_root)
         extract_zip_all(test_zip, temp_root)
