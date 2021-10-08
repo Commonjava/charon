@@ -1,4 +1,4 @@
-from mrrc.cmd.command import init,upload,delete,gen,ls,cli
+from mrrc.cmd.command import init, upload, delete, gen, ls, cli
 from mrrc.utils.logs import set_logging
 import logging
 
@@ -12,6 +12,4 @@ cli.add_command(delete)
 cli.add_command(gen)
 cli.add_command(ls)
 
-__all__ = [
-    'cli'
-]
+__all__ = ["cli"]

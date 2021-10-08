@@ -1,11 +1,10 @@
-from locale import nl_langinfo, CODESET
-from os import fdopen, dup
 import logging
 import sys
 
-MRRC_INFO_LOGGER_FORMAT='%(message)s'
-MRRC_DEBUG_LOGGER_FORMAT='%(asctime)s : %(levelname)s - %(message)s'
+MRRC_INFO_LOGGER_FORMAT = "%(message)s"
+MRRC_DEBUG_LOGGER_FORMAT = "%(asctime)s : %(levelname)s - %(message)s"
 DEFAULT_LOGGER = "mrrc-uploader"
+
 
 def set_logging(name=DEFAULT_LOGGER, level=logging.DEBUG, handler=None):
     # create logger
@@ -19,10 +18,10 @@ def set_logging(name=DEFAULT_LOGGER, level=logging.DEBUG, handler=None):
         # create console handler and set level to debug
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(level)
-        
+
         # create formatter
         formatter = logging.Formatter(MRRC_INFO_LOGGER_FORMAT)
-        if level<=logging.DEBUG:
+        if level <= logging.DEBUG:
             formatter = logging.Formatter(MRRC_DEBUG_LOGGER_FORMAT)
 
         # add formatter to ch
