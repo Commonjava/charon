@@ -170,7 +170,7 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/") -> str:
 
 
 def handle_maven_uploading(
-    conf: MrrcConfig, repo: str, prod_key: str, ga: bool, bucket_name=None
+    conf: MrrcConfig, repo: str, prod_key: str, ga: bool, root="maven-repository", bucket_name=None
 ):
     # 1. extract tarball
     logger.info("Extracting tarball %s", repo)
@@ -182,15 +182,21 @@ def handle_maven_uploading(
     # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", tmp_root)
     ignore_patterns = conf.get_ignore_patterns()
-    top_level = "maven-repository"
+    top_level = root
     valid_paths, ignored_paths, valid_poms = [], [], []
-    for root, dirs, names in os.walk(tmp_root):
+    top_found = False
+    for root_dir, dirs, names in os.walk(tmp_root):
         for directory in dirs:
             if directory == top_level:
-                top_level = os.path.join(root, directory)
+                top_level = os.path.join(root_dir, directory)
+                top_found = True
+                break
+            if os.path.join(root_dir, directory) == os.path.join(tmp_root, top_level):
+                top_level = os.path.join(tmp_root, top_level)
+                top_found = True
                 break
         for name in names:
-            path = os.path.join(root, name)
+            path = os.path.join(root_dir, name)
             if is_ignored(name, ignore_patterns):
                 ignored_paths.append(name)
                 continue
@@ -198,6 +204,13 @@ def handle_maven_uploading(
             if name.strip().endswith(".pom"):
                 logger.debug("Found pom %s", name)
                 valid_poms.append(path)
+    if not top_found and top_level.strip() != "":
+        logger.warning(
+            "Warning: the root path %s does not exist in tarball,"
+            " will use empty trailing prefix for the uploading",
+            top_level
+        )
+        top_level = tmp_root
     logger.info("Files scanning done.\n")
 
     if ignore_patterns and len(ignore_patterns) > 0:

@@ -50,9 +50,19 @@ def init():
     multiple=False,
     help="Push content to the GA group (as opposed to earlyaccess)",
 )
+@option(
+    "--root_path",
+    "-r",
+    default="maven-repository",
+    help="""The root path in the tarball before the real maven paths,
+            will be trailing off before uploading
+    """,
+)
 @option("--debug", "-D", is_flag=True, default=False)
 @command()
-def upload(repo: str, product: str, version: str, ga=False, debug=False):
+def upload(
+    repo: str, product: str, version: str, ga=False, root_path="maven-repository", debug=False
+):
     if debug:
         set_logging(level=logging.DEBUG)
     conf = mrrc_config()
@@ -64,7 +74,7 @@ def upload(repo: str, product: str, version: str, ga=False, debug=False):
         logger.info("This is a npm archive")
     else:
         logger.info("This is a maven archive")
-        handle_maven_uploading(conf, repo, product_key, ga)
+        handle_maven_uploading(conf, repo, product_key, ga, root=root_path)
 
 
 @argument("repo", type=Path(exists=True))
