@@ -57,7 +57,7 @@ class NPMMetadataTest(BaseMRRCTest):
                           Body=str(original_old_version_package_json))
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
-        tarball_test_path = os.path.join(os.getcwd(), 'tests-input/kogito-tooling-workspace-0.9.0-3.tgz')
+        tarball_test_path = os.path.join(os.getcwd(), 'tests/input/kogito-tooling-workspace-0.9.0-3.tgz')
         store_package_metadata_to_S3(self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
                                      "kogito-tooling-workspace-0.9.0-3")
         files = self.s3_client.get_files(bucket_name=MY_BUCKET, prefix='@redhat/kogito-tooling-workspace',
@@ -101,7 +101,7 @@ class NPMMetadataTest(BaseMRRCTest):
                           Body=str(original_new_version_package_json))
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
-        tarball_test_path = os.path.join(os.getcwd(), 'tests-input/kogito-tooling-workspace-0.9.0-3.tgz')
+        tarball_test_path = os.path.join(os.getcwd(), 'tests/input/kogito-tooling-workspace-0.9.0-3.tgz')
         store_package_metadata_to_S3(self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
                                      "kogito-tooling-workspace-0.9.0-3")
         files = self.s3_client.get_files(bucket_name=MY_BUCKET, prefix='@redhat/kogito-tooling-workspace',
