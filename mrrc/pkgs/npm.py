@@ -37,17 +37,33 @@ class NPMPackageMetadata(object):
 
     def __init__(self, version_metadata):
         self.name = version_metadata.get('name')
-        self.description = version_metadata.get('description')
-        self.author = version_metadata.get('author')
-        self.license = version_metadata.get('license')
-        self.repository = version_metadata.get('repository')
-        self.bugs = version_metadata.get('bugs')
-        self.keywords = version_metadata.get('keywords')
-        self.maintainers = version_metadata.get('maintainers')
-        self.homepage = version_metadata.get('homepage')
-        self.dist_tags = {'latest': version_metadata.get('version')}
-        self.versions = {version_metadata.get('version'): version_metadata}
-        self.readme = version_metadata.get('readme', '')
+        if version_metadata.get('description'):
+            self.description = version_metadata.get('description')
+        if version_metadata.get('author'):
+            self.author = version_metadata.get('author')
+        if version_metadata.get('license'):
+            self.license = version_metadata.get('license')
+        if version_metadata.get('repository'):
+            self.repository = version_metadata.get('repository')
+        if version_metadata.get('bugs'):
+            self.bugs = version_metadata.get('bugs')
+        if version_metadata.get('keywords'):
+            self.keywords = version_metadata.get('keywords')
+        if version_metadata.get('maintainers'):
+            self.maintainers = version_metadata.get('maintainers')
+        if version_metadata.get('users'):
+            self.author = version_metadata.get('users')
+        if version_metadata.get('homepage'):
+            self.homepage = version_metadata.get('homepage')
+        if version_metadata.get('version'):
+            self.dist_tags = {'latest': version_metadata.get('version')}
+            self.versions = {version_metadata.get('version'): version_metadata}
+        if version_metadata.get('time'):
+            self.readme = version_metadata.get('time')
+        if version_metadata.get('readme'):
+            self.readme = version_metadata.get('readme')
+        if version_metadata.get('readmeFilename'):
+            self.readme = version_metadata.get('readmeFilename')
 
     def __str__(self) -> str:
         return f'{self.name}\n{self.description}\n{self.author}\n{self.readme}\n{self.homepage}\n' \
