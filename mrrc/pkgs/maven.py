@@ -242,9 +242,8 @@ def handle_maven_uploading(
             logger.debug("G: %s, A: %s", g, a)
             g_path = "/".join(g.split("."))
             gas_dict[os.path.join(g_path, a)] = True
-    ga_paths = gas_dict.keys()
     all_poms = []
-    for path in ga_paths:
+    for path, _ in gas_dict.items():
         poms = s3_client.get_files(bucket, path, ".pom")
         logger.debug("Got poms in s3 bucket %s for GA path %s: %s", bucket, path, poms)
         all_poms.extend(poms)
