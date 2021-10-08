@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass, field
-from json import load, dump, JSONDecodeError
+from json import load, loads, dump, JSONDecodeError
 from typing import Optional
 
 from marshmallow_dataclass import class_schema
@@ -211,13 +211,13 @@ def merge_package_metadata(package_metadata: NPMPackageMetadata, client: S3Clien
         Some of the metadata need to validate the source package's version(single version so far),
         to determine the following merging action if it's the latest version
     """
-    if client.download_file(bucket, key, PACKAGE_JSON):
-        original = read_package_metadata_value(PACKAGE_JSON)
-        if original:
-            source_version = list(package_metadata.versions.keys())[0]
-            is_latest = __is_latest_version(source_version, original.versions.keys())
-            __do_merge(original, package_metadata, is_latest)
-            return original
+    content = client.read_file_content(bucket, key)
+    original = read_package_metadata_from_content(content)
+    if original:
+        source_version = list(package_metadata.versions.keys())[0]
+        is_latest = __is_latest_version(source_version, original.versions.keys())
+        __do_merge(original, package_metadata, is_latest)
+        return original
 
 
 def write_package_metadata_to_S3(package_metadata: NPMPackageMetadata, client: S3Client, bucket: str, product: str,
@@ -252,12 +252,11 @@ def scan_for_version(path: str) -> NPMVersionMetadata:
         logger.error('Error: Failed to parse metadata by schema!')
 
 
-def read_package_metadata_value(path: str) -> NPMPackageMetadata:
-    """ Read the package metadata object from the downloaded json file
+def read_package_metadata_from_content(content: str) -> NPMPackageMetadata:
+    """ Read the package metadata object from the object str content
     """
     try:
-        with open(path) as package_file:
-            package_metadata = load(package_file)
+        package_metadata = loads(content)
         package_schema = class_schema(NPMPackageMetadata)()
         return package_schema.load(package_metadata)
     except JSONDecodeError:
@@ -275,33 +274,34 @@ def __is_latest_version(source_version: str, versions: list()):
 
 def __do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_latest: bool):
     changed = False
-    if is_latest and source.name:
-        original.name = source.name
-        changed = True
-    if is_latest and source.description:
-        original.description = source.description
-        changed = True
-    if is_latest and source.author:
-        original.author = source.author
-        changed = True
-    if is_latest and source.readme:
-        original.readme = source.readme
-        changed = True
-    if is_latest and source.readmeFilename:
-        original.readmeFilename = source.readmeFilename
-        changed = True
-    if is_latest and source.homepage:
-        original.homepage = source.homepage
-        changed = True
-    if is_latest and source.bugs:
-        original.bugs = source.bugs
-        changed = True
-    if is_latest and source.license:
-        original.license = source.license
-        changed = True
-    if is_latest and source.repository and len(source.repository) > 0:
-        original.repository = source.repository
-        changed = True
+    if is_latest:
+        if source.name:
+            original.name = source.name
+            changed = True
+        if source.description:
+            original.description = source.description
+            changed = True
+        if source.author:
+            original.author = source.author
+            changed = True
+        if source.readme:
+            original.readme = source.readme
+            changed = True
+        if source.readmeFilename:
+            original.readmeFilename = source.readmeFilename
+            changed = True
+        if source.homepage:
+            original.homepage = source.homepage
+            changed = True
+        if source.bugs:
+            original.bugs = source.bugs
+            changed = True
+        if source.license:
+            original.license = source.license
+            changed = True
+        if source.repository and len(source.repository) > 0:
+            original.repository = source.repository
+            changed = True
     if source.maintainers:
         for m in source.maintainers:
             if m not in original.maintainers:
