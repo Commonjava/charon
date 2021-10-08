@@ -15,11 +15,11 @@ limitations under the License.
 """
 from mrrc.utils.logs import DEFAULT_LOGGER
 from zipfile import ZipFile, is_zipfile
+from json import load, JSONDecodeError
 from enum import Enum
 import os
 import sys
 import tarfile
-import json
 import logging
 
 logger = logging.getLogger(DEFAULT_LOGGER)
@@ -69,10 +69,13 @@ def extract_npm_tarball(path: str, target_dir: str) -> str:
 
 
 def __parse_npm_package_version_paths(path: str) -> list:
-    with open(path, encoding="utf-8") as version_package:
-        data = json.load(version_package)
-    package_version_paths = [data["name"], data["version"]]
-    return package_version_paths
+    try:
+        with open(path, encoding='utf-8') as version_package:
+            data = load(version_package)
+        package_version_paths = [data['name'], data['version']]
+        return package_version_paths
+    except JSONDecodeError:
+        logger.error('Error: Failed to parse json!')
 
 
 class NpmArchiveType(Enum):
