@@ -51,7 +51,9 @@ class MavenMetadataTest(BaseMRRCTest):
         )
 
     def test_gen_meta_file(self):
-        test_zip = zipfile.ZipFile(os.path.join(os.getcwd(), "tests/input/commons-lang3.zip"))
+        test_zip = zipfile.ZipFile(
+            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+        )
         temp_root = os.path.join(self.tempdir, "tmp_zip")
         os.mkdir(temp_root)
         archive.extract_zip_all(test_zip, temp_root)

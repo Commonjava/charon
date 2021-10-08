@@ -10,8 +10,8 @@
   {%- endif %}
   {%- if meta.versions is defined or meta.snapshoted is defined %}
   <versioning>
-    {%- if meta.latest_ver is defined %}
-    <latest>{{ meta.latest_ver }}</latest>
+    {%- if meta.latest_version is defined %}
+    <latest>{{ meta.latest_version }}</latest>
     {%- endif %}
     {%- if meta.release_version is defined %}
     <release>{{ meta.release_version }}</release>

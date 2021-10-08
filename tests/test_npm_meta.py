@@ -28,7 +28,9 @@ from tests.base import BaseMRRCTest
 
 class NPMMetadataTest(BaseMRRCTest):
     def test_scan_for_version(self):
-        version_json_file_path = os.path.join(os.getcwd(), "tests/input/code-frame_7.14.5.json")
+        version_json_file_path = os.path.join(
+            os.getcwd(), "tests/input/code-frame_7.14.5.json"
+        )
         version = scan_for_version(version_json_file_path)
         self.assertEqual("@babel/code-frame", version.get_name())
         self.assertEqual("7.14.5", version.get_version())
@@ -43,8 +45,7 @@ class NPMMetadataTest(BaseMRRCTest):
         temp_root = os.path.join(self.tempdir, "tmp_tgz")
         os.mkdir(temp_root)
         tarball_test_path = os.path.join(
-            os.getcwd(),
-            "tests/input/kogito-tooling-workspace-0.9.0-3.tgz"
+            os.getcwd(), "tests/input/kogito-tooling-workspace-0.9.0-3.tgz"
         )
         version_path = archive.extract_npm_tarball(tarball_test_path, temp_root)
         version = scan_for_version(version_path)
