@@ -16,9 +16,6 @@ limitations under the License.
 import logging
 import os
 from json import load, loads, dump, JSONDecodeError
-
-from marshmallow import ValidationError
-from marshmallow_dataclass import class_schema
 from semantic_version import compare
 
 from mrrc.storage.s3client import S3Client
@@ -35,26 +32,26 @@ class NPMPackageMetadata(object):
         be used in jinja2 or other places.
     """
 
-    def __init__(self, version_metadata):
-        self.name = version_metadata.get('name', None)
-        self.description = version_metadata.get('description', None)
-        self.author = version_metadata.get('author', None)
-        self.license = version_metadata.get('license', None)
-        self.repository = version_metadata.get('repository', None)
-        self.bugs = version_metadata.get('bugs', None)
-        self.keywords = version_metadata.get('keywords', None)
-        self.maintainers = version_metadata.get('maintainers', None)
-        self.author = version_metadata.get('users', None)
-        self.homepage = version_metadata.get('homepage', None)
-        self.dist_tags = {'latest': version_metadata.get('version')}
-        self.versions = {version_metadata.get('version'): version_metadata}
-        self.readme = version_metadata.get('time', None)
-        self.readme = version_metadata.get('readme', None)
-        self.readme = version_metadata.get('readmeFilename', None)
-
-    def __str__(self) -> str:
-        return f'{self.name}\n{self.description}\n{self.author}\n{self.readme}\n{self.homepage}\n' \
-               f'{self.license}\n\n'
+    def __init__(self, metadata, is_version):
+        self.name = metadata.get('name', None)
+        self.description = metadata.get('description', None)
+        self.author = metadata.get('author', None)
+        self.license = metadata.get('license', None)
+        self.repository = metadata.get('repository', None)
+        self.bugs = metadata.get('bugs', None)
+        self.keywords = metadata.get('keywords', None)
+        self.maintainers = metadata.get('maintainers', None)
+        self.users = metadata.get('users', None)
+        self.homepage = metadata.get('homepage', None)
+        self.time = metadata.get('time', None)
+        self.readme = metadata.get('readme', None)
+        self.readmeFilename = metadata.get('readmeFilename', None)
+        if is_version:
+            self.dist_tags = {'latest': metadata.get('version')}
+            self.versions = {metadata.get('version'): metadata}
+        else:
+            self.dist_tags = metadata.get('dist_tags', None)
+            self.versions = metadata.get('versions', None)
 
 
 def store_package_metadata_to_S3(client: S3Client, path: str, target_dir: str, bucket: str,
@@ -82,7 +79,7 @@ def get_package_metadata_from_archive(path: str, target_dir: str) -> NPMPackageM
     """
     version_path = extract_npm_tarball(path, target_dir)
     version = scan_for_version(version_path)
-    package = NPMPackageMetadata(version)
+    package = NPMPackageMetadata(version, True)
     return package
 
 
@@ -97,7 +94,7 @@ def merge_package_metadata(package_metadata: NPMPackageMetadata, client: S3Clien
     original = read_package_metadata_from_content(content)
     if original:
         source_version = list(package_metadata.versions.keys())[0]
-        is_latest = __is_latest_version(source_version, original.versions.keys())
+        is_latest = __is_latest_version(source_version, list(original.versions.keys()))
         __do_merge(original, package_metadata, is_latest)
         return original
 
@@ -108,7 +105,7 @@ def gen_package_metadata_file(version_metadata: dict, target_dir: str):
         e.g.: jquery/package.json or @types/jquery/package.json
         Root is like a prefix of the path which defaults to local repo location
     """
-    package_metadata = NPMPackageMetadata(version_metadata)
+    package_metadata = NPMPackageMetadata(version_metadata, True)
     __write_package_metadata_to_file(package_metadata, target_dir)
 
 
@@ -125,12 +122,9 @@ def read_package_metadata_from_content(content: str) -> NPMPackageMetadata:
     """ Read the package metadata object from the object str content"""
     try:
         package_metadata = loads(content)
-        package_schema = class_schema(NPMPackageMetadata)()
-        return package_schema.load(package_metadata)
+        return NPMPackageMetadata(package_metadata, False)
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
-    except ValidationError:
-        logger.error('Error: Failed to parse metadata by schema!')
 
 
 def __is_latest_version(source_version: str, versions: list()):
