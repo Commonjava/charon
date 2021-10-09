@@ -15,7 +15,7 @@ limitations under the License.
 """
 from mrrc.utils.logs import set_logging, DEFAULT_LOGGER
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
-from mrrc.pkgs.maven import handle_maven_uploading
+from mrrc.pkgs.maven import handle_maven_del, handle_maven_uploading
 from mrrc.config import mrrc_config
 from click import command, option, argument, group, Path
 import logging
@@ -99,14 +99,31 @@ def upload(
     multiple=False,
     help="Push content to the GA group (as opposed to earlyaccess)",
 )
-# @option('--type', '-t', is_flag=True, default="maven", multiple=False,
-#               help='The package type of the product archive, default is maven')
+@option(
+    "--root_path",
+    "-r",
+    default="maven-repository",
+    help="""The root path in the tarball before the real maven paths,
+            will be trailing off before uploading
+    """,
+)
 @option("--debug", "-D", is_flag=True, default=False)
 @command()
-def delete(repo: str, product: str, version: str, ga=False, debug=False):
+def delete(
+    repo: str, product: str, version: str, ga=False, root_path="maven-repository", debug=False
+):
     if debug:
         set_logging(level=logging.DEBUG)
-    logger.info("delete not yet implemented!")
+    conf = mrrc_config()
+    npm_archive_type = detect_npm_archive(repo)
+    product_key = f"{product}-{version}"
+    if npm_archive_type != NpmArchiveType.NOT_NPM:
+        # if any npm archive types....
+        # Reminder: do npm repo handling here
+        logger.info("This is a npm archive")
+    else:
+        logger.info("This is a maven archive")
+        handle_maven_del(conf, repo, product_key, ga, root=root_path)
 
 
 # @option('--debug', '-D', is_flag=True, default=False)
