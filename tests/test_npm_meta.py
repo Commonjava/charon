@@ -13,15 +13,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os
 import json
+import os
 import shutil
+
 import marshmallow_dataclass
+
 import mrrc.utils.archive as archive
 from mrrc.pkgs.npm import (
     NPMPackageMetadata,
     scan_for_version,
-    gen_package_meatadata_file,
+    gen_package_metadata_file,
 )
 from tests.base import BaseMRRCTest
 
@@ -49,7 +51,7 @@ class NPMMetadataTest(BaseMRRCTest):
         )
         version_path = archive.extract_npm_tarball(tarball_test_path, temp_root)
         version = scan_for_version(version_path)
-        gen_package_meatadata_file(version, temp_root)
+        gen_package_metadata_file(version, temp_root)
 
         npm_meta_file = os.path.join(
             temp_root, "@redhat/kogito-tooling-workspace/package.json"
