@@ -36,34 +36,21 @@ class NPMPackageMetadata(object):
     """
 
     def __init__(self, version_metadata):
-        self.name = version_metadata.get('name')
-        if version_metadata.get('description'):
-            self.description = version_metadata.get('description')
-        if version_metadata.get('author'):
-            self.author = version_metadata.get('author')
-        if version_metadata.get('license'):
-            self.license = version_metadata.get('license')
-        if version_metadata.get('repository'):
-            self.repository = version_metadata.get('repository')
-        if version_metadata.get('bugs'):
-            self.bugs = version_metadata.get('bugs')
-        if version_metadata.get('keywords'):
-            self.keywords = version_metadata.get('keywords')
-        if version_metadata.get('maintainers'):
-            self.maintainers = version_metadata.get('maintainers')
-        if version_metadata.get('users'):
-            self.author = version_metadata.get('users')
-        if version_metadata.get('homepage'):
-            self.homepage = version_metadata.get('homepage')
-        if version_metadata.get('version'):
-            self.dist_tags = {'latest': version_metadata.get('version')}
-            self.versions = {version_metadata.get('version'): version_metadata}
-        if version_metadata.get('time'):
-            self.readme = version_metadata.get('time')
-        if version_metadata.get('readme'):
-            self.readme = version_metadata.get('readme')
-        if version_metadata.get('readmeFilename'):
-            self.readme = version_metadata.get('readmeFilename')
+        self.name = version_metadata.get('name', None)
+        self.description = version_metadata.get('description', None)
+        self.author = version_metadata.get('author', None)
+        self.license = version_metadata.get('license', None)
+        self.repository = version_metadata.get('repository', None)
+        self.bugs = version_metadata.get('bugs', None)
+        self.keywords = version_metadata.get('keywords', None)
+        self.maintainers = version_metadata.get('maintainers', None)
+        self.author = version_metadata.get('users', None)
+        self.homepage = version_metadata.get('homepage', None)
+        self.dist_tags = {'latest': version_metadata.get('version')}
+        self.versions = {version_metadata.get('version'): version_metadata}
+        self.readme = version_metadata.get('time', None)
+        self.readme = version_metadata.get('readme', None)
+        self.readme = version_metadata.get('readmeFilename', None)
 
     def __str__(self) -> str:
         return f'{self.name}\n{self.description}\n{self.author}\n{self.readme}\n{self.homepage}\n' \
@@ -222,8 +209,17 @@ def __write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root=
     final_package_metadata_path = os.path.join(root, package_metadata.name, PACKAGE_JSON)
     try:
         with open(final_package_metadata_path, mode='w', encoding='utf-8') as f:
-            dump(package_metadata.__dict__, f)
+            dump(__del_none(package_metadata.__dict__.copy()), f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
             'Can not create file %s because of some missing folders', final_package_metadata_path)
+
+
+def __del_none(d):
+    for key, value in list(d.items()):
+        if value is None:
+            del d[key]
+        elif isinstance(value, dict):
+            __del_none(value)
+    return d
