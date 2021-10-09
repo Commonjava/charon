@@ -187,7 +187,7 @@ class S3Client(object):
                 if PRODUCT_META_KEY in f_meta
                 else []
             )
-            if product not in prods:
+            if product and product not in prods:
                 prods.append(product)
                 f_meta[PRODUCT_META_KEY] = ",".join(prods)
             if need_overwritten:
