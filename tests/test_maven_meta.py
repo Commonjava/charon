@@ -24,6 +24,12 @@ from tests.base import BaseMRRCTest
 
 
 class MavenMetadataTest(BaseMRRCTest):
+    def test_general_meta(self):
+        try:
+            mvn.MavenMetadata("foo", "bar", ["1.0", "1.0.GA"])
+        except ValueError:
+            self.fail("Should not fail here")
+
     def test_parse_ga(self):
         g, a = mvn.parse_ga("org/apache/maven/plugins/maven-plugin-plugin", "")
         self.assertEqual("org.apache.maven.plugins", g)

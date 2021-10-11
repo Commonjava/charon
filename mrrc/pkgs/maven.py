@@ -21,7 +21,7 @@ from mrrc.config import MrrcConfig
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 from zipfile import ZipFile
 from tempfile import mkdtemp
 import os
@@ -45,7 +45,7 @@ class MavenMetadata(object):
         self.artifact_id = artifact_id
         self.last_upd_time = datetime.now().strftime("%Y%m%d%H%M%S")
         self.versions = versions
-        self.sorted_versions = sorted(versions, key=StrictVersion)
+        self.sorted_versions = sorted(versions, key=LooseVersion)
         self._latest_version = None
         self._release_version = None
 
