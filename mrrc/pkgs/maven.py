@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
+import mrrc.pkgs.indexing as indexing
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
@@ -204,6 +204,9 @@ def handle_maven_uploading(
     if not os.path.isdir(top_level):
         logger.error("Error: the extracted top-level path %s does not exist.", top_level)
         sys.exit(1)
+
+    # this step generates index.html for each dir and add them to file list
+    valid_paths = valid_paths + indexing.path_to_index(top_level, valid_paths)
 
     # 3. do validation for the files, like product version checking
     logger.info("Validating paths with rules.")
