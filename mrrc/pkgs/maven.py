@@ -16,8 +16,7 @@ limitations under the License.
 from mrrc.utils.logs import DEFAULT_LOGGER
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
-from mrrc.storage.s3client import S3Client
-from mrrc.config import MrrcConfig
+from mrrc.storage import S3Client
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -173,14 +172,19 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/") -> str:
 
 
 def handle_maven_uploading(
-    conf: MrrcConfig, repo: str, prod_key: str, ga: bool, root="maven-repository", bucket_name=None
+    repo: str,
+    prod_key: str,
+    ga: bool,
+    ignore_patterns=None,
+    root="maven-repository",
+    bucket_name=None
 ):
     # 1. extract tarball
     tmp_root = _extract_tarball(repo)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level, valid_paths, valid_poms) = _scan_paths(conf, tmp_root, root)
+    (top_level, valid_paths, valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
@@ -198,7 +202,7 @@ def handle_maven_uploading(
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client()
-    bucket = bucket_name if bucket_name else conf.get_aws_bucket()
+    bucket = bucket_name if bucket_name else "mrrc"
     s3_client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
@@ -222,14 +226,19 @@ def handle_maven_uploading(
 
 
 def handle_maven_del(
-    conf: MrrcConfig, repo: str, prod_key: str, ga: bool, root="maven-repository", bucket_name=None
+    repo: str,
+    prod_key: str,
+    ga: bool,
+    ignore_patterns=None,
+    root="maven-repository",
+    bucket_name=None
 ):
     # 1. extract tarball
     tmp_root = _extract_tarball(repo)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level, valid_paths, valid_poms) = _scan_paths(conf, tmp_root, root)
+    (top_level, valid_paths, valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # 3. Parse GA from valid_poms for later maven metadata refreshing
     logger.info("Start generating maven-metadata.xml files for all artifacts")
@@ -244,7 +253,7 @@ def handle_maven_del(
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
     s3_client = S3Client()
-    bucket = bucket_name if bucket_name else conf.get_aws_bucket()
+    bucket = bucket_name if bucket_name else "mrrc"
     s3_client.delete_files(
         valid_paths,
         bucket_name=bucket,
@@ -269,7 +278,10 @@ def handle_maven_del(
     )
     if __META_FILE_GEN_KEY in meta_files:
         s3_client.upload_metadatas(
-            meta_file_paths=meta_files[__META_FILE_GEN_KEY], bucket_name=bucket, root=top_level
+            meta_file_paths=meta_files[__META_FILE_GEN_KEY],
+            bucket_name=bucket,
+            product=None,
+            root=top_level
         )
     logger.info("maven-metadata.xml uploading done")
 
@@ -282,9 +294,10 @@ def _extract_tarball(repo: str) -> str:
     return tmp_root
 
 
-def _scan_paths(conf: MrrcConfig, files_root: str, root: str) -> Tuple[str, List, List]:
+def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple[str, List, List]:
+    # 2. scan for paths and filter out the ignored paths,
+    # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", files_root)
-    ignore_patterns = conf.get_ignore_patterns()
     top_level = root
     valid_paths, ignored_paths, valid_poms = [], [], []
     top_found = False

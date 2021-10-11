@@ -10,6 +10,7 @@ coverage
 .idea
 .vscode
 package/
+.local
 
 # Unit test
 __pytest_reports

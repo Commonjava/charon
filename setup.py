@@ -16,13 +16,9 @@ limitations under the License.
 
 # !/usr/bin/env python
 
-from setuptools import setup, find_packages
+import re
 
-# handle python 3
-# if sys.version_info >= (3,):
-#     use_2to3 = True
-# else:
-#     use_2to3 = False
+from setuptools import setup, find_packages
 
 version = "1.0.0"
 
@@ -37,17 +33,20 @@ These repositories including types of maven, npm or some others like python
 in future. And MRRC service will be hosted in AWS S3.
 """
 
-test_deps = [
-    "Mock",
-    "nose",
-    "responses",
-]
 
-extras = {"test": test_deps, "build": ["tox"], "ci": ["coverage"]}
+def _get_requirements(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            packages = f.read().splitlines()
+    except (IOError, OSError) as ex:
+        raise RuntimeError(f"Can't open file with requirements: {ex}") from ex
+    packages = (p.strip() for p in packages if not re.match(r'^\s*#', p))
+    packages = list(filter(None, packages))
+    return packages
+
 
 setup(
     zip_safe=True,
-    # use_2to3=use_2to3,
     name="mrrc-uploader",
     version=version,
     long_description=long_description,
@@ -63,15 +62,7 @@ setup(
     author="RedHat EXD SPMM",
     license="APLv2",
     packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
-    install_requires=[
-        "requests",
-        "click",
-        "boto3",
-        "botocore",
-        "semantic_version",
-    ],
-    tests_require=test_deps,
-    extras_require=extras,
+    install_requires=_get_requirements('requirements.txt'),
     test_suite="tests",
     entry_points={
         "console_scripts": ["mrrc = mrrc:cli"],

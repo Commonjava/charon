@@ -18,7 +18,7 @@ import os
 from json import load, loads, dump, JSONDecodeError
 from semantic_version import compare
 
-from mrrc.storage.s3client import S3Client
+from mrrc.storage import S3Client
 from mrrc.utils.archive import extract_npm_tarball
 from mrrc.utils.logs import DEFAULT_LOGGER
 

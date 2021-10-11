@@ -3,9 +3,8 @@ import os
 import boto3
 from moto import mock_s3
 
-from mrrc.config import mrrc_config, AWS_ENDPOINT
 from mrrc.pkgs.npm import store_package_metadata_to_S3, read_package_metadata_from_content
-from mrrc.storage.s3client import S3Client
+from mrrc.storage import S3Client
 from tests.base import BaseMRRCTest
 
 MY_BUCKET = "npm_bucket"
@@ -26,15 +25,7 @@ class NPMMetadataTest(BaseMRRCTest):
         super().tearDown()
 
     def __prepare_s3(self):
-        conf = mrrc_config()
-        aws_configs = conf.get_aws_configs()
-        return boto3.resource(
-            "s3",
-            region_name=conf.get_aws_region(),
-            aws_access_key_id=conf.get_aws_key_id(),
-            aws_secret_access_key=conf.get_aws_key(),
-            endpoint_url=aws_configs[AWS_ENDPOINT] if AWS_ENDPOINT in aws_configs else None
-        )
+        return boto3.resource("s3")
 
     def test_store_package_metadata_to_S3_for_old_version(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
