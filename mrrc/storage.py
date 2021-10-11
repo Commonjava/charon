@@ -219,9 +219,12 @@ class S3Client(object):
                             path,
                             {PRODUCT_META_KEY: ",".join(prods)},
                         )
-            if len(prods) == 0:
-                bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
-                logger.info("Deleted %s from bucket %s", path, bucket_name)
+                if len(prods) == 0:
+                    bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
+                    logger.info("Deleted %s from bucket %s", path, bucket_name)
+            else:
+                logger.info("File %s does not exist in s3 bucket %s, skip deletion.",
+                            path, bucket_name)
 
         self.__do_path_cut_and(file_paths=file_paths, fn=path_delete_handler, root=root)
 
