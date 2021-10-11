@@ -4,7 +4,7 @@ import boto3
 from moto import mock_s3
 
 from mrrc.pkgs.npm import store_package_metadata_to_S3, read_package_metadata_from_content
-from mrrc.storage import S3Client
+from mrrc.s3.storage import S3Client
 from tests.base import BaseMRRCTest
 
 MY_BUCKET = "npm_bucket"

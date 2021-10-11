@@ -15,7 +15,7 @@ limitations under the License.
 """
 from mrrc.utils.logs import set_logging
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
-from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
+from mrrc.pkgs.maven import handle_maven_del, handle_maven_uploading
 from click import command, option, argument, group, Path
 from json import loads
 import logging
