@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from mrrc.utils.files import read_sha1
+from mrrc.utils.logs import DEFAULT_LOGGER
 
 from boto3 import session
 from botocore.errorfactory import ClientError
@@ -21,10 +22,12 @@ from typing import Callable, Dict, List
 import os
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(DEFAULT_LOGGER)
 
 PRODUCT_META_KEY = "rh-products"
 CHECKSUM_META_KEY = "checksum"
+
+ENDPOINT_ENV = "aws_endpoint_url"
 
 
 class S3Client(object):
@@ -33,11 +36,31 @@ class S3Client(object):
     """
 
     def __init__(self, extra_conf=None) -> None:
-        s3_session = session.Session()
-        self.client = s3_session.resource(
+        self.client = self.__init_aws_client(extra_conf)
+
+    def __init_aws_client(self, extra_conf=None):
+        aws_profile = os.getenv("AWS_PROFILE", None)
+        logger.debug("Using aws profile: %s", aws_profile)
+        if aws_profile:
+            s3_session = session.Session(profile_name=aws_profile)
+        else:
+            s3_session = session.Session()
+        endpoint_url = self.__get_endpoint(extra_conf)
+        return s3_session.resource(
             's3',
-            config=extra_conf,
+            endpoint_url=endpoint_url
         )
+
+    def __get_endpoint(self, extra_conf) -> str:
+        endpoint_url = os.environ.get(ENDPOINT_ENV, None)
+        if not endpoint_url or endpoint_url.strip() == "":
+            if isinstance(extra_conf, Dict):
+                endpoint_url = extra_conf.get(ENDPOINT_ENV, None)
+        if endpoint_url:
+            logger.debug("Using endpoint url for aws client: %s", endpoint_url)
+        else:
+            logger.debug("Not using any endpoint url, will use default s3 endpoint")
+        return endpoint_url
 
     def upload_files(self, file_paths: List[str], bucket_name: str, product: str, root="/"):
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
