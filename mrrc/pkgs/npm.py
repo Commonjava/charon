@@ -20,9 +20,8 @@ from semantic_version import compare
 
 from mrrc.storage import S3Client
 from mrrc.utils.archive import extract_npm_tarball
-from mrrc.utils.logs import DEFAULT_LOGGER
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 PACKAGE_JSON = "package.json"
 
