@@ -13,13 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import logging
-
-from mrrc.cmd.command import cli, upload, delete
-from mrrc.utils.logs import set_logging
-
-# init group command
-cli.add_command(upload)
-cli.add_command(delete)
-
-set_logging(level=logging.INFO)  # override this however you want
+# Logging format used in MRRC Uploader
+MRRC_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
+DESCRIPTION = "mrrc-uploader is a tool to synchronize several types of artifacts "
+"repository data to RedHat MRRC service (maven.repository.redhat.com)."
+PROG = 'mrrc'

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.logs import DEFAULT_LOGGER
+
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
@@ -28,7 +28,7 @@ import sys
 import logging
 import re
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 __META_FILE_GEN_KEY = "Generate"
 __META_FILE_DEL_KEY = "Delete"

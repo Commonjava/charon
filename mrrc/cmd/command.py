@@ -13,14 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.logs import set_logging, DEFAULT_LOGGER
+from mrrc.utils.logs import set_logging
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
 from click import command, option, argument, group, Path
 from json import loads
 import logging
 
-logger = logging.getLogger(DEFAULT_LOGGER)
+logger = logging.getLogger(__name__)
 
 
 @command()
