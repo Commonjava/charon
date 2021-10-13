@@ -53,7 +53,10 @@ def tree_convert(output):
                     id_holder = child
                     break
             else:
-                temp_node = Node(identifier=uuid.uuid4(), tag=path, data=path)
+                store_path = path
+                if path != paths[:-1]:
+                    store_path += '/'
+                temp_node = Node(identifier=uuid.uuid4(), tag=store_path, data=path)
                 tree.add_node(temp_node, parent=id_holder)
                 id_holder = temp_node.identifier
                 continue
