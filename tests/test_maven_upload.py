@@ -1,5 +1,5 @@
 from mrrc.pkgs.maven import handle_maven_uploading
-from mrrc.s3.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseMRRCTest
 from moto import mock_s3
 import boto3

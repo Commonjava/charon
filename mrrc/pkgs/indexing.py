@@ -30,7 +30,10 @@ def path_to_index(top_level: str, valid_paths: List[str]):
     repos = []
     for path in valid_paths:
         if path.startswith(top_level):
-            repos.append(path.replace(top_level + '/', ''))
+            store_path = path.replace(top_level, '')
+            if store_path[0] == '/':
+                store_path = store_path[1:]
+            repos.append(store_path)
 
     tree = tree_convert(repos)
     index_files = html_convert(tree, '/', top_level)

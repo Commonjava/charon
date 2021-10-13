@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.s3.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from mrrc.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from mrrc.utils.archive import extract_zip_all
 from mrrc.utils.files import write_file, read_sha1
 from tests.base import BaseMRRCTest

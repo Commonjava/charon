@@ -16,7 +16,7 @@ limitations under the License.
 import mrrc.pkgs.indexing as indexing
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
-from mrrc.s3.storage import S3Client
+from mrrc.storage import S3Client
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
