@@ -12,6 +12,11 @@ COMMONS_CLIENT_456_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom",
+    "org/index.html",
+    "org/apache/index.html",
+    "org/apache/httpcomponents/index.html",
+    "org/apache/httpcomponents/httpclient/index.html",
+    "org/apache/httpcomponents/httpclient/4.5.6/index.html",
 ]
 
 COMMONS_CLIENT_459_FILES = [
@@ -19,6 +24,11 @@ COMMONS_CLIENT_459_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.sha1",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom",
+    "org/index.html",
+    "org/apache/index.html",
+    "org/apache/httpcomponents/index.html",
+    "org/apache/httpcomponents/httpclient/index.html",
+    "org/apache/httpcomponents/httpclient/4.5.9/index.html",
 ]
 
 COMMONS_CLIENT_META = "org/apache/httpcomponents/httpclient/maven-metadata.xml"
@@ -30,9 +40,14 @@ COMMONS_LOGGING_FILES = [
     "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
     "commons-logging/commons-logging/1.2/commons-logging-1.2.pom",
     "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1",
+    "commons-logging/index.html",
+    "commons-logging/commons-logging/index.html",
+    "commons-logging/commons-logging/1.2/index.html",
 ]
 
 COMMONS_LOGGING_META = "commons-logging/commons-logging/maven-metadata.xml"
+
+COMMONS_INDEX = "org/apache/httpcomponents/httpclient/index.html"
 
 
 @mock_s3
@@ -99,6 +114,11 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<version>1.2</version>", meta_content_logging)
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
+
+        indedx_obj = test_bucket.Object(COMMONS_LOGGING_META)
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
 
     def test_overlap_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -173,6 +193,8 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<version>1.2</version>", meta_content_logging)
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
+
+        # todo test overlaped index.html here
 
     def test_ignore_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
