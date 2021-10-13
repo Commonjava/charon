@@ -14,3 +14,4 @@ package/
 
 # Unit test
 __pytest_reports
+htmlcov
