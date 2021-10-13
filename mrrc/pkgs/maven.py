@@ -177,10 +177,24 @@ def handle_maven_uploading(
     ga: bool,
     ignore_patterns=None,
     root="maven-repository",
-    bucket_name=None
+    bucket_name=None,
+    dir_=None
 ):
+    """ Handle the maven product release tarball uploading process.
+        * repo is the location of the tarball in filesystem
+        * prod_key is used to identify which product this repo
+          tar belongs to
+        * ga is used to identify if this is a GA product release
+        * ignore_patterns is used to filter out paths which don't
+          need to upload in the tarball
+        * root is a prefix in the tarball to identify which path is
+          the beginning of the maven GAV path
+        * bucket_name is the s3 bucket name to store the artifacts
+        * dir_ is base dir for extracting the tarball, will use system
+          tmp dir if None.
+    """
     # 1. extract tarball
-    tmp_root = _extract_tarball(repo)
+    tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
@@ -231,10 +245,24 @@ def handle_maven_del(
     ga: bool,
     ignore_patterns=None,
     root="maven-repository",
-    bucket_name=None
+    bucket_name=None,
+    dir_=None
 ):
+    """ Handle the maven product release tarball deletion process.
+        * repo is the location of the tarball in filesystem
+        * prod_key is used to identify which product this repo
+          tar belongs to
+        * ga is used to identify if this is a GA product release
+        * ignore_patterns is used to filter out paths which don't
+          need to upload in the tarball
+        * root is a prefix in the tarball to identify which path is
+          the beginning of the maven GAV path
+        * bucket_name is the s3 bucket name to store the artifacts
+        * dir is base dir for extracting the tarball, will use system
+          tmp dir if None.
+    """
     # 1. extract tarball
-    tmp_root = _extract_tarball(repo)
+    tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
@@ -286,10 +314,10 @@ def handle_maven_del(
     logger.info("maven-metadata.xml uploading done")
 
 
-def _extract_tarball(repo: str) -> str:
+def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     logger.info("Extracting tarball %s", repo)
     repo_zip = ZipFile(repo)
-    tmp_root = mkdtemp(prefix="mrrc-")
+    tmp_root = mkdtemp(prefix=f"mrrc-{prefix}-", dir=dir__)
     extract_zip_all(repo_zip, tmp_root)
     return tmp_root
 
