@@ -79,7 +79,7 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(12, len(objs))
+        self.assertEqual(21, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
@@ -115,9 +115,13 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        indedx_obj = test_bucket.Object(COMMONS_LOGGING_META)
+        indedx_obj = test_bucket.Object(COMMONS_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
         self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn(
+            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
+            index_content
+        )
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
 
     def test_overlap_upload(self):
@@ -135,9 +139,10 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(16, len(objs))
+        self.assertEqual(26, len(objs))
 
         actual_files = [obj.key for obj in objs]
+        # todo: test overlaped index.html meta check here
         for f in COMMONS_CLIENT_456_FILES:
             self.assertIn(f, actual_files)
             self.assertEqual(
@@ -194,7 +199,7 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        # todo test overlaped index.html here
+        # todo: test overlaped index.html assert test here
 
     def test_ignore_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -206,7 +211,7 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(7, len(objs))
+        self.assertEqual(16, len(objs))
 
         actual_files = [obj.key for obj in objs]
 

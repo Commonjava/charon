@@ -205,9 +205,6 @@ def handle_maven_uploading(
         logger.error("Error: the extracted top-level path %s does not exist.", top_level)
         sys.exit(1)
 
-    # this step generates index.html for each dir and add them to file list
-    valid_paths = valid_paths + indexing.path_to_index(top_level, valid_paths)
-
     # 3. do validation for the files, like product version checking
     logger.info("Validating paths with rules.")
     (err_msgs, passed) = _validate_maven(valid_paths)
@@ -239,6 +236,17 @@ def handle_maven_uploading(
             root=top_level
         )
         logger.info("maven-metadata.xml uploading done")
+
+    # this step generates index.html for each dir and add them to file list
+    index_files = valid_paths
+    if __META_FILE_GEN_KEY in meta_files:
+        index_files = index_files + meta_files[__META_FILE_GEN_KEY]
+    html_files = indexing.path_to_index(top_level, index_files)
+    logger.info("Start uploading index files to s3")
+    s3_client.upload_files(
+        file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+    )
+    logger.info("Index files uploading done\n")
 
 
 def handle_maven_del(

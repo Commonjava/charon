@@ -66,7 +66,7 @@ class MavenDeleteTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(12, len(objs))
+        self.assertEqual(21, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
@@ -129,7 +129,7 @@ class MavenDeleteTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(14, len(objs))
+        self.assertEqual(24, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
