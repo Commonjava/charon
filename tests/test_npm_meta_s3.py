@@ -43,22 +43,32 @@ class NPMMetadataTest(BaseMRRCTest):
         "0.5.8readmeFilename", "homepage": "0.5.8homepage", "keywords": ["0.5.8"],
         "bugs": "0.5.8bugs", "license": "Apache-2.0.1"}"""
 
-        bucket.put_object(Key='@redhat/kogito-tooling-workspace/package.json',
-                          Body=str(original_version_0_5_8_package_json))
+        bucket.put_object(
+            Key='@redhat/kogito-tooling-workspace/package.json',
+            Body=str(original_version_0_5_8_package_json)
+            )
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
-        tarball_test_path = os.path.join(os.getcwd(),
-                                         'tests/input/kogito-tooling-workspace-0.9.0-3.tgz')
-        store_package_metadata_to_S3(self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
-                                     "kogito-tooling-workspace-0.9.0-3")
-        files = self.s3_client.get_files(bucket_name=MY_BUCKET,
-                                         prefix='@redhat/kogito-tooling-workspace',
-                                         suffix='package.json')
+        tarball_test_path = os.path.join(
+            os.getcwd(),
+            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
+            )
+        store_package_metadata_to_S3(
+            self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
+            "kogito-tooling-workspace-0.9.0-3"
+            )
+        files = self.s3_client.get_files(
+            bucket_name=MY_BUCKET,
+            prefix='@redhat/kogito-tooling-workspace',
+            suffix='package.json'
+            )
         self.assertEqual(1, len(files))
         self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
 
-        content = self.s3_client.read_file_content(MY_BUCKET,
-                                                   '@redhat/kogito-tooling-workspace/package.json')
+        content = self.s3_client.read_file_content(
+            MY_BUCKET,
+            '@redhat/kogito-tooling-workspace/package.json'
+            )
         merged = read_package_metadata_from_content(content)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)
         self.assertEqual(2, len(merged.versions))
@@ -88,22 +98,32 @@ class NPMMetadataTest(BaseMRRCTest):
         "1.0.1readmeFilename", "homepage": "1.0.1homepage", "keywords": ["1.0.1"],
         "bugs": "1.0.1bugs", "license": "Apache-2.0.1"}
         """
-        bucket.put_object(Key='@redhat/kogito-tooling-workspace/package.json',
-                          Body=str(original_version_1_0_1_package_json))
+        bucket.put_object(
+            Key='@redhat/kogito-tooling-workspace/package.json',
+            Body=str(original_version_1_0_1_package_json)
+            )
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
-        tarball_test_path = os.path.join(os.getcwd(),
-                                         'tests/input/kogito-tooling-workspace-0.9.0-3.tgz')
-        store_package_metadata_to_S3(self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
-                                     "kogito-tooling-workspace-0.9.0-3")
-        files = self.s3_client.get_files(bucket_name=MY_BUCKET,
-                                         prefix='@redhat/kogito-tooling-workspace',
-                                         suffix='package.json')
+        tarball_test_path = os.path.join(
+            os.getcwd(),
+            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
+            )
+        store_package_metadata_to_S3(
+            self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
+            "kogito-tooling-workspace-0.9.0-3"
+            )
+        files = self.s3_client.get_files(
+            bucket_name=MY_BUCKET,
+            prefix='@redhat/kogito-tooling-workspace',
+            suffix='package.json'
+            )
         self.assertEqual(1, len(files))
         self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
 
-        content = self.s3_client.read_file_content(MY_BUCKET,
-                                                   '@redhat/kogito-tooling-workspace/package.json')
+        content = self.s3_client.read_file_content(
+            MY_BUCKET,
+            '@redhat/kogito-tooling-workspace/package.json'
+            )
         merged = read_package_metadata_from_content(content)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)
         self.assertEqual(2, len(merged.versions))

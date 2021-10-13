@@ -16,6 +16,7 @@ limitations under the License.
 import logging
 import os
 from json import load, loads, dump, JSONDecodeError
+
 from semantic_version import compare
 
 from mrrc.storage import S3Client
@@ -53,8 +54,10 @@ class NPMPackageMetadata(object):
             self.versions = metadata.get('versions', None)
 
 
-def store_package_metadata_to_S3(client: S3Client, path: str, target_dir: str, bucket: str,
-                                 product: str):
+def store_package_metadata_to_S3(
+        client: S3Client, path: str, target_dir: str, bucket: str,
+        product: str
+        ):
     """ The main function to achieve the npm metadata merging then uploading against S3.
         The source package.json will be analyzed from the given single tarball path of input,
         Then go through S3 by the key: path and download the original to be merged package.json
@@ -63,8 +66,10 @@ def store_package_metadata_to_S3(client: S3Client, path: str, target_dir: str, b
     """
     package_metadata = get_package_metadata_from_archive(path, target_dir)
     result = package_metadata
-    package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata.name,
-                                          suffix=PACKAGE_JSON)
+    package_json_files = client.get_files(
+        bucket_name=bucket, prefix=package_metadata.name,
+        suffix=PACKAGE_JSON
+        )
     if len(package_json_files) > 0:
         result = merge_package_metadata(package_metadata, client, bucket, package_json_files[0])
     full_path = __write_package_metadata_to_file(result, target_dir)
@@ -82,8 +87,10 @@ def get_package_metadata_from_archive(path: str, target_dir: str) -> NPMPackageM
     return package
 
 
-def merge_package_metadata(package_metadata: NPMPackageMetadata, client: S3Client, bucket: str,
-                           key: str):
+def merge_package_metadata(
+        package_metadata: NPMPackageMetadata, client: S3Client, bucket: str,
+        key: str
+        ):
     """ If related package.json exists in S3, will download it from S3, then do the data merging
         of metadata.
         Some of the metadata need to validate the source package's version(single version so far),
@@ -186,8 +193,10 @@ def __do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_late
             if d not in original.dist_tags.keys():
                 original.dist_tags[d] = source.dist_tags.get(d)
                 changed = True
-            elif d in original.dist_tags.keys() and compare(source.dist_tags.get(d),
-                                                            original.dist_tags.get(d)) > 0:
+            elif d in original.dist_tags.keys() and compare(
+                    source.dist_tags.get(d),
+                    original.dist_tags.get(d)
+                    ) > 0:
                 original.dist_tags[d] = source.dist_tags.get(d)
                 changed = True
     if source.versions:
@@ -206,7 +215,8 @@ def __write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root=
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
-            'Can not create file %s because of some missing folders', final_package_metadata_path)
+            'Can not create file %s because of some missing folders', final_package_metadata_path
+        )
 
 
 def __del_none(d):

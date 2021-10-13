@@ -33,8 +33,10 @@ class NPMMetadataTest(BaseMRRCTest):
         self.assertEqual('@babel/code-frame', version.get('name'))
         self.assertEqual('7.14.5', version.get('version'))
         self.assertEqual('MIT', version.get('license'))
-        self.assertEqual('https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.14.5.tgz',
-                         version.get('dist')['tarball'])
+        self.assertEqual(
+            'https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.14.5.tgz',
+            version.get('dist')['tarball']
+            )
         self.assertEqual(4, version.get('dist')['fileCount'])
 
     def test_gen_package_meta_file(self):
