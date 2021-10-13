@@ -16,7 +16,6 @@ limitations under the License.
 from typing import List
 from configparser import ConfigParser, NoSectionError
 import os
-import sys
 import logging
 import json
 
@@ -63,6 +62,6 @@ def mrrc_config():
     parser = ConfigParser()
     config_file = os.path.join(os.environ["HOME"], ".mrrc", CONFIG_FILE)
     if not parser.read(config_file):
-        logger.error("Error: not existed config file %s", config_file)
-        sys.exit(1)
+        logger.Warning("Warning: config file does not exist: %s", config_file)
+        return None
     return MrrcConfig(parser)

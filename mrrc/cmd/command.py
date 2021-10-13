@@ -176,7 +176,9 @@ def __get_ignore_patterns() -> List[str]:
                            "system environment, but not a valid json "
                            "style array. Will skip it.", ignore_patterns)
     conf = mrrc_config()
-    return conf.get_ignore_patterns()
+    if conf:
+        return conf.get_ignore_patterns()
+    return None
 
 
 @group()
