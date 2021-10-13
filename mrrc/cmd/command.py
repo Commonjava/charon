@@ -13,12 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from typing import List
+from mrrc.config import mrrc_config
 from mrrc.utils.logs import set_logging
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
 from click import command, option, argument, group, Path
 from json import loads
+
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +65,9 @@ def init():
 @option(
     "--ignore_patterns",
     "-i",
-    default="",
+    multiple=True,
     help="""The regex patterns list to filter out the paths which should
-            not be allowed to upload to S3. Use json list to include more
-            than one patterns (e.g, ["pattern1", "pattern2"])
+            not be allowed to upload to S3. Can accept more than one pattern
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
@@ -75,7 +78,7 @@ def upload(
     version: str,
     ga=False,
     root_path="maven-repository",
-    ignore_patterns="",
+    ignore_patterns=None,
     debug=False
 ):
     if debug:
@@ -87,9 +90,11 @@ def upload(
         # Reminder: do npm repo handling here
         logger.info("This is a npm archive")
     else:
-        ignore_patterns_list = []
-        if ignore_patterns != "":
-            ignore_patterns_list = loads(ignore_patterns)
+        ignore_patterns_list = None
+        if ignore_patterns:
+            ignore_patterns_list = ignore_patterns
+        else:
+            ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
         handle_maven_uploading(repo, product_key, ga, ignore_patterns_list, root=root_path)
 
@@ -127,10 +132,9 @@ def upload(
 @option(
     "--ignore_patterns",
     "-i",
-    default="",
+    multiple=True,
     help="""The regex patterns list to filter out the paths which should
-            not be allowed to upload to S3. Use json list to include more
-            than one patterns (e.g, ["pattern1", "pattern2"])
+            not be allowed to upload to S3. Can accept more than one pattern
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
@@ -141,7 +145,7 @@ def delete(
     version: str,
     ga=False,
     root_path="maven-repository",
-    ignore_patterns="",
+    ignore_patterns=None,
     debug=False
 ):
     if debug:
@@ -154,25 +158,25 @@ def delete(
         logger.info("This is a npm archive")
     else:
         logger.info("This is a maven archive")
-        ignore_patterns_list = []
-        if ignore_patterns != "":
-            ignore_patterns_list = loads(ignore_patterns)
+        ignore_patterns_list = None
+        if ignore_patterns:
+            ignore_patterns_list = ignore_patterns
+        else:
+            ignore_patterns_list = __get_ignore_patterns()
         handle_maven_del(repo, product_key, ga, ignore_patterns_list, root=root_path)
 
 
-# @option('--debug', '-D', is_flag=True, default=False)
-# @command()
-# def gen(debug=False):
-#     if debug:
-#         set_logging(level=logging.DEBUG)
-#     logger.info("gen not yet implemented!")
-
-# @option('--debug', '-D', is_flag=True, default=False)
-# @command()
-# def ls(debug=False):
-#     if debug:
-#         set_logging(level=logging.DEBUG)
-#     logger.info("ls not yet implemented!")
+def __get_ignore_patterns() -> List[str]:
+    ignore_patterns = os.getenv("MRRC_IGNORE_PATTERNS")
+    if ignore_patterns:
+        try:
+            return loads(ignore_patterns)
+        except (ValueError, TypeError):
+            logger.warning("Warning: ignore_patterns %s specified in "
+                           "system environment, but not a valid json "
+                           "style array. Will skip it.", ignore_patterns)
+    conf = mrrc_config()
+    return conf.get_ignore_patterns()
 
 
 @group()

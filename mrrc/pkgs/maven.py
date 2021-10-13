@@ -17,6 +17,7 @@ limitations under the License.
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
+from mrrc.config import AWS_DEFAULT_BUCKET
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -216,7 +217,7 @@ def handle_maven_uploading(
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client()
-    bucket = bucket_name if bucket_name else "mrrc"
+    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     s3_client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
@@ -281,7 +282,7 @@ def handle_maven_del(
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
     s3_client = S3Client()
-    bucket = bucket_name if bucket_name else "mrrc"
+    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     s3_client.delete_files(
         valid_paths,
         bucket_name=bucket,
