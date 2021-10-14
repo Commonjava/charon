@@ -38,33 +38,38 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
     zf.extractall(target_dir, members=filtered)
 
 
-def extract_npm_tarball(path: str, target_dir: str) -> str:
+def extract_npm_tarball(path: str, target_dir: str) -> list:
     """Extract npm tarball will relocate the tgz file and metadata files. locate the tar path (
     e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz), locate the version
     metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3). Result returns the version metadata
     file path for following package metadata generating operations
     """
+    valid_paths = []
     tgz = tarfile.open(path)
     tgz.extractall()
     for f in tgz:
         if f.name.endswith("package.json"):
-            version_metadata_path = f.path
             parse_paths = __parse_npm_package_version_paths(f.path)
-
             tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
             os.makedirs(tarball_parent_path)
             os.system("cp " + path + " " + tarball_parent_path)
+            valid_paths.append(os.path.join(tarball_parent_path, _get_tgz_name(path)))
 
             version_metadata_parent_path = os.path.join(
                 target_dir, parse_paths[0], parse_paths[1]
             )
             os.makedirs(version_metadata_parent_path)
             os.system(
-                "cp " + version_metadata_path + " " + version_metadata_parent_path
+                "cp " + f.path + " " + version_metadata_parent_path
             )
-            version_metadata_path = version_metadata_parent_path + "/package.json"
+            valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
             break
-    return version_metadata_path
+    return valid_paths
+
+
+def _get_tgz_name(path: str):
+    part = path.split("/")
+    return part[len(part)-1]
 
 
 def __parse_npm_package_version_paths(path: str) -> list:

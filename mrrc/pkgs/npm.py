@@ -15,10 +15,14 @@ limitations under the License.
 """
 import logging
 import os
+import sys
 from json import load, loads, dump, JSONDecodeError
+from tempfile import mkdtemp
+from typing import Tuple
 
 from semantic_version import compare
 
+from mrrc.config import AWS_DEFAULT_BUCKET
 from mrrc.storage import S3Client
 from mrrc.utils.archive import extract_npm_tarball
 
@@ -54,43 +58,62 @@ class NPMPackageMetadata(object):
             self.versions = metadata.get('versions', None)
 
 
-def store_package_metadata_to_S3(
-        client: S3Client, path: str, target_dir: str, bucket: str,
-        product: str
-        ):
+def handle_npm_uploading(
+        tarball_path: str, product: str, ignore_patterns=None, bucket_name=None, dir_=None
+):
     """ The main function to achieve the npm metadata merging then uploading against S3.
         The source package.json will be analyzed from the given single tarball path of input,
         Then go through S3 by the key: path and download the original to be merged package.json
         from S3
         if necessary. After merging, the result will be pushed into S3 update
     """
-    package_metadata = get_package_metadata_from_archive(path, target_dir)
-    result = package_metadata
-    package_json_files = client.get_files(
-        bucket_name=bucket, prefix=package_metadata.name,
-        suffix=PACKAGE_JSON
+    target_dir, valid_paths, package_metadata = _get_metadata_paths_from_archive(
+        tarball_path, prefix=product, dir__=dir_
         )
+
+    if not os.path.isdir(target_dir):
+        logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
+        sys.exit(1)
+
+    client = S3Client()
+    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    client.upload_files(
+        file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
+    )
+    metadata_file = _gen_npm_package_metadata(client, bucket, package_metadata, target_dir)
+    client.upload_metadatas(
+        [metadata_file], bucket_name=bucket_name, product=product, root=target_dir
+        )
+
+
+def _gen_npm_package_metadata(
+        client: S3Client, bucket: str, package_metadata: NPMPackageMetadata, target_dir: str
+) -> dict:
+    package_metadata_prefix = os.path.join(package_metadata.name, PACKAGE_JSON)
+    package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_prefix)
+    result = package_metadata
     if len(package_json_files) > 0:
-        result = merge_package_metadata(package_metadata, client, bucket, package_json_files[0])
-    full_path = __write_package_metadata_to_file(result, target_dir)
-    client.upload_metadatas([full_path], bucket_name=bucket, product=product, root=target_dir)
+        result = _merge_package_metadata(package_metadata, client, bucket, package_json_files[0])
+    return _write_package_metadata_to_file(result, target_dir)
 
 
-def get_package_metadata_from_archive(path: str, target_dir: str) -> NPMPackageMetadata:
+def _get_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
+    str, list, NPMPackageMetadata]:
     """ Extract the tarball and re-locate the contents files based on npm structure.
         Get the version metadata object from this and then generate the package metadata
         from the version metadata
     """
-    version_path = extract_npm_tarball(path, target_dir)
-    version = scan_for_version(version_path)
+    tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
+    valid_paths = extract_npm_tarball(path, tmp_root)
+    version = scan_for_version(valid_paths[1])
     package = NPMPackageMetadata(version, True)
-    return package
+    return (tmp_root, valid_paths, package)
 
 
-def merge_package_metadata(
+def _merge_package_metadata(
         package_metadata: NPMPackageMetadata, client: S3Client, bucket: str,
         key: str
-        ):
+):
     """ If related package.json exists in S3, will download it from S3, then do the data merging
         of metadata.
         Some of the metadata need to validate the source package's version(single version so far),
@@ -100,8 +123,8 @@ def merge_package_metadata(
     original = read_package_metadata_from_content(content)
     if original:
         source_version = list(package_metadata.versions.keys())[0]
-        is_latest = __is_latest_version(source_version, list(original.versions.keys()))
-        __do_merge(original, package_metadata, is_latest)
+        is_latest = _is_latest_version(source_version, list(original.versions.keys()))
+        _do_merge(original, package_metadata, is_latest)
         return original
 
 
@@ -112,7 +135,7 @@ def gen_package_metadata_file(version_metadata: dict, target_dir: str):
         Root is like a prefix of the path which defaults to local repo location
     """
     package_metadata = NPMPackageMetadata(version_metadata, True)
-    __write_package_metadata_to_file(package_metadata, target_dir)
+    _write_package_metadata_to_file(package_metadata, target_dir)
 
 
 def scan_for_version(path: str):
@@ -133,14 +156,14 @@ def read_package_metadata_from_content(content: str) -> NPMPackageMetadata:
         logger.error('Error: Failed to parse json!')
 
 
-def __is_latest_version(source_version: str, versions: list()):
+def _is_latest_version(source_version: str, versions: list()):
     for v in versions:
         if compare(source_version, v) <= 0:
             return False
     return True
 
 
-def __do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_latest: bool):
+def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_latest: bool):
     changed = False
     if is_latest:
         if source.name:
@@ -206,12 +229,12 @@ def __do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_late
     return changed
 
 
-def __write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='/') -> str:
+def _write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='/') -> str:
     logger.debug("NPM metadata will generate: %s", package_metadata)
     final_package_metadata_path = os.path.join(root, package_metadata.name, PACKAGE_JSON)
     try:
         with open(final_package_metadata_path, mode='w', encoding='utf-8') as f:
-            dump(__del_none(package_metadata.__dict__.copy()), f)
+            dump(_del_none(package_metadata.__dict__.copy()), f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
@@ -219,10 +242,10 @@ def __write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root=
         )
 
 
-def __del_none(d):
+def _del_none(d):
     for key, value in list(d.items()):
         if value is None:
             del d[key]
         elif isinstance(value, dict):
-            __del_none(value)
+            _del_none(value)
     return d

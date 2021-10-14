@@ -3,7 +3,7 @@ import os
 import boto3
 from moto import mock_s3
 
-from mrrc.pkgs.npm import store_package_metadata_to_S3, read_package_metadata_from_content
+from mrrc.pkgs.npm import handle_npm_uploading, read_package_metadata_from_content
 from mrrc.storage import S3Client
 from tests.base import BaseMRRCTest
 
@@ -27,7 +27,7 @@ class NPMMetadataTest(BaseMRRCTest):
     def __prepare_s3(self):
         return boto3.resource("s3")
 
-    def test_store_package_metadata_to_S3_for_old_version(self):
+    def test_handle_npm_uploading_for_old_version(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         original_version_0_5_8_package_json = """
         {"name": "@redhat/kogito-tooling-workspace",
@@ -47,20 +47,17 @@ class NPMMetadataTest(BaseMRRCTest):
             Key='@redhat/kogito-tooling-workspace/package.json',
             Body=str(original_version_0_5_8_package_json)
             )
-        temp_root = os.path.join(self.tempdir, 'tmp_tgz')
-        os.mkdir(temp_root)
         tarball_test_path = os.path.join(
             os.getcwd(),
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
             )
-        store_package_metadata_to_S3(
-            self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
-            "kogito-tooling-workspace-0.9.0-3"
+        handle_npm_uploading(
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            dir_=self.tempdir
             )
         files = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
-            prefix='@redhat/kogito-tooling-workspace',
-            suffix='package.json'
+            prefix='@redhat/kogito-tooling-workspace/package.json'
             )
         self.assertEqual(1, len(files))
         self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
@@ -83,7 +80,7 @@ class NPMMetadataTest(BaseMRRCTest):
         self.assertEqual("0.5.8bugs", merged.bugs)
         self.assertEqual("Apache-2.0", merged.license)
 
-    def test_store_package_metadata_to_S3_for_new_version(self):
+    def test_handle_npm_uploading_for_new_version(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         original_version_1_0_1_package_json = """
         {"name": "@redhat/kogito-tooling-workspace", "dist_tags": {"latest": "1.0.1"},
@@ -101,22 +98,19 @@ class NPMMetadataTest(BaseMRRCTest):
         bucket.put_object(
             Key='@redhat/kogito-tooling-workspace/package.json',
             Body=str(original_version_1_0_1_package_json)
-            )
-        temp_root = os.path.join(self.tempdir, 'tmp_tgz')
-        os.mkdir(temp_root)
+        )
         tarball_test_path = os.path.join(
             os.getcwd(),
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
-            )
-        store_package_metadata_to_S3(
-            self.s3_client, tarball_test_path, temp_root, MY_BUCKET,
-            "kogito-tooling-workspace-0.9.0-3"
-            )
+        )
+        handle_npm_uploading(
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            dir_=self.tempdir
+        )
         files = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
-            prefix='@redhat/kogito-tooling-workspace',
-            suffix='package.json'
-            )
+            prefix='@redhat/kogito-tooling-workspace/package.json'
+        )
         self.assertEqual(1, len(files))
         self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
 
