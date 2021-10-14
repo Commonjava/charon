@@ -238,13 +238,14 @@ def handle_maven_uploading(
         logger.info("maven-metadata.xml uploading done")
 
     # this step generates index.html for each dir and add them to file list
+    # index is similar to metadata, this will be updated everytime
     index_files = valid_paths
     if __META_FILE_GEN_KEY in meta_files:
         index_files = index_files + meta_files[__META_FILE_GEN_KEY]
-    html_files = indexing.path_to_index(top_level, index_files)
+    html_files = indexing.path_to_index(top_level, index_files, bucket)
     logger.info("Start uploading index files to s3")
-    s3_client.upload_files(
-        file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+    s3_client.upload_metadatas(
+        meta_file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
     )
     logger.info("Index files uploading done\n")
 
