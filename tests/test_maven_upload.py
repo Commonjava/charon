@@ -12,6 +12,10 @@ COMMONS_CLIENT_456_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom",
+]
+
+COMMONS_CLIENT_456_INDEXES = [
+    "index.html",
     "org/index.html",
     "org/apache/index.html",
     "org/apache/httpcomponents/index.html",
@@ -24,6 +28,10 @@ COMMONS_CLIENT_459_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.sha1",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom",
+]
+
+COMMONS_CLIENT_459_INDEXES = [
+    "index.html",
     "org/index.html",
     "org/apache/index.html",
     "org/apache/httpcomponents/index.html",
@@ -91,6 +99,9 @@ class MavenUploadTest(BaseMRRCTest):
             self.assertIn(f, actual_files)
         self.assertIn(COMMONS_LOGGING_META, actual_files)
 
+        for f in COMMONS_CLIENT_456_INDEXES:
+            self.assertIn(f, actual_files)
+
         for obj in objs:
             self.assertEqual(product, obj.Object().metadata[PRODUCT_META_KEY])
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
@@ -142,7 +153,6 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertEqual(26, len(objs))
 
         actual_files = [obj.key for obj in objs]
-        # todo: test overlaped index.html meta check here
         for f in COMMONS_CLIENT_456_FILES:
             self.assertIn(f, actual_files)
             self.assertEqual(
@@ -159,6 +169,14 @@ class MavenUploadTest(BaseMRRCTest):
             product_mix,
             set(
                 test_bucket.Object(COMMONS_CLIENT_META)
+                .metadata[PRODUCT_META_KEY]
+                .split(",")
+            ),
+        )
+        self.assertSetEqual(
+            product_mix,
+            set(
+                test_bucket.Object(COMMONS_INDEX)
                 .metadata[PRODUCT_META_KEY]
                 .split(",")
             ),
@@ -199,7 +217,14 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        # todo: test overlaped index.html assert test here
+        indedx_obj = test_bucket.Object(COMMONS_INDEX)
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn(
+            "<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>",
+            index_content
+        )
+        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
 
     def test_ignore_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
