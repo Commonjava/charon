@@ -307,7 +307,7 @@ def handle_maven_del(
         s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
-            product=prod_key,
+            product=None,
             root=top_level
         )
     logger.info("maven-metadata.xml uploading done")
@@ -356,7 +356,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple
         top_level = files_root
     logger.info("Files scanning done.\n")
 
-    if ignore_patterns and len(ignore_patterns) > 0:
+    if ignore_patterns and len(ignored_paths) > 0:
         logger.info(
             "Ignored paths with ignore_patterns %s as below:\n%s\n",
             ignore_patterns, "\n".join(ignored_paths)

@@ -18,6 +18,7 @@ from mrrc.config import mrrc_config
 from mrrc.utils.logs import set_logging
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
+from mrrc.pkgs.npm import handle_npm_uploading, handle_npm_del
 from click import command, option, argument, group, Path
 from json import loads
 
@@ -86,9 +87,8 @@ def upload(
     npm_archive_type = detect_npm_archive(repo)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
-        # if any npm archive types....
-        # Reminder: do npm repo handling here
         logger.info("This is a npm archive")
+        handle_npm_uploading(repo, product_key)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -153,16 +153,15 @@ def delete(
     npm_archive_type = detect_npm_archive(repo)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
-        # if any npm archive types....
-        # Reminder: do npm repo handling here
         logger.info("This is a npm archive")
+        handle_npm_del(repo, product_key)
     else:
-        logger.info("This is a maven archive")
         ignore_patterns_list = None
         if ignore_patterns:
             ignore_patterns_list = ignore_patterns
         else:
             ignore_patterns_list = __get_ignore_patterns()
+        logger.info("This is a maven archive")
         handle_maven_del(repo, product_key, ga, ignore_patterns_list, root=root_path)
 
 

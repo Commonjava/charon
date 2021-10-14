@@ -11,7 +11,7 @@ MY_BUCKET = "npm_bucket"
 
 
 @mock_s3
-class NPMMetadataTest(BaseMRRCTest):
+class NPMMetadataOnS3Test(BaseMRRCTest):
     def setUp(self):
         super().setUp()
         self.mock_s3 = self.__prepare_s3()

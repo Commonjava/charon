@@ -53,6 +53,7 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
         if f.name.endswith("package.json"):
             parse_paths = __parse_npm_package_version_paths(f.path)
             package_name_path = parse_paths[0]
+            os.makedirs(os.path.join(target_dir, parse_paths[0]))
             tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
             valid_paths.append(os.path.join(tarball_parent_path, _get_tgz_name(path)))
             version_metadata_parent_path = os.path.join(
@@ -71,8 +72,11 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
 
 
 def _get_tgz_name(path: str):
-    part = path.split("/")
-    return part[len(part)-1]
+    tgz_name = str
+    parts = path.split("/")
+    if len(parts) > 0:
+        tgz_name = parts[len(parts)-1]
+    return tgz_name
 
 
 def __parse_npm_package_version_paths(path: str) -> list:

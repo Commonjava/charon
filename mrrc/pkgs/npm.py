@@ -15,6 +15,7 @@ limitations under the License.
 """
 import logging
 import os
+import re
 import sys
 from json import load, loads, dump, JSONDecodeError
 from tempfile import mkdtemp
@@ -71,12 +72,8 @@ def handle_npm_uploading(
     target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
         tarball_path, prefix=product, dir__=dir_
     )
-
     if not os.path.isdir(target_dir):
         logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
-        sys.exit(1)
-    if not package_metadata:
-        logger.error("Error: Failed to extract the package metadata from tarball")
         sys.exit(1)
 
     client = S3Client()
@@ -110,8 +107,8 @@ def handle_npm_del(
     )
     meta_files = _gen_npm_package_metadata(client, bucket, target_dir, package_name_path)
     all_meta_files = []
-    for _, files in meta_files.items():
-        all_meta_files.extend(files)
+    for _, file in meta_files.items():
+        all_meta_files.append(file)
     client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
     )
@@ -119,7 +116,7 @@ def handle_npm_del(
         client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
-            product=product,
+            product=None,
             root=target_dir
         )
 
@@ -130,8 +127,8 @@ def _gen_npm_package_metadata(
 ) -> dict:
     meta_files = {}
     package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
+    # for upload mode, source_package is not None
     if source_package:
-        # for upload mode, source_package is not None
         package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_key)
         result = source_package
         if len(package_json_files) > 0:
@@ -148,7 +145,7 @@ def _gen_npm_package_metadata(
     )
     existed_version_metas.remove(package_metadata_key)
     if len(existed_version_metas) > 0:
-        meta_contents = list(NPMPackageMetadata)
+        meta_contents = list()
         for key in existed_version_metas:
             content = client.read_file_content(bucket, key)
             meta = read_package_metadata_from_content(content, True)
@@ -162,15 +159,14 @@ def _gen_npm_package_metadata(
             source_version = list(source.versions.keys())[0]
             is_latest = _is_latest_version(source_version, list(original.versions.keys()))
             _do_merge(original, source, is_latest)
-            meta_file = _write_package_metadata_to_file(original, target_dir)
+        meta_file = _write_package_metadata_to_file(original, target_dir)
         meta_files[META_FILE_GEN_KEY] = meta_file
     else:
         meta_files[META_FILE_DEL_KEY] = package_metadata_key
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
-    str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, list, NPMPackageMetadata]:
     """ Extract the tarball and re-locate the contents files based on npm structure.
         Get the version metadata object from this and then generate the package metadata
         from the version metadata
@@ -180,7 +176,7 @@ def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple
     if len(valid_paths) > 1:
         version = scan_for_version(valid_paths[1])
         package = NPMPackageMetadata(version, True)
-        return tmp_root, valid_paths, package
+    return tmp_root, valid_paths, package
 
 
 def _scan_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, str, list]:
