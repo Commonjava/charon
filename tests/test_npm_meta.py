@@ -43,7 +43,9 @@ class NPMMetadataTest(BaseMRRCTest):
         temp_root = os.path.join(self.tempdir, 'tmp_tgz')
         os.mkdir(temp_root)
         tarball_test_path = 'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
-        valid_paths = archive.extract_npm_tarball(tarball_test_path, temp_root)
+        package_name_path, valid_paths = archive.extract_npm_tarball(
+            tarball_test_path, temp_root, True
+            )
         version = scan_for_version(valid_paths[1])
         gen_package_metadata_file(version, temp_root)
 

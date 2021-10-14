@@ -23,6 +23,7 @@ from typing import Tuple
 from semantic_version import compare
 
 from mrrc.config import AWS_DEFAULT_BUCKET
+from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from mrrc.storage import S3Client
 from mrrc.utils.archive import extract_npm_tarball
 
@@ -59,7 +60,7 @@ class NPMPackageMetadata(object):
 
 
 def handle_npm_uploading(
-        tarball_path: str, product: str, ignore_patterns=None, bucket_name=None, dir_=None
+        tarball_path: str, product: str, bucket_name=None, dir_=None
 ):
     """ The main function to achieve the npm metadata merging then uploading against S3.
         The source package.json will be analyzed from the given single tarball path of input,
@@ -67,12 +68,15 @@ def handle_npm_uploading(
         from S3
         if necessary. After merging, the result will be pushed into S3 update
     """
-    target_dir, valid_paths, package_metadata = _get_metadata_paths_from_archive(
+    target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
         tarball_path, prefix=product, dir__=dir_
-        )
+    )
 
     if not os.path.isdir(target_dir):
         logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
+        sys.exit(1)
+    if not package_metadata:
+        logger.error("Error: Failed to extract the package metadata from tarball")
         sys.exit(1)
 
     client = S3Client()
@@ -80,34 +84,109 @@ def handle_npm_uploading(
     client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
-    metadata_file = _gen_npm_package_metadata(client, bucket, package_metadata, target_dir)
-    client.upload_metadatas(
-        [metadata_file], bucket_name=bucket_name, product=product, root=target_dir
+    meta_files = _gen_npm_package_metadata(
+        client, bucket, target_dir, package_metadata.name, source_package=package_metadata
+    )
+    if META_FILE_GEN_KEY in meta_files:
+        client.upload_metadatas(
+            meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
+            bucket_name=bucket,
+            product=product,
+            root=target_dir
+        )
+
+
+def handle_npm_del(
+        tarball_path: str, product: str, bucket_name=None, dir_=None
+):
+    target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
+        tarball_path, prefix=product, dir__=dir_
+    )
+
+    client = S3Client()
+    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    client.delete_files(
+        file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
+    )
+    meta_files = _gen_npm_package_metadata(client, bucket, target_dir, package_name_path)
+    all_meta_files = []
+    for _, files in meta_files.items():
+        all_meta_files.extend(files)
+    client.delete_files(
+        file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
+    )
+    if META_FILE_GEN_KEY in meta_files:
+        client.upload_metadatas(
+            meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
+            bucket_name=bucket,
+            product=product,
+            root=target_dir
         )
 
 
 def _gen_npm_package_metadata(
-        client: S3Client, bucket: str, package_metadata: NPMPackageMetadata, target_dir: str
+        client: S3Client, bucket: str, target_dir: str, package_path_prefix: str,
+        source_package: NPMPackageMetadata = None
 ) -> dict:
-    package_metadata_prefix = os.path.join(package_metadata.name, PACKAGE_JSON)
-    package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_prefix)
-    result = package_metadata
-    if len(package_json_files) > 0:
-        result = _merge_package_metadata(package_metadata, client, bucket, package_json_files[0])
-    return _write_package_metadata_to_file(result, target_dir)
+    meta_files = {}
+    package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
+    if source_package:
+        # for upload mode, source_package is not None
+        package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_key)
+        result = source_package
+        if len(package_json_files) > 0:
+            result = _merge_package_metadata(
+                source_package, client, bucket, package_json_files[0]
+            )
+        meta_file = _write_package_metadata_to_file(result, target_dir)
+        meta_files[META_FILE_GEN_KEY] = meta_file
+        return meta_files
+
+    # for delete mode
+    existed_version_metas = client.get_files(
+        bucket_name=bucket, prefix=package_path_prefix, suffix=PACKAGE_JSON
+    )
+    existed_version_metas.remove(package_metadata_key)
+    if len(existed_version_metas) > 0:
+        meta_contents = list(NPMPackageMetadata)
+        for key in existed_version_metas:
+            content = client.read_file_content(bucket, key)
+            meta = read_package_metadata_from_content(content, True)
+            if not meta:
+                continue
+            meta_contents.append(meta)
+        if len(meta_contents) == 0:
+            return
+        original = meta_contents[0]
+        for source in meta_contents:
+            source_version = list(source.versions.keys())[0]
+            is_latest = _is_latest_version(source_version, list(original.versions.keys()))
+            _do_merge(original, source, is_latest)
+            meta_file = _write_package_metadata_to_file(original, target_dir)
+        meta_files[META_FILE_GEN_KEY] = meta_file
+    else:
+        meta_files[META_FILE_DEL_KEY] = package_metadata_key
+    return meta_files
 
 
-def _get_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
+def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
     str, list, NPMPackageMetadata]:
     """ Extract the tarball and re-locate the contents files based on npm structure.
         Get the version metadata object from this and then generate the package metadata
         from the version metadata
     """
     tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
-    valid_paths = extract_npm_tarball(path, tmp_root)
-    version = scan_for_version(valid_paths[1])
-    package = NPMPackageMetadata(version, True)
-    return (tmp_root, valid_paths, package)
+    package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, True)
+    if len(valid_paths) > 1:
+        version = scan_for_version(valid_paths[1])
+        package = NPMPackageMetadata(version, True)
+        return tmp_root, valid_paths, package
+
+
+def _scan_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, str, list]:
+    tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
+    package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, False)
+    return tmp_root, package_name_path, valid_paths
 
 
 def _merge_package_metadata(
@@ -120,7 +199,8 @@ def _merge_package_metadata(
         to determine the following merging action if it's the latest version
     """
     content = client.read_file_content(bucket, key)
-    original = read_package_metadata_from_content(content)
+    original = read_package_metadata_from_content(content, False)
+
     if original:
         source_version = list(package_metadata.versions.keys())[0]
         is_latest = _is_latest_version(source_version, list(original.versions.keys()))
@@ -147,11 +227,11 @@ def scan_for_version(path: str):
         logger.error('Error: Failed to parse json!')
 
 
-def read_package_metadata_from_content(content: str) -> NPMPackageMetadata:
+def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:
     """ Read the package metadata object from the object str content"""
     try:
         package_metadata = loads(content)
-        return NPMPackageMetadata(package_metadata, False)
+        return NPMPackageMetadata(package_metadata, is_version)
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
 
@@ -219,7 +299,7 @@ def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_lates
             elif d in original.dist_tags.keys() and compare(
                     source.dist_tags.get(d),
                     original.dist_tags.get(d)
-                    ) > 0:
+            ) > 0:
                 original.dist_tags[d] = source.dist_tags.get(d)
                 changed = True
     if source.versions:

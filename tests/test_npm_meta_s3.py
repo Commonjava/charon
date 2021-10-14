@@ -65,8 +65,8 @@ class NPMMetadataTest(BaseMRRCTest):
         content = self.s3_client.read_file_content(
             MY_BUCKET,
             '@redhat/kogito-tooling-workspace/package.json'
-            )
-        merged = read_package_metadata_from_content(content)
+        )
+        merged = read_package_metadata_from_content(content, False)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)
         self.assertEqual(2, len(merged.versions))
         self.assertIn("0.5.8", list(merged.versions.keys()))
@@ -117,8 +117,8 @@ class NPMMetadataTest(BaseMRRCTest):
         content = self.s3_client.read_file_content(
             MY_BUCKET,
             '@redhat/kogito-tooling-workspace/package.json'
-            )
-        merged = read_package_metadata_from_content(content)
+        )
+        merged = read_package_metadata_from_content(content, False)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)
         self.assertEqual(2, len(merged.versions))
         self.assertIn("1.0.1", list(merged.versions.keys()))
