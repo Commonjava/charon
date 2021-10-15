@@ -87,7 +87,7 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(21, len(objs))
+        self.assertEqual(30, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
@@ -150,7 +150,7 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(26, len(objs))
+        self.assertEqual(36, len(objs))
 
         actual_files = [obj.key for obj in objs]
         for f in COMMONS_CLIENT_456_FILES:
@@ -236,7 +236,7 @@ class MavenUploadTest(BaseMRRCTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(16, len(objs))
+        self.assertEqual(25, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
