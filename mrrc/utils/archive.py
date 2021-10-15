@@ -40,10 +40,10 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
 
 
 def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tuple[str, list]:
-    """Extract npm tarball will relocate the tgz file and metadata files. locate the tar path (
-    e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz), locate the version
-    metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3). Result returns the version metadata
-    file path for following package metadata generating operations
+    """ Extract npm tarball will relocate the tgz file and metadata files.
+        * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
+        * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
+        Result returns the version meta file path and is for following package meta generating.
     """
     valid_paths = []
     package_name_path = str
