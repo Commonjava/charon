@@ -3,7 +3,7 @@
 %global project mrrc-uploader
 
 Name:           %{project}
-Version:        3.7.0
+Version:        1.0.0
 Release:        1%{?dist}
 
 Summary:        MRRC CLI for Indy
@@ -39,7 +39,7 @@ Simple Python 3 library for MRRC functions.
 %prep
 %setup -q
 
-
+%build
 %py3_build
 
 
@@ -51,15 +51,17 @@ ln -s %{_bindir}/mrrc-%{python3_version} %{buildroot}%{_bindir}/mrrc-3
 ln -s %{_bindir}/mrrc-%{binaries_py_version} %{buildroot}%{_bindir}/mrrc
 
 # ship mrrc in form of tarball so it can be installed within build image
+mkdir -p %{buildroot}/%{_datadir}/%{name}/
 cp -a %{sources} %{buildroot}/%{_datadir}/%{name}/mrrc.tar.gz
 
-mkdir -p %{buildroot}%{_mandir}/man1
-cp -a docs/manpage/mrrc.1 %{buildroot}%{_mandir}/man1/
+# setup docs
+#mkdir -p %{buildroot}%{_mandir}/man1
+#cp -a docs/manpage/mrrc.1 %{buildroot}%{_mandir}/man1/
 
 
 %files
 %doc README.md
-%{_mandir}/man1/mrrc.1*
+#%{_mandir}/man1/mrrc.1*
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %{_bindir}/mrrc
@@ -70,14 +72,15 @@ cp -a docs/manpage/mrrc.1 %{buildroot}%{_mandir}/man1/
 %license LICENSE
 %{_bindir}/mrrc-%{python3_version}
 %{_bindir}/mrrc-3
-%{_mandir}/man1/mrrc.1*
+#%{_mandir}/man1/mrrc.1*
 %dir %{python3_sitelib}/mrrc
 %dir %{python3_sitelib}/mrrc/__pycache__
 %{python3_sitelib}/mrrc/*.*
-%{python3_sitelib}/mrrc/cli
+%{python3_sitelib}/mrrc/cmd
+%{python3_sitelib}/mrrc/pkgs
 %{python3_sitelib}/mrrc/utils
 %{python3_sitelib}/mrrc/__pycache__/*.py*
-%{python3_sitelib}/mrrc-*.egg-info
+%{python3_sitelib}/mrrc_*.egg-info
 %dir %{_datadir}/%{name}
 # ship mrrc in form of tarball so it can be installed within build image
 %{_datadir}/%{name}/mrrc.tar.gz
