@@ -20,7 +20,6 @@ from treelib import Tree, Node
 import uuid
 import os
 from typing import List
-from lxml.html import fromstring
 
 
 class IndexHTML(object):
@@ -89,6 +88,8 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
 
     html_files = []
 
+    items_files = []
+
     for child in tree.is_branch(tree.root):
         # if there is no child, rest of the codes won't be executed
         if tree[child].tag != '/index.html':
@@ -103,38 +104,40 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
 
     # input tree is already deduplicated so this will not generate duplicated index.html
     if tree.is_branch(tree.root) != []:
-        target = os.path.join(base_dir + path + 'index.html')
+        # eliminats first '/' in path; if path is just /, it will be ''.
+        html_location = os.path.join(base_dir, path[1:], 'index.html')
+        items_location = os.path.join(base_dir, path[1:], '.index')
 
+        items += set(load_exist_index(bucket, os.path.join(path, '.index')[1:]))
+
+        items_files.append(items_location)
+        with open(items_location, 'w') as index_file:
+            for item in items:
+                index_file.write(str(item) + '\n')
+
+        # adds option to get back to upper layer except for root
         if path != '/':
             items.append('../')
 
-        print(path)
-        items += set(load_exist_index(bucket, os.path.join(path, 'index.html')[1:]))
-
         index = IndexHTML(title=path, header=path, items=items)
         # this path can be modified if we want to store them somewhere else
-        html_files.append(target)
-        with open(target, 'w') as index_file:
-            index_file.write(index.generate_index_file_content())
+        html_files.append(html_location)
+        with open(html_location, 'w') as index_html_file:
+            index_html_file.write(index.generate_index_file_content())
 
-    return html_files
+    return html_files + items_files
 
 
 def load_exist_index(bucket: str, path: str) -> List[str]:
-    items = []
-
     s3_client = S3Client()
     try:
         content = s3_client.read_file_content(bucket_name=bucket, key=path)
-        content = content.replace('\n', '').replace('\t', '')
-        print(content)
     except ClientError as ex:
         if ex.response['Error']['Code'] == 'NoSuchKey':
             return []
         else:
             raise
-    root = fromstring(content)
-    for item in root.iter('a'):
-        items.append(item.attrib.get('title'))
 
-    return items
+    stored_items = content.split('\n')[:-1]
+
+    return stored_items

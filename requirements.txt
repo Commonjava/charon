@@ -4,4 +4,3 @@ boto3
 botocore
 click
 treelib
-lxml
