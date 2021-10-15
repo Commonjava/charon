@@ -214,9 +214,9 @@ def _gen_npm_package_metadata(
 
 
 def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
-    str, list, NPMPackageMetadata]:
+        str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
-    package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, True)
+    _, valid_paths = extract_npm_tarball(path, tmp_root, True)
     if len(valid_paths) > 1:
         version = _scan_for_version(valid_paths[1])
         package = NPMPackageMetadata(version, True)
