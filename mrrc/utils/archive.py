@@ -13,14 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from zipfile import ZipFile, is_zipfile
-from json import load, JSONDecodeError
-from enum import Enum
-from typing import Tuple
+import logging
 import os
 import sys
 import tarfile
-import logging
+from enum import Enum
+from json import load, JSONDecodeError
+from typing import Tuple
+from zipfile import ZipFile, is_zipfile
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def _get_tgz_name(path: str):
     tgz_name = str
     parts = path.split("/")
     if len(parts) > 0:
-        tgz_name = parts[len(parts)-1]
+        tgz_name = parts[len(parts) - 1]
     return tgz_name
 
 

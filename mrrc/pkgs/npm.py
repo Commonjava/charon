@@ -15,7 +15,6 @@ limitations under the License.
 """
 import logging
 import os
-import re
 import sys
 from json import load, loads, dump, JSONDecodeError
 from tempfile import mkdtemp
@@ -166,7 +165,8 @@ def _gen_npm_package_metadata(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
+    str, list, NPMPackageMetadata]:
     """ Extract the tarball and re-locate the contents files based on npm structure.
         Get the version metadata object from this and then generate the package metadata
         from the version metadata

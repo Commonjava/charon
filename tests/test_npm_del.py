@@ -1,9 +1,26 @@
+"""
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+import os
+
+import boto3
+from moto import mock_s3
+
 from mrrc.pkgs.npm import handle_npm_uploading, handle_npm_del
 from mrrc.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseMRRCTest
-from moto import mock_s3
-import boto3
-import os
 
 TEST_BUCKET = "npm_bucket"
 
@@ -67,8 +84,10 @@ class NPMDeleteTest(BaseMRRCTest):
         self.assertEqual(product_7_15_8, meta_obj_client.metadata[PRODUCT_META_KEY])
         meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
         self.assertIn("\"name\": \"@babel/code-frame\"", meta_content_client)
-        self.assertIn("\"description\": \"Generate errors that contain a code frame that point to source locations.\"", meta_content_client)
-        self.assertIn("\"repository\": {\"type\": \"git\", \"url\": \"https://github.com/babel/babel.git\"", meta_content_client)
+        self.assertIn("\"description\": \"Generate errors that contain a code frame that point to "
+                      "source locations.\"", meta_content_client)
+        self.assertIn("\"repository\": {\"type\": \"git\", \"url\": "
+                      "\"https://github.com/babel/babel.git\"", meta_content_client)
         self.assertIn("\"version\": \"7.15.8\"", meta_content_client)
         self.assertNotIn("\"version\": \"7.14.5\"", meta_content_client)
         self.assertIn("\"versions\": {\"7.15.8\":", meta_content_client)
