@@ -220,10 +220,10 @@ class MavenUploadTest(BaseMRRCTest):
         indedx_obj = test_bucket.Object(COMMONS_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
         self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn("<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>", index_content)
         self.assertIn(
-            "<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>",
-            index_content
-        )
+            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
+            index_content)
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
 
     def test_ignore_upload(self):
