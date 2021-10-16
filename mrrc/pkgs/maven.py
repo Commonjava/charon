@@ -377,7 +377,7 @@ def _generate_metadatas(
        * Search all poms in s3 based on the GA
        * Use searched poms to generate maven-metadata to refresh
     """
-    gas_dict = {}
+    gas_dict: Dict[str, bool] = {}
     logger.debug("Valid poms: %s", poms)
     valid_gavs_dict = parse_gavs(poms, root)
     for g, avs in valid_gavs_dict.items():
@@ -388,6 +388,10 @@ def _generate_metadatas(
     all_poms = []
     meta_files = {}
     for path, _ in gas_dict.items():
+        # avoid some wrong prefix, like searching a/b
+        # but got a/b-1
+        if not path.endswith("/"):
+            path = path + "/"
         existed_poms = s3.get_files(bucket, path, ".pom")
         if len(existed_poms) == 0:
             logger.debug(
@@ -406,7 +410,12 @@ def _generate_metadatas(
         meta_files_generation = []
         for g, avs in gav_dict.items():
             for a, vers in avs.items():
-                meta_file = gen_meta_file(g, a, vers, root)
+                try:
+                    meta_file = gen_meta_file(g, a, vers, root)
+                except FileNotFoundError:
+                    logger.error("Failed to create metadata file for GA"
+                                 " %s, please check if aligned Maven GA"
+                                 " is correct in your tarball.", f'{g}:{a}')
                 logger.debug("Generated metadata file %s for %s:%s", meta_file, g, a)
                 meta_files_generation.append(meta_file)
         meta_files[__META_FILE_GEN_KEY] = meta_files_generation
