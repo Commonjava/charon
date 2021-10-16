@@ -19,12 +19,12 @@ from jinja2 import Template
 from treelib import Tree, Node
 import uuid
 import os
-from typing import List
+from typing import List, Set
 
 
 class IndexHTML(object):
     # object for holding index html file data
-    def __init__(self, title: str, header: str, items: List[str]):
+    def __init__(self, title: str, header: str, items: Set[str]):
         self.title = title
         self.header = header
         self.items = items
@@ -46,10 +46,10 @@ def path_to_index(top_level: str, valid_paths: List[str], bucket: str):
     repos = []
     for path in valid_paths:
         if path.startswith(top_level):
-            store_path = path.replace(top_level, '')
-            if store_path[0] == '/':
-                store_path = store_path[1:]
-            repos.append(store_path)
+            path = path.replace(top_level, '')
+            if path[0] == '/':
+                path = path[1:]
+            repos.append(path)
 
     tree = tree_convert(repos)
     index_files = html_convert(tree, '/', top_level, bucket)
@@ -63,6 +63,7 @@ def tree_convert(output):
 
     # example of line: net/java/jvnet-parent/4.0.0.redhat-3/jvnet-parent-4.0.0.redhat-3.pom
     for line in output:
+        # escaped '/' could break logic here, improve in the future
         paths = line.split('/')
 
         paths = [p + '/' for p in paths[:-1]] + [paths[-1]]
@@ -82,9 +83,123 @@ def tree_convert(output):
     return tree
 
 
+def get_update_list(repos: List[str], indexes: List[str], top_level: str, bucket: str) -> List[str]:
+
+    s3client = S3Client()
+
+    base_dir = top_level
+    if not top_level.endswith('/'):
+        base_dir += '/'
+    _repos = set(_.replace(base_dir, '') for _ in repos)
+    # filter out if only prod_key removed
+    _bucket = s3client._S3Client__get_bucket(bucket)
+    for repo in set(_repos):
+        file = _bucket.Object(repo)
+        exist = s3client._S3Client__file_exists(file)
+        if exist:
+            _repos.remove(repo)
+
+    update_files = update_items(_repos, [], indexes, base_dir, bucket)
+    # for every updated .index file regenerate it's index.html file
+    for file in list(update_files):
+        with open(file, 'r') as f:
+            items = set(_.replace('\n', '') for _ in f.readlines())
+        if file != os.path.join(base_dir, '.index'):
+            path = os.path.join(*file.replace(base_dir, '').split('/')[:-1])
+            html_location = os.path.join(base_dir, path, 'index.html')
+            items.add('../')
+        else:
+            path = '/'
+            html_location = os.path.join(base_dir, 'index.html')
+        index = IndexHTML(title=path, header=path, items=items)
+        update_files.append(html_location)
+        with open(os.path.join(base_dir, html_location), 'w') as index_html_file:
+            index_html_file.write(index.generate_index_file_content())
+
+    return update_files
+
+
+# removed files: artifacts or folders to be remove
+# update files: list of updated index files
+# indexes: .index file scanns from
+def update_items(removed_files: Set[str], update_files: List[str], indexes: List[str],
+                 base_dir: str, bucket: str):
+
+    scanned = set()
+
+    for r_file in set(removed_files):
+        # skip if we already removed it from index
+        if r_file in scanned:
+            continue
+        # get path of folder contains current file/dir
+        # if r_file is like 'org/', path will be root
+        if len(r_file.split('/')[:-1]) != 0:
+            path = os.path.join(*r_file.split('/')[:-1])
+        else:
+            path = ''
+
+        items = []
+
+        # if we already updated it, we need ready from local to get what item left there
+        if os.path.join(base_dir, path, '.index') in update_files:
+            with open(os.path.join(base_dir, path, '.index'), 'r') as f:
+                items = set(_.replace('\n', '') for _ in f.readlines())
+                indexes.append(os.path.join(base_dir, path, '.index'))
+        elif os.path.join(base_dir, path, '.index') in indexes:
+            items = load_exist_index(bucket, os.path.join(path, '.index'))
+        else:
+            # this file is not in any .index files
+            removed_files.remove(r_file)
+            continue
+
+        # scan list to find items in same folder, and remove them from .index file
+        for _ in set(removed_files):
+            if _ in scanned:
+                continue
+            if _.startswith(path) and path != '':
+                if _.split('/')[-1] in items:
+                    items.remove(_.split('/')[-1])
+                    scanned.add(_)
+                    removed_files.remove(_)
+                elif _.split('/')[-1]+'/' in items:
+                    items.remove(_.split('/')[-1] + '/')
+                    scanned.add(_)
+                    removed_files.remove(_)
+
+        if path == '' and (r_file in items or r_file + '/' in items):
+            if r_file in items:
+                items.remove(r_file)
+            elif r_file + '/' in items:
+                items.remove(r_file + '/')
+            removed_files.remove(r_file)
+
+        # if every item has been removed from list, it means the upperlevel folder is empty
+        # thus add it to removed files to scann its upper level
+        if items == set():
+            if path != '':
+                removed_files.add(path)
+            indexes.remove(os.path.join(base_dir, path, '.index'))
+            if os.path.join(base_dir, path, '.index') in update_files:
+                update_files.remove(os.path.join(base_dir, path, '.index'))
+        # if there is still items left, save it on local file, and mark it has already been updated
+        else:
+            items_location = os.path.join(base_dir, path, '.index')
+            update_files.append(items_location)
+            indexes.remove(items_location)
+            with open(items_location, 'w') as index_file:
+                for item in items:
+                    index_file.write(str(item) + '\n')
+
+    # if there is still items needs to be removed, remove recursively
+    if removed_files != set() and removed_files != {''}:
+        update_files = update_items(removed_files, update_files, indexes, base_dir, bucket)
+
+    return update_files
+
+
 def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
     # items that needs to be display, e.g org/
-    items = []
+    items = set()
 
     html_files = []
 
@@ -93,7 +208,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
     for child in tree.is_branch(tree.root):
         # if there is no child, rest of the codes won't be executed
         if tree[child].tag != '/index.html':
-            items.append(tree[child].tag)
+            items.add(tree[child].tag)
         else:
             continue
 
@@ -108,16 +223,16 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         html_location = os.path.join(base_dir, path[1:], 'index.html')
         items_location = os.path.join(base_dir, path[1:], '.index')
 
-        items += set(load_exist_index(bucket, os.path.join(path, '.index')[1:]))
+        items = items.union(load_exist_index(bucket, os.path.join(path, '.index')[1:]))
 
         items_files.append(items_location)
         with open(items_location, 'w') as index_file:
             for item in items:
                 index_file.write(str(item) + '\n')
 
-        # adds option to get back to upper layer except for root
+        # adds option to get back to upper layer except for root, will not stored in .index
         if path != '/':
-            items.append('../')
+            items.add('../')
 
         index = IndexHTML(title=path, header=path, items=items)
         # this path can be modified if we want to store them somewhere else
@@ -128,7 +243,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
     return html_files + items_files
 
 
-def load_exist_index(bucket: str, path: str) -> List[str]:
+def load_exist_index(bucket: str, path: str) -> Set[str]:
     s3_client = S3Client()
     try:
         content = s3_client.read_file_content(bucket_name=bucket, key=path)
@@ -138,6 +253,5 @@ def load_exist_index(bucket: str, path: str) -> List[str]:
         else:
             raise
 
-    stored_items = content.split('\n')[:-1]
-
+    stored_items = set(content.split('\n')[:-1])
     return stored_items
