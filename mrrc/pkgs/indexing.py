@@ -22,7 +22,7 @@ import os
 from typing import List, Set
 
 
-class IndexHTML(object):
+class IndexedHTML(object):
     # object for holding index html file data
     def __init__(self, title: str, header: str, items: Set[str]):
         self.title = title
@@ -56,29 +56,28 @@ def path_to_index(top_level: str, valid_paths: List[str], bucket: str):
     return index_files
 
 
-def tree_convert(output):
+def tree_convert(paths) -> Tree:
     tree = Tree()
     temp_node = Node(identifier='root', tag="/", data="/")
     tree.add_node(temp_node)
 
     # example of line: net/java/jvnet-parent/4.0.0.redhat-3/jvnet-parent-4.0.0.redhat-3.pom
-    for line in output:
+    for path in paths:
         # escaped '/' could break logic here, improve in the future
-        paths = line.split('/')
-
-        paths = [p + '/' for p in paths[:-1]] + [paths[-1]]
+        items = path.split('/')
+        items = [p + '/' for p in items[:-1]] + [items[-1]]
 
         id_holder = 'root'
-        for path in paths:
+        for item in items:
             for child in tree.is_branch(id_holder):
-                if tree[child].tag == path:
+                if tree[child].tag == item:
                     id_holder = child
                     break
             else:
-                temp_node = Node(identifier=uuid.uuid4(), tag=path, data=path)
+                temp_node = Node(identifier=uuid.uuid4(), tag=item, data=item)
                 tree.add_node(temp_node, parent=id_holder)
                 id_holder = temp_node.identifier
-                continue
+                # continue
 
     return tree
 
@@ -92,10 +91,8 @@ def get_update_list(repos: List[str], indexes: List[str], top_level: str, bucket
         base_dir += '/'
     _repos = set(_.replace(base_dir, '') for _ in repos)
     # filter out if only prod_key removed
-    _bucket = s3client._S3Client__get_bucket(bucket)
     for repo in set(_repos):
-        file = _bucket.Object(repo)
-        exist = s3client._S3Client__file_exists(file)
+        exist = s3client.file_exists_in_bucket(bucket, repo)
         if exist:
             _repos.remove(repo)
 
@@ -111,7 +108,7 @@ def get_update_list(repos: List[str], indexes: List[str], top_level: str, bucket
         else:
             path = '/'
             html_location = os.path.join(base_dir, 'index.html')
-        index = IndexHTML(title=path, header=path, items=items)
+        index = IndexedHTML(title=path, header=path, items=items)
         update_files.append(html_location)
         with open(os.path.join(base_dir, html_location), 'w') as index_html_file:
             index_html_file.write(index.generate_index_file_content())
@@ -199,11 +196,7 @@ def update_items(removed_files: Set[str], update_files: List[str], indexes: List
 
 def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
     # items that needs to be display, e.g org/
-    items = set()
-
-    html_files = []
-
-    items_files = []
+    items, html_files, items_files = set(), [], []
 
     for child in tree.is_branch(tree.root):
         # if there is no child, rest of the codes won't be executed
@@ -234,7 +227,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         if path != '/':
             items.add('../')
 
-        index = IndexHTML(title=path, header=path, items=items)
+        index = IndexedHTML(title=path, header=path, items=items)
         # this path can be modified if we want to store them somewhere else
         html_files.append(html_location)
         with open(html_location, 'w') as index_html_file:

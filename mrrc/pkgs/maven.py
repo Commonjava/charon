@@ -240,8 +240,8 @@ def handle_maven_uploading(
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, this will be updated everytime
     index_files = valid_paths
-    if __META_FILE_GEN_KEY in meta_files:
-        index_files = index_files + meta_files[__META_FILE_GEN_KEY]
+    if META_FILE_GEN_KEY in meta_files:
+        index_files = index_files + meta_files[META_FILE_GEN_KEY]
     html_files = indexing.path_to_index(top_level, index_files, bucket)
     logger.info("Start uploading index files to s3")
     s3_client.upload_metadatas(
@@ -326,16 +326,16 @@ def handle_maven_del(
 
     logger.info("Start uploading index to s3")
     index_files = valid_paths
-    if __META_FILE_GEN_KEY in meta_files:
-        index_files = valid_paths + meta_files[__META_FILE_GEN_KEY]
+    if META_FILE_GEN_KEY in meta_files:
+        index_files = valid_paths + meta_files[META_FILE_GEN_KEY]
     html_files = indexing.path_to_index(top_level, index_files, bucket)
     update_list = []
     for _ in html_files:
         if _.endswith('.index'):
             update_list.append(_)
     valid_paths += all_meta_files
-    if __META_FILE_GEN_KEY in meta_files:
-        for _ in meta_files[__META_FILE_GEN_KEY]:
+    if META_FILE_GEN_KEY in meta_files:
+        for _ in meta_files[META_FILE_GEN_KEY]:
             if _ in valid_paths:
                 valid_paths.remove(_)
     update_files = indexing.get_update_list(valid_paths, update_list, top_level, bucket)
