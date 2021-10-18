@@ -78,7 +78,7 @@ class S3Client(object):
             if the checksum does not match the existed one, will not upload it and report error.
             Note that if file name match
         """
-        bucket = self.__get_bucket(bucket_name)
+        bucket = self.get_bucket(bucket_name)
 
         def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
@@ -87,7 +87,7 @@ class S3Client(object):
                 return
             logger.info('Uploading %s to bucket %s', full_file_path, bucket_name)
             fileObject = bucket.Object(path)
-            existed = self.__file_exists(fileObject)
+            existed = self.file_exists(fileObject)
             sha1 = read_sha1(full_file_path)
             if not existed:
                 f_meta = {}
@@ -140,7 +140,7 @@ class S3Client(object):
             * The metadata files will always be overwritten for each uploading
             * The metadata files' checksum will also be overwritten each time
         """
-        bucket = self.__get_bucket(bucket_name)
+        bucket = self.get_bucket(bucket_name)
 
         def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
@@ -149,7 +149,7 @@ class S3Client(object):
                 return
             logger.info('Updating metadata %s to bucket %s', path, bucket_name)
             fileObject = bucket.Object(path)
-            existed = self.__file_exists(fileObject)
+            existed = self.file_exists(fileObject)
             f_meta = {}
             need_overwritten = True
             sha1 = read_sha1(full_file_path)
@@ -191,12 +191,12 @@ class S3Client(object):
             really be removed from the bucket. Only when the metadata is all cleared, the file
             will be finally removed from bucket.
         """
-        bucket = self.__get_bucket(bucket_name)
+        bucket = self.get_bucket(bucket_name)
 
         def path_delete_handler(full_file_path: str, path: str):
             logger.info('Deleting %s from bucket %s', path, bucket_name)
             fileObject = bucket.Object(path)
-            existed = self.__file_exists(fileObject)
+            existed = self.file_exists(fileObject)
             if existed:
                 prods = []
                 try:
@@ -231,7 +231,7 @@ class S3Client(object):
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
         files wanted.
         """
-        bucket = self.__get_bucket(bucket_name)
+        bucket = self.get_bucket(bucket_name)
         objs = []
         if prefix and prefix.strip() != "":
             objs = list(bucket.objects.filter(Prefix=prefix))
@@ -245,14 +245,14 @@ class S3Client(object):
         return files
 
     def read_file_content(self, bucket_name=None, key=None):
-        bucket = self.__get_bucket(bucket_name)
+        bucket = self.get_bucket(bucket_name)
         fileObject = bucket.Object(key)
         return str(fileObject.get()['Body'].read(), 'utf-8')
 
-    def __get_bucket(self, bucket_name: str):
+    def get_bucket(self, bucket_name: str):
         return self.client.Bucket(bucket_name)
 
-    def __file_exists(self, fileObject):
+    def file_exists(self, fileObject) -> bool:
         try:
             fileObject.load()
             return True
@@ -261,6 +261,13 @@ class S3Client(object):
                 return False
             else:
                 raise e
+
+    def file_exists_in_bucket(
+        self, bucket_name: str, path: str
+    ) -> bool:
+        bucket = self.get_bucket(bucket_name)
+        fileObject = bucket.Object(path)
+        return self.file_exists(fileObject)
 
     def __update_file_metadata(
         self, fileObject, bucket_name: str, key: str, metadata: Dict
