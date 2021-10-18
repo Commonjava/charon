@@ -262,6 +262,13 @@ class S3Client(object):
             else:
                 raise e
 
+    def file_exists_in_bucket(
+        self, bucket_name: str, path: str
+    ) -> bool:
+        bucket = self.get_bucket(bucket_name)
+        fileObject = bucket.Object(path)
+        return self.file_exists(fileObject)
+
     def __update_file_metadata(
         self, fileObject, bucket_name: str, key: str, metadata: Dict
     ):

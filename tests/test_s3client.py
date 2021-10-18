@@ -278,3 +278,12 @@ class S3ClientTest(BaseMRRCTest):
         )
 
         shutil.rmtree(temp_root)
+
+    def test_exists_in_bucket(self):
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        path = "org/foo/bar/1.0/foo-bar-1.0.pom"
+        self.assertFalse(self.s3_client.file_exists_in_bucket(MY_BUCKET, path))
+        bucket.put_object(
+            Key=path, Body="test content pom"
+        )
+        self.assertTrue(self.s3_client.file_exists_in_bucket(MY_BUCKET, path))
