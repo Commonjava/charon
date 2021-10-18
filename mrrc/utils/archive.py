@@ -72,11 +72,10 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
 
 
 def _get_tgz_name(path: str):
-    tgz_name = str()
     parts = path.split("/")
     if len(parts) > 0:
-        tgz_name = parts[len(parts) - 1]
-    return tgz_name
+        return parts[-1]
+    return ""
 
 
 def __parse_npm_package_version_paths(path: str) -> list:
