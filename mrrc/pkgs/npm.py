@@ -87,8 +87,8 @@ def handle_npm_uploading(
     logger.info("Files uploading done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
-    meta_files = _gen_npm_package_metadata(
-        client, bucket, target_dir, package_metadata.name, source_package=package_metadata
+    meta_files = _gen_npm_package_metadata_for_upload(
+        client, bucket, target_dir, package_metadata
     )
     logger.info("package.json generation done\n")
 
@@ -126,7 +126,7 @@ def handle_npm_del(
     logger.info("Files deletion done\n")
 
     logger.info("Start generating package.json for package: %s", package_name_path)
-    meta_files = _gen_npm_package_metadata(client, bucket, target_dir, package_name_path)
+    meta_files = _gen_npm_package_metadata_for_del(client, bucket, target_dir, package_name_path)
     logger.info("package.json generation done\n")
 
     logger.info("Start uploading package.json to s3")
@@ -154,40 +154,48 @@ def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMe
         logger.error('Error: Failed to parse json!')
 
 
-def _gen_npm_package_metadata(
-        client: S3Client, bucket: str, target_dir: str, package_path_prefix: str,
-        source_package: NPMPackageMetadata = None
+def _gen_npm_package_metadata_for_upload(
+        client: S3Client, bucket: str, target_dir: str, source_package: NPMPackageMetadata
 ) -> dict:
     """Collect NPM versions package.json and generate the package package.json.
        For uploading mode, package.json will merge the original in S3 with the local source.
-       For del mode, all the version package.json contents to be merged will be read from S3.
-       what we should do here is:
+       What we should do here is:
        * Scan the valid paths and source from the archive
-       * Search the target contents in s3(del) or read from local source(uploading)
+       * Read from local source(uploading)
+       * Use converted package.json to generate the package.json then update in S3
+    """
+    meta_files = {}
+    package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
+    package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_key)
+    result = source_package
+    if len(package_json_files) > 0:
+        result = _merge_package_metadata(
+            source_package, client, bucket, package_json_files[0]
+        )
+        logger.debug("Merge the S3 %s with local source", package_json_files[0])
+    meta_file = _write_package_metadata_to_file(result, target_dir)
+    meta_files[META_FILE_GEN_KEY] = meta_file
+    return meta_files
+
+
+def _gen_npm_package_metadata_for_del(
+        client: S3Client, bucket: str, target_dir: str, package_path_prefix: str
+) -> dict:
+    """Collect NPM versions package.json and generate the package package.json.
+       For del mode, all the version package.json contents to be merged will be read from S3.
+       What we should do here is:
+       * Scan the valid paths from the archive
+       * Search the target contents in s3(del)
        * Use converted package.jsons to generate the package.json then update in S3
     """
     meta_files = {}
     package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
-    # for uploading mode, source_package is not None
-    if source_package:
-        package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_key)
-        result = source_package
-        if len(package_json_files) > 0:
-            result = _merge_package_metadata(
-                source_package, client, bucket, package_json_files[0]
-            )
-            logger.debug("Merge the S3 %s with local source", package_json_files[0])
-        meta_file = _write_package_metadata_to_file(result, target_dir)
-        meta_files[META_FILE_GEN_KEY] = meta_file
-        return meta_files
-
-    # for delete mode
     existed_version_metas = client.get_files(
         bucket_name=bucket, prefix=package_path_prefix, suffix=PACKAGE_JSON
     )
     # ensure the metas only contain version package.json
     existed_version_metas.remove(package_metadata_key)
-    # Still have versions in S3 which need to maintain the metadata
+    # Still have versions in S3 and need to maintain the package metadata
     if len(existed_version_metas) > 0:
         logger.debug("Read all version package.json content from S3")
         meta_contents = list()
@@ -207,7 +215,7 @@ def _gen_npm_package_metadata(
         logger.debug("Final merged package metadata is %s", str(original.__dict__))
         meta_file = _write_package_metadata_to_file(original, target_dir)
         meta_files[META_FILE_GEN_KEY] = meta_file
-    # Empty versions is S3 and don't need to maintain the metadata
+    # Empty versions is S3 so don't need to maintain the package metadata
     else:
         meta_files[META_FILE_DEL_KEY] = package_metadata_key
     return meta_files

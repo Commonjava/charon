@@ -356,7 +356,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple
         top_level = files_root
     logger.info("Files scanning done.\n")
 
-    if ignore_patterns and len(ignored_paths) > 0:
+    if ignore_patterns and len(ignore_patterns) > 0:
         logger.info(
             "Ignored paths with ignore_patterns %s as below:\n%s\n",
             ignore_patterns, "\n".join(ignored_paths)

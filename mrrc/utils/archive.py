@@ -46,7 +46,7 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
         Result returns the version meta file path and is for following package meta generating.
     """
     valid_paths = []
-    package_name_path = str
+    package_name_path = str()
     tgz = tarfile.open(path)
     tgz.extractall()
     for f in tgz:
@@ -72,7 +72,7 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
 
 
 def _get_tgz_name(path: str):
-    tgz_name = str
+    tgz_name = str()
     parts = path.split("/")
     if len(parts) > 0:
         tgz_name = parts[len(parts) - 1]
