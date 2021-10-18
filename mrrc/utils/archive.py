@@ -13,13 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from zipfile import ZipFile, is_zipfile
-from json import load, JSONDecodeError
-from enum import Enum
+import logging
 import os
 import sys
 import tarfile
-import logging
+from enum import Enum
+from json import load, JSONDecodeError
+from typing import Tuple
+from zipfile import ZipFile, is_zipfile
 
 logger = logging.getLogger(__name__)
 
@@ -38,33 +39,43 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
     zf.extractall(target_dir, members=filtered)
 
 
-def extract_npm_tarball(path: str, target_dir: str) -> str:
-    """Extract npm tarball will relocate the tgz file and metadata files. locate the tar path (
-    e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz), locate the version
-    metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3) Result returns the version metadata
-    file path for following package metadata generating operations
+def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tuple[str, list]:
+    """ Extract npm tarball will relocate the tgz file and metadata files.
+        * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
+        * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
+        Result returns the version meta file path and is for following package meta generating.
     """
+    valid_paths = []
+    package_name_path = str()
     tgz = tarfile.open(path)
     tgz.extractall()
     for f in tgz:
         if f.name.endswith("package.json"):
-            version_metadata_path = f.path
             parse_paths = __parse_npm_package_version_paths(f.path)
-
+            package_name_path = parse_paths[0]
+            os.makedirs(os.path.join(target_dir, parse_paths[0]))
             tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
-            os.makedirs(tarball_parent_path)
-            os.system("cp " + path + " " + tarball_parent_path)
-
+            valid_paths.append(os.path.join(tarball_parent_path, _get_tgz_name(path)))
             version_metadata_parent_path = os.path.join(
                 target_dir, parse_paths[0], parse_paths[1]
             )
-            os.makedirs(version_metadata_parent_path)
-            os.system(
-                "cp " + version_metadata_path + " " + version_metadata_parent_path
-            )
-            version_metadata_path = version_metadata_parent_path + "/package.json"
+            valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
+            if is_for_upload:
+                os.makedirs(tarball_parent_path)
+                os.system("cp " + path + " " + tarball_parent_path)
+                os.makedirs(version_metadata_parent_path)
+                os.system(
+                    "cp " + f.path + " " + version_metadata_parent_path
+                )
             break
-    return version_metadata_path
+    return package_name_path, valid_paths
+
+
+def _get_tgz_name(path: str):
+    parts = path.split("/")
+    if len(parts) > 0:
+        return parts[-1]
+    return ""
 
 
 def __parse_npm_package_version_paths(path: str) -> list:

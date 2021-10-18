@@ -18,6 +18,7 @@ from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
 from mrrc.config import AWS_DEFAULT_BUCKET
+from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -30,9 +31,6 @@ import logging
 import re
 
 logger = logging.getLogger(__name__)
-
-__META_FILE_GEN_KEY = "Generate"
-__META_FILE_DEL_KEY = "Delete"
 
 
 class MavenMetadata(object):
@@ -229,10 +227,10 @@ def handle_maven_uploading(
     logger.info("maven-metadata.xml files generation done\n")
 
     # 6. Upload all maven-metadata.xml
-    if __META_FILE_GEN_KEY in meta_files:
+    if META_FILE_GEN_KEY in meta_files:
         logger.info("Start uploading maven-metadata.xml to s3")
         s3_client.upload_metadatas(
-            meta_file_paths=meta_files[__META_FILE_GEN_KEY],
+            meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=prod_key,
             root=top_level
@@ -305,9 +303,9 @@ def handle_maven_del(
     s3_client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
     )
-    if __META_FILE_GEN_KEY in meta_files:
+    if META_FILE_GEN_KEY in meta_files:
         s3_client.upload_metadatas(
-            meta_file_paths=meta_files[__META_FILE_GEN_KEY],
+            meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
             root=top_level
@@ -397,9 +395,9 @@ def _generate_metadatas(
             logger.debug(
                 "No poms found in s3 bucket %s for GA path %s", bucket, path
             )
-            meta_files_deletion = meta_files.get(__META_FILE_DEL_KEY, [])
+            meta_files_deletion = meta_files.get(META_FILE_DEL_KEY, [])
             meta_files_deletion.append(os.path.join(path, "maven-metadata.xml"))
-            meta_files[__META_FILE_DEL_KEY] = meta_files_deletion
+            meta_files[META_FILE_DEL_KEY] = meta_files_deletion
         else:
             logger.debug(
                 "Got poms in s3 bucket %s for GA path %s: %s", bucket, path, poms
@@ -418,7 +416,7 @@ def _generate_metadatas(
                                  " is correct in your tarball.", f'{g}:{a}')
                 logger.debug("Generated metadata file %s for %s:%s", meta_file, g, a)
                 meta_files_generation.append(meta_file)
-        meta_files[__META_FILE_GEN_KEY] = meta_files_generation
+        meta_files[META_FILE_GEN_KEY] = meta_files_generation
     return meta_files
 
 

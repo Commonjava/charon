@@ -18,3 +18,5 @@ MRRC_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
 DESCRIPTION = "mrrc-uploader is a tool to synchronize several types of artifacts "
 "repository data to RedHat MRRC service (maven.repository.redhat.com)."
 PROG = 'mrrc'
+META_FILE_GEN_KEY = "Generate"
+META_FILE_DEL_KEY = "Delete"
