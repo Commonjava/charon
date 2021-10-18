@@ -23,8 +23,6 @@ COMMONS_CLIENT_459_FILES = [
 
 COMMONS_CLIENT_META = "org/apache/httpcomponents/httpclient/maven-metadata.xml"
 
-COMMONS_CLIENT_INDEX = "org/apache/httpcomponents/httpclient/index.html"
-
 COMMONS_LOGGING_FILES = [
     "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar",
     "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.sha1",
@@ -35,8 +33,6 @@ COMMONS_LOGGING_FILES = [
 ]
 
 COMMONS_LOGGING_META = "commons-logging/commons-logging/maven-metadata.xml"
-
-COMMONS_LOGGING_INDEX = "commons-logging/commons-logging/index.html"
 
 
 @mock_s3
@@ -65,24 +61,23 @@ class MavenDeleteTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
-            test_zip, product_456, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(30, len(objs))
+        self.assertEqual(12, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
         self.assertIn(COMMONS_CLIENT_META, actual_files)
-        self.assertIn(COMMONS_CLIENT_INDEX, actual_files)
 
         for f in COMMONS_LOGGING_FILES:
             self.assertIn(f, actual_files)
         self.assertIn(COMMONS_LOGGING_META, actual_files)
-        self.assertIn(COMMONS_LOGGING_INDEX, actual_files)
 
         for obj in objs:
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
@@ -112,18 +107,10 @@ class MavenDeleteTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
-        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>", index_content)
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
-        self.assertIn(
-            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
-            index_content)
-        self.assertNotIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
-
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
-            test_zip, product_459, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         objs = list(test_bucket.objects.all())
@@ -139,12 +126,15 @@ class MavenDeleteTest(BaseMRRCTest):
 
         handle_maven_del(
             test_zip, product_456, True,
-            ignore_patterns=[".*.sha1"], bucket_name=TEST_BUCKET, dir_=self.tempdir
+            ignore_patterns=[".*.sha1"],
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir,
+            do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(34, len(objs))
+        self.assertEqual(14, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
@@ -187,11 +177,13 @@ class MavenDeleteTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )

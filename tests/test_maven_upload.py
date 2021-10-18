@@ -14,29 +14,11 @@ COMMONS_CLIENT_456_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom",
 ]
 
-COMMONS_CLIENT_456_INDEXES = [
-    "index.html",
-    "org/index.html",
-    "org/apache/index.html",
-    "org/apache/httpcomponents/index.html",
-    "org/apache/httpcomponents/httpclient/index.html",
-    "org/apache/httpcomponents/httpclient/4.5.6/index.html",
-]
-
 COMMONS_CLIENT_459_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom.sha1",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.sha1",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom",
-]
-
-COMMONS_CLIENT_459_INDEXES = [
-    "index.html",
-    "org/index.html",
-    "org/apache/index.html",
-    "org/apache/httpcomponents/index.html",
-    "org/apache/httpcomponents/httpclient/index.html",
-    "org/apache/httpcomponents/httpclient/4.5.9/index.html",
 ]
 
 COMMONS_CLIENT_META = "org/apache/httpcomponents/httpclient/maven-metadata.xml"
@@ -48,14 +30,9 @@ COMMONS_LOGGING_FILES = [
     "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
     "commons-logging/commons-logging/1.2/commons-logging-1.2.pom",
     "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1",
-    "commons-logging/index.html",
-    "commons-logging/commons-logging/index.html",
-    "commons-logging/commons-logging/1.2/index.html",
 ]
 
 COMMONS_LOGGING_META = "commons-logging/commons-logging/maven-metadata.xml"
-
-COMMONS_INDEX = "org/apache/httpcomponents/httpclient/index.html"
 
 
 @mock_s3
@@ -82,12 +59,13 @@ class MavenUploadTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(30, len(objs))
+        self.assertEqual(12, len(objs))
 
         actual_files = [obj.key for obj in objs]
 
@@ -98,9 +76,6 @@ class MavenUploadTest(BaseMRRCTest):
         for f in COMMONS_LOGGING_FILES:
             self.assertIn(f, actual_files)
         self.assertIn(COMMONS_LOGGING_META, actual_files)
-
-        for f in COMMONS_CLIENT_456_INDEXES:
-            self.assertIn(f, actual_files)
 
         for obj in objs:
             self.assertEqual(product, obj.Object().metadata[PRODUCT_META_KEY])
@@ -126,31 +101,24 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        indedx_obj = test_bucket.Object(COMMONS_INDEX)
-        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
-        self.assertIn(
-            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
-            index_content
-        )
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
-
     def test_overlap_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459, True, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459, True,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(36, len(objs))
+        self.assertEqual(16, len(objs))
 
         actual_files = [obj.key for obj in objs]
         for f in COMMONS_CLIENT_456_FILES:
@@ -169,14 +137,6 @@ class MavenUploadTest(BaseMRRCTest):
             product_mix,
             set(
                 test_bucket.Object(COMMONS_CLIENT_META)
-                .metadata[PRODUCT_META_KEY]
-                .split(",")
-            ),
-        )
-        self.assertSetEqual(
-            product_mix,
-            set(
-                test_bucket.Object(COMMONS_INDEX)
                 .metadata[PRODUCT_META_KEY]
                 .split(",")
             ),
@@ -217,26 +177,17 @@ class MavenUploadTest(BaseMRRCTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        indedx_obj = test_bucket.Object(COMMONS_INDEX)
-        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
-        self.assertIn("<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>", index_content)
-        self.assertIn(
-            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
-            index_content)
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
-
     def test_ignore_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456, True, [".*.sha1"],
-            bucket_name=TEST_BUCKET, dir_=self.tempdir
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(25, len(objs))
+        self.assertEqual(7, len(objs))
 
         actual_files = [obj.key for obj in objs]
 

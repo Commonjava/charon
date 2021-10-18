@@ -99,7 +99,7 @@ def get_update_list(repos: List[str], indexes: List[str], top_level: str, bucket
     update_files = update_items(_repos, [], indexes, base_dir, bucket)
     # for every updated .index file regenerate it's index.html file
     for file in list(update_files):
-        with open(file, 'r') as f:
+        with open(file, 'r', encoding='utf-8') as f:
             items = set(_.replace('\n', '') for _ in f.readlines())
         if file != os.path.join(base_dir, '.index'):
             path = os.path.join(*file.replace(base_dir, '').split('/')[:-1])
@@ -110,7 +110,7 @@ def get_update_list(repos: List[str], indexes: List[str], top_level: str, bucket
             html_location = os.path.join(base_dir, 'index.html')
         index = IndexedHTML(title=path, header=path, items=items)
         update_files.append(html_location)
-        with open(os.path.join(base_dir, html_location), 'w') as index_html_file:
+        with open(os.path.join(base_dir, html_location), 'w', encoding='utf-8') as index_html_file:
             index_html_file.write(index.generate_index_file_content())
 
     return update_files
@@ -139,7 +139,7 @@ def update_items(removed_files: Set[str], update_files: List[str], indexes: List
 
         # if we already updated it, we need ready from local to get what item left there
         if os.path.join(base_dir, path, '.index') in update_files:
-            with open(os.path.join(base_dir, path, '.index'), 'r') as f:
+            with open(os.path.join(base_dir, path, '.index'), 'r', encoding='utf-8') as f:
                 items = set(_.replace('\n', '') for _ in f.readlines())
                 indexes.append(os.path.join(base_dir, path, '.index'))
         elif os.path.join(base_dir, path, '.index') in indexes:
@@ -183,7 +183,7 @@ def update_items(removed_files: Set[str], update_files: List[str], indexes: List
             items_location = os.path.join(base_dir, path, '.index')
             update_files.append(items_location)
             indexes.remove(items_location)
-            with open(items_location, 'w') as index_file:
+            with open(items_location, 'w', encoding='utf-8') as index_file:
                 for item in items:
                     index_file.write(str(item) + '\n')
 
@@ -219,7 +219,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         items = items.union(load_exist_index(bucket, os.path.join(path, '.index')[1:]))
 
         items_files.append(items_location)
-        with open(items_location, 'w') as index_file:
+        with open(items_location, 'w', encoding='utf-8') as index_file:
             for item in items:
                 index_file.write(str(item) + '\n')
 
@@ -230,7 +230,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         index = IndexedHTML(title=path, header=path, items=items)
         # this path can be modified if we want to store them somewhere else
         html_files.append(html_location)
-        with open(html_location, 'w') as index_html_file:
+        with open(html_location, 'w', encoding='utf-8') as index_html_file:
             index_html_file.write(index.generate_index_file_content())
 
     return html_files + items_files
