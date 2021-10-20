@@ -249,6 +249,9 @@ def handle_maven_uploading(
     else:
         logger.info("Bypass indexing")
 
+    logger.info("Product release %s is successfully"
+                " uploaded to mrrc service.", prod_key)
+
 
 def handle_maven_del(
     repo: str,
@@ -355,13 +358,19 @@ def handle_maven_del(
     else:
         logger.info("Bypassing indexing")
 
+    logger.info("Product release %s is successfully"
+                " rolled back from mrrc service.", prod_key)
+
 
 def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
-    logger.info("Extracting tarball %s", repo)
-    repo_zip = ZipFile(repo)
-    tmp_root = mkdtemp(prefix=f"mrrc-{prefix}-", dir=dir__)
-    extract_zip_all(repo_zip, tmp_root)
-    return tmp_root
+    if os.path.exists(repo):
+        logger.info("Extracting tarball %s", repo)
+        repo_zip = ZipFile(repo)
+        tmp_root = mkdtemp(prefix=f"mrrc-{prefix}-", dir=dir__)
+        extract_zip_all(repo_zip, tmp_root)
+        return tmp_root
+    logger.error("Error: archive %s does not exist", repo)
+    sys.exit(1)
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple[str, List, List]:
