@@ -195,7 +195,7 @@ def __get_bucket() -> str:
         logger.info("AWS bucket '%s' found in system environment var '%s'"
                     ", will use it for following process", bucket, MRRC_BUCKET)
         return bucket
-    return mrrc_config().get_aws_bucket
+    return mrrc_config().get_aws_bucket()
 
 
 @group()

@@ -37,6 +37,8 @@ class MrrcConfig(object):
     in $HOME/.mrrc/ folder by default.
     """
 
+    __mrrc_configs = dict()
+
     def __init__(self, data: ConfigParser):
         try:
             self.__mrrc_configs = dict(data.items(SECTION_MRRC))
