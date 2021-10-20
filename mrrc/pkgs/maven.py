@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
+import mrrc.pkgs.indexing as indexing
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
@@ -177,7 +177,8 @@ def handle_maven_uploading(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
-    dir_=None
+    dir_=None,
+    do_index=True
 ):
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -237,6 +238,21 @@ def handle_maven_uploading(
         )
         logger.info("maven-metadata.xml uploading done")
 
+    # this step generates index.html for each dir and add them to file list
+    # index is similar to metadata, this will be updated everytime
+    if do_index:
+        index_files = valid_paths
+        if META_FILE_GEN_KEY in meta_files:
+            index_files = index_files + meta_files[META_FILE_GEN_KEY]
+        html_files = indexing.path_to_index(top_level, index_files, bucket)
+        logger.info("Start uploading index files to s3")
+        s3_client.upload_metadatas(
+            meta_file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+        )
+        logger.info("Index files uploading done\n")
+    else:
+        logger.info("Bypass indexing")
+
 
 def handle_maven_del(
     repo: str,
@@ -245,7 +261,8 @@ def handle_maven_del(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
-    dir_=None
+    dir_=None,
+    do_index=True
 ):
     """ Handle the maven product release tarball deletion process.
         * repo is the location of the tarball in filesystem
@@ -311,6 +328,36 @@ def handle_maven_del(
             root=top_level
         )
     logger.info("maven-metadata.xml uploading done")
+
+    if do_index:
+        logger.info("Start uploading index to s3")
+        index_files = valid_paths
+        if META_FILE_GEN_KEY in meta_files:
+            index_files = valid_paths + meta_files[META_FILE_GEN_KEY]
+        html_files = indexing.path_to_index(top_level, index_files, bucket)
+        update_list = []
+        for _ in html_files:
+            if _.endswith('.index'):
+                update_list.append(_)
+        valid_paths += all_meta_files
+        if META_FILE_GEN_KEY in meta_files:
+            for _ in meta_files[META_FILE_GEN_KEY]:
+                if _ in valid_paths:
+                    valid_paths.remove(_)
+        update_files = indexing.get_update_list(valid_paths, update_list, top_level, bucket)
+        s3_client.delete_files(
+            file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+        )
+        if update_files != []:
+            s3_client.upload_metadatas(
+                meta_file_paths=update_files,
+                bucket_name=bucket,
+                product=None,
+                root=top_level
+            )
+        logger.info("index uploading done")
+    else:
+        logger.info("Bypassing indexing")
 
 
 def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
