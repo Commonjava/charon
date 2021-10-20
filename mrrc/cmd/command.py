@@ -88,7 +88,8 @@ def upload(
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
-        handle_npm_uploading(repo, product_key)
+        handle_npm_uploading(repo, product_key,
+                             bucket_name=__get_bucket())
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -96,7 +97,10 @@ def upload(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_uploading(repo, product_key, ga, ignore_patterns_list, root=root_path)
+        handle_maven_uploading(repo, product_key, ga,
+                               ignore_patterns_list,
+                               root=root_path,
+                               bucket_name=__get_bucket())
 
 
 @argument("repo", type=Path(exists=True))
@@ -154,7 +158,8 @@ def delete(
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
-        handle_npm_del(repo, product_key)
+        handle_npm_del(repo, product_key,
+                       bucket_name=__get_bucket())
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -162,7 +167,10 @@ def delete(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_del(repo, product_key, ga, ignore_patterns_list, root=root_path)
+        handle_maven_del(repo, product_key, ga,
+                         ignore_patterns_list,
+                         root=root_path,
+                         bucket_name=__get_bucket())
 
 
 def __get_ignore_patterns() -> List[str]:
@@ -178,6 +186,16 @@ def __get_ignore_patterns() -> List[str]:
     if conf:
         return conf.get_ignore_patterns()
     return None
+
+
+def __get_bucket() -> str:
+    MRRC_BUCKET = "mrrc_bucket"
+    bucket = os.getenv(MRRC_BUCKET)
+    if bucket:
+        logger.info("AWS bucket '%s' found in system environment var '%s'"
+                    ", will use it for following process", bucket, MRRC_BUCKET)
+        return bucket
+    return mrrc_config().get_aws_bucket
 
 
 @group()

@@ -21,3 +21,4 @@ class ConfigTest(BaseMRRCTest):
     def test_config(self):
         conf = config.mrrc_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
+        self.assertEqual('mrrc', conf.get_aws_bucket())

@@ -54,6 +54,14 @@ class MrrcConfig(object):
                                "style array. Will skip it.", pattern_str)
         return None
 
+    def get_aws_bucket(self) -> str:
+        bucket = self.__val_or_default(self.__mrrc_configs, AWS_BUCKET)
+        if not bucket:
+            logger.warning("%s not defined in mrrc configuration,"
+                           " will use default 'mrrc' bucket.")
+            return AWS_DEFAULT_BUCKET
+        return bucket
+
     def __val_or_default(self, section: dict, key: str, default=None):
         return section[key] if section and key in section else default
 
