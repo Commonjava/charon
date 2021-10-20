@@ -36,9 +36,6 @@ class MrrcConfig(object):
     The configuration file will be named as mrrc-uploader.conf, and will be stored
     in $HOME/.mrrc/ folder by default.
     """
-
-    __mrrc_configs = dict()
-
     def __init__(self, data: ConfigParser):
         try:
             self.__mrrc_configs = dict(data.items(SECTION_MRRC))
@@ -65,13 +62,27 @@ class MrrcConfig(object):
         return bucket
 
     def __val_or_default(self, section: dict, key: str, default=None):
+        if not section:
+            return default
         return section[key] if section and key in section else default
 
 
 def mrrc_config():
     parser = ConfigParser()
-    config_file = os.path.join(os.environ["HOME"], ".mrrc", CONFIG_FILE)
+    config_file = os.path.join(os.getenv("HOME"), ".mrrc", CONFIG_FILE)
     if not parser.read(config_file):
-        logger.Warning("Warning: config file does not exist: %s", config_file)
+        logger.warning("Warning: config file does not exist: %s", config_file)
         return None
     return MrrcConfig(parser)
+
+
+def get_template(template_file: str) -> str:
+    template = os.path.join(
+        os.getenv("HOME"), ".mrrc/template", template_file
+    )
+    if os.path.isfile(template):
+        with open(template, encoding="utf-8") as file_:
+            return file_.read()
+
+    logger.error("Error: can not find template file %s", template_file)
+    raise FileNotFoundError
