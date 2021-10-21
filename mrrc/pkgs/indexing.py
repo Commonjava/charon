@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from botocore.exceptions import ClientError
+from mrrc.config import get_template
 from mrrc.storage import S3Client
 from jinja2 import Template
 from treelib import Tree, Node
@@ -35,11 +36,7 @@ class IndexedHTML(object):
 
 
 def get_index_template() -> str:
-    DEFAULT_INDEX_TEMPLATE = os.path.join(
-        os.environ["HOME"], ".mrrc/template/index.html.j2"
-    )
-    with open(DEFAULT_INDEX_TEMPLATE, encoding="utf-8") as file_:
-        return file_.read()
+    return get_template("index.html.j2")
 
 
 def path_to_index(top_level: str, valid_paths: List[str], bucket: str):

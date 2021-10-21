@@ -51,7 +51,7 @@ class S3Client(object):
         )
 
     def __get_endpoint(self, extra_conf) -> str:
-        endpoint_url = os.environ.get(ENDPOINT_ENV, None)
+        endpoint_url = os.getenv(ENDPOINT_ENV)
         if not endpoint_url or endpoint_url.strip() == "":
             if isinstance(extra_conf, Dict):
                 endpoint_url = extra_conf.get(ENDPOINT_ENV, None)

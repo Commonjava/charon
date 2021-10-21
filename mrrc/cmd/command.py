@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-from mrrc.config import mrrc_config
+from mrrc.config import mrrc_config, AWS_DEFAULT_BUCKET
 from mrrc.utils.logs import set_logging
 from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
@@ -195,7 +195,10 @@ def __get_bucket() -> str:
         logger.info("AWS bucket '%s' found in system environment var '%s'"
                     ", will use it for following process", bucket, MRRC_BUCKET)
         return bucket
-    return mrrc_config().get_aws_bucket()
+    conf = mrrc_config()
+    if conf:
+        return conf.get_aws_bucket()
+    return AWS_DEFAULT_BUCKET
 
 
 @group()

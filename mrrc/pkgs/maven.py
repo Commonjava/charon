@@ -17,7 +17,7 @@ import mrrc.pkgs.indexing as indexing
 from mrrc.utils.files import write_file
 from mrrc.utils.archive import extract_zip_all
 from mrrc.storage import S3Client
-from mrrc.config import AWS_DEFAULT_BUCKET
+from mrrc.config import AWS_DEFAULT_BUCKET, get_template
 from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from typing import Dict, List, Tuple
 from jinja2 import Template
@@ -71,11 +71,7 @@ class MavenMetadata(object):
 
 def get_mvn_template() -> str:
     """Gets the jinja2 template file content for maven-metadata.xml generation"""
-    DEFAULT_MVN_TEMPLATE = os.path.join(
-        os.environ["HOME"], ".mrrc/template/maven-metadata.xml.j2"
-    )
-    with open(DEFAULT_MVN_TEMPLATE, encoding="utf-8") as file_:
-        return file_.read()
+    return get_template("maven-metadata.xml.j2")
 
 
 def scan_for_poms(full_path: str) -> List[str]:
