@@ -57,7 +57,7 @@ class MrrcConfig(object):
         bucket = self.__val_or_default(self.__mrrc_configs, AWS_BUCKET)
         if not bucket:
             logger.warning("%s not defined in mrrc configuration,"
-                           " will use default 'mrrc' bucket.")
+                           " will use default 'mrrc' bucket.", AWS_BUCKET)
             return AWS_DEFAULT_BUCKET
         return bucket
 

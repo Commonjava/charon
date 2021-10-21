@@ -16,10 +16,10 @@ limitations under the License.
 from typing import List
 from mrrc.config import mrrc_config, AWS_DEFAULT_BUCKET
 from mrrc.utils.logs import set_logging
-from mrrc.utils.archive import detect_npm_archive, NpmArchiveType
+from mrrc.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
 from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
 from mrrc.pkgs.npm import handle_npm_uploading, handle_npm_del
-from click import command, option, argument, group, Path
+from click import command, option, argument, group
 from json import loads
 
 import logging
@@ -33,7 +33,7 @@ def init():
     print("init not yet implemented!")
 
 
-@argument("repo", type=Path(exists=True))
+@argument("repo", type=str)
 @option(
     "--product",
     "-p",
@@ -84,11 +84,12 @@ def upload(
 ):
     if debug:
         set_logging(level=logging.DEBUG)
-    npm_archive_type = detect_npm_archive(repo)
+    archive_path = __get_local_repo(repo)
+    npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
-        handle_npm_uploading(repo, product_key,
+        handle_npm_uploading(archive_path, product_key,
                              bucket_name=__get_bucket())
     else:
         ignore_patterns_list = None
@@ -97,13 +98,13 @@ def upload(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_uploading(repo, product_key, ga,
+        handle_maven_uploading(archive_path, product_key, ga,
                                ignore_patterns_list,
                                root=root_path,
                                bucket_name=__get_bucket())
 
 
-@argument("repo", type=Path(exists=True))
+@argument("repo", type=str)
 @option(
     "--product",
     "-p",
@@ -154,11 +155,12 @@ def delete(
 ):
     if debug:
         set_logging(level=logging.DEBUG)
-    npm_archive_type = detect_npm_archive(repo)
+    archive_path = __get_local_repo(repo)
+    npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
-        handle_npm_del(repo, product_key,
+        handle_npm_del(archive_path, product_key,
                        bucket_name=__get_bucket())
     else:
         ignore_patterns_list = None
@@ -167,7 +169,7 @@ def delete(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_del(repo, product_key, ga,
+        handle_maven_del(archive_path, product_key, ga,
                          ignore_patterns_list,
                          root=root_path,
                          bucket_name=__get_bucket())
@@ -199,6 +201,15 @@ def __get_bucket() -> str:
     if conf:
         return conf.get_aws_bucket()
     return AWS_DEFAULT_BUCKET
+
+
+def __get_local_repo(url: str) -> str:
+    archive_path = url
+    if url.startswith("http://") or url.startswith("https://"):
+        logger.info("Start downloading tarball %s", url)
+        archive_path = download_archive(url)
+        logger.info("Tarball downloaded at: %s", archive_path)
+    return archive_path
 
 
 @group()

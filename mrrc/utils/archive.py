@@ -17,6 +17,8 @@ import logging
 import os
 import sys
 import tarfile
+import requests
+import tempfile
 from enum import Enum
 from json import load, JSONDecodeError
 from typing import Tuple
@@ -132,3 +134,25 @@ def detect_npm_archive(repo):
                 pass
 
     return NpmArchiveType.NOT_NPM
+
+
+def download_archive(url: str, base_dir=None) -> str:
+    dir_ = base_dir
+    if not dir_ or not os.path.isdir(dir_):
+        dir_ = tempfile.mkdtemp()
+        logger.info("No base dir specified for holding archive."
+                    " Will use a temp dir %s to hold archive",
+                    dir_)
+    # Used solution here:
+    # https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
+    local_filename = os.path.join(dir_, url.split('/')[-1])
+    # NOTE the stream=True parameter below
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(local_filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                # If you have chunk encoded response uncomment if
+                # and set chunk_size parameter to None.
+                # if chunk:
+                f.write(chunk)
+    return local_filename
