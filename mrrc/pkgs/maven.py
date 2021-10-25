@@ -243,7 +243,7 @@ def handle_maven_uploading(
         html_files = indexing.path_to_index(top_level, index_files, bucket)
         logger.info("Start uploading index files to s3")
         s3_client.upload_metadatas(
-            meta_file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+            meta_file_paths=html_files, bucket_name=bucket, product=None, root=top_level
         )
         logger.info("Index files uploading done\n")
     else:
@@ -297,7 +297,7 @@ def handle_maven_del(
     logger.info("Start deleting files from s3")
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    s3_client.delete_files(
+    deleted_files = s3_client.delete_files(
         valid_paths,
         bucket_name=bucket,
         product=prod_key,
@@ -316,7 +316,7 @@ def handle_maven_del(
     all_meta_files = []
     for _, files in meta_files.items():
         all_meta_files.extend(files)
-    s3_client.delete_files(
+    deleted_files += s3_client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
     )
     if META_FILE_GEN_KEY in meta_files:
@@ -326,30 +326,20 @@ def handle_maven_del(
             product=None,
             root=top_level
         )
+        for m_file in meta_files[META_FILE_GEN_KEY]:
+            if m_file in deleted_files:
+                deleted_files.remove(m_file)
     logger.info("maven-metadata.xml uploading done")
 
     if do_index:
         logger.info("Start uploading index to s3")
-        index_files = valid_paths
-        if META_FILE_GEN_KEY in meta_files:
-            index_files = valid_paths + meta_files[META_FILE_GEN_KEY]
-        html_files = indexing.path_to_index(top_level, index_files, bucket)
-        update_list = []
-        for _ in html_files:
-            if _.endswith('.index'):
-                update_list.append(_)
-        valid_paths += all_meta_files
-        if META_FILE_GEN_KEY in meta_files:
-            for _ in meta_files[META_FILE_GEN_KEY]:
-                if _ in valid_paths:
-                    valid_paths.remove(_)
-        update_files = indexing.get_update_list(valid_paths, update_list, top_level, bucket)
+        (delete_index, update_index) = indexing.get_update_list(deleted_files, top_level, bucket)
         s3_client.delete_files(
-            file_paths=html_files, bucket_name=bucket, product=prod_key, root=top_level
+            file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
         )
-        if update_files != []:
+        if update_index != []:
             s3_client.upload_metadatas(
-                meta_file_paths=update_files,
+                meta_file_paths=update_index,
                 bucket_name=bucket,
                 product=None,
                 root=top_level
