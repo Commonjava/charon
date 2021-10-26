@@ -104,6 +104,7 @@ def get_update_list(repos: List[str], top_level: str, bucket: str):
         else:
             path = '/'
             html_location = os.path.join(base_dir, 'index.html')
+        items = sort_index_items(items)
         index = IndexedHTML(title=path, header=path, items=items)
         update_index.append(html_location)
         with open(os.path.join(base_dir, html_location), 'w', encoding='utf-8') as index_html_file:
@@ -214,6 +215,8 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         if path != '/':
             items.add('../')
 
+        items = sort_index_items(items)
+
         index = IndexedHTML(title=path, header=path, items=items)
         # this path can be modified if we want to store them somewhere else
         html_files.append(html_location)
@@ -235,3 +238,16 @@ def load_exist_index(bucket: str, path: str) -> Set[str]:
 
     stored_items = set(content.split('\n')[:-1])
     return stored_items
+
+
+def sort_index_items(items):
+    sorted_items = sorted(items)
+    # make sure metadata is the last element
+    if 'maven-metadata.xml' in sorted_items:
+        sorted_items.remove('maven-metadata.xml')
+        sorted_items.append('maven-metadata.xml')
+    elif 'package.json' in sorted_items:
+        sorted_items.remove('package.json')
+        sorted_items.append('package.json')
+
+    return sorted_items
