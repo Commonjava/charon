@@ -193,6 +193,8 @@ class S3Client(object):
         """
         bucket = self.get_bucket(bucket_name)
 
+        deleted_files = []
+
         def path_delete_handler(full_file_path: str, path: str):
             logger.info('Deleting %s from bucket %s', path, bucket_name)
             fileObject = bucket.Object(path)
@@ -221,11 +223,14 @@ class S3Client(object):
                 if len(prods) == 0:
                     bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
                     logger.info("Deleted %s from bucket %s", path, bucket_name)
+                    deleted_files.append(path)
             else:
                 logger.info("File %s does not exist in s3 bucket %s, skip deletion.",
                             path, bucket_name)
 
         self.__do_path_cut_and(file_paths=file_paths, fn=path_delete_handler, root=root)
+
+        return deleted_files
 
     def get_files(self, bucket_name: str, prefix=None, suffix=None) -> List[str]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
