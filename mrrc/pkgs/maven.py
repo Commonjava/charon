@@ -194,7 +194,9 @@ def handle_maven_uploading(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level, valid_paths, valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
+    (top_level,
+     valid_mvn_paths,
+     valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
@@ -204,7 +206,7 @@ def handle_maven_uploading(
 
     # 3. do validation for the files, like product version checking
     logger.info("Validating paths with rules.")
-    (err_msgs, passed) = _validate_maven(valid_paths)
+    (err_msgs, passed) = _validate_maven(valid_mvn_paths)
     if not passed:
         _handle_error(err_msgs)
         # Question: should we exit here?
@@ -214,7 +216,7 @@ def handle_maven_uploading(
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     s3_client.upload_files(
-        file_paths=valid_paths, bucket_name=bucket, product=prod_key, root=top_level
+        file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
     logger.info("Files uploading done\n")
 
@@ -232,16 +234,16 @@ def handle_maven_uploading(
             product=prod_key,
             root=top_level
         )
-        logger.info("maven-metadata.xml uploading done")
+        logger.info("maven-metadata.xml uploading done\n")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
-        index_files = valid_paths
+        logger.info("Start uploading index files to s3")
+        index_files = valid_mvn_paths
         if META_FILE_GEN_KEY in meta_files:
             index_files = index_files + meta_files[META_FILE_GEN_KEY]
         html_files = indexing.path_to_index(top_level, index_files, bucket)
-        logger.info("Start uploading index files to s3")
         s3_client.upload_metadatas(
             meta_file_paths=html_files, bucket_name=bucket, product=None, root=top_level
         )
@@ -281,7 +283,9 @@ def handle_maven_del(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level, valid_paths, valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
+    (top_level,
+     valid_mvn_paths,
+     valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # 3. Parse GA from valid_poms for later maven metadata refreshing
     logger.info("Start generating maven-metadata.xml files for all artifacts")
@@ -298,7 +302,7 @@ def handle_maven_del(
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     deleted_files = s3_client.delete_files(
-        valid_paths,
+        valid_mvn_paths,
         bucket_name=bucket,
         product=prod_key,
         root=top_level
@@ -336,6 +340,7 @@ def handle_maven_del(
     if do_index:
         logger.info("Start uploading index to s3")
         (delete_index, update_index) = indexing.get_update_list(deleted_files, top_level, bucket)
+
         s3_client.delete_files(
             file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
         )
@@ -365,12 +370,13 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     sys.exit(1)
 
 
-def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple[str, List, List]:
+def _scan_paths(files_root: str, ignore_patterns: List[str],
+                root: str) -> Tuple[str, List, List]:
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", files_root)
     top_level = root
-    valid_paths, ignored_paths, valid_poms = [], [], []
+    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms = [], [], [], []
     top_found = False
     for root_dir, dirs, names in os.walk(files_root):
         for directory in dirs:
@@ -382,15 +388,25 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple
                 top_level = os.path.join(files_root, top_level)
                 top_found = True
                 break
+
         for name in names:
             path = os.path.join(root_dir, name)
             if _is_ignored(name, ignore_patterns):
                 ignored_paths.append(name)
                 continue
-            valid_paths.append(path)
+            if top_level in root_dir:
+                valid_mvn_paths.append(path)
+            else:
+                non_mvn_paths.append(path)
             if name.strip().endswith(".pom"):
                 logger.debug("Found pom %s", name)
                 valid_poms.append(path)
+
+    if len(non_mvn_paths) > 0:
+        non_mvn_items = [n.replace(files_root, "") for n in non_mvn_paths]
+        logger.info("These files are not under the specified "
+                    "prefix dir %s, so will be ignored: \n%s",
+                    root, non_mvn_items)
     if not top_found and top_level.strip() != "":
         logger.warning(
             "Warning: the root path %s does not exist in tarball,"
@@ -406,7 +422,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], root: str) -> Tuple
             ignore_patterns, "\n".join(ignored_paths)
         )
 
-    return (top_level, valid_paths, valid_poms)
+    return (top_level, valid_mvn_paths, valid_poms)
 
 
 def _generate_metadatas(

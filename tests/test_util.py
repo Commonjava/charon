@@ -22,21 +22,21 @@ class UtilTest(unittest.TestCase):
     def test_digest(self):
         test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
         self.assertEqual(
-            "1911950fd8ab289c6d19f0ba74574e92", digest(test_file, HashType.MD5)
+            "ffb4098abd638ce91598008422769ec2", digest(test_file, HashType.MD5)
         )
-        self.assertEqual("841a09c5820f6956461cd07afdbf5c25d3cb9b26", digest(test_file))
+        self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         self.assertEqual(
-            "dc04f0b04f4aba4211a98e6555ec906c3de3a362f668a874bb4783a30e4cdc7c",
+            "61ff1d38cfeb281b05fcd6b9a2318ed47cd62c7f99b8a9d3e819591c03fe6804",
             digest(test_file, HashType.SHA256),
         )
 
     def test_read_sha1(self):
         test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
         # read the real sha1 hash
-        self.assertEqual("841a09c5820f6956461cd07afdbf5c25d3cb9b26", digest(test_file))
+        self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         # read hash from .sha1 file
         self.assertEqual(
-            "841a09c5820f6956461cd07afdbf5c25d3cb9c26", read_sha1(test_file)
+            "bd4fe0a8111df64430b6b419a91e4218ddf44734", read_sha1(test_file)
         )
 
         # For .sha1 file itself, will use digest directly
