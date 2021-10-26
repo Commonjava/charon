@@ -22,6 +22,7 @@ from typing import Tuple
 
 from semantic_version import compare
 
+import mrrc.pkgs.indexing as indexing
 from mrrc.config import AWS_DEFAULT_BUCKET
 from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from mrrc.storage import S3Client
@@ -59,7 +60,7 @@ class NPMPackageMetadata(object):
 
 
 def handle_npm_uploading(
-        tarball_path: str, product: str, bucket_name=None, dir_=None
+        tarball_path: str, product: str, bucket_name=None, dir_=None, do_index=True
 ):
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
@@ -101,9 +102,24 @@ def handle_npm_uploading(
         )
         logger.info("package.json uploading done")
 
+    # this step generates index.html for each dir and add them to file list
+    # index is similar to metadata, it will be overwritten everytime
+    if do_index:
+        index_files = valid_paths
+        if META_FILE_GEN_KEY in meta_files:
+            index_files += [meta_files[META_FILE_GEN_KEY]]
+        html_files = indexing.path_to_index(target_dir, index_files, bucket)
+        logger.info("Start uploading index files to s3")
+        client.upload_metadatas(
+            meta_file_paths=html_files, bucket_name=bucket, product=None, root=target_dir
+        )
+        logger.info("Index files uploading done\n")
+    else:
+        logger.info("Bypass indexing")
+
 
 def handle_npm_del(
-        tarball_path: str, product: str, bucket_name=None, dir_=None
+        tarball_path: str, product: str, bucket_name=None, dir_=None, do_index=True
 ):
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
@@ -120,7 +136,7 @@ def handle_npm_del(
     logger.info("Start deleting files from s3")
     client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    client.delete_files(
+    deleted_files = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
     logger.info("Files deletion done\n")
@@ -133,7 +149,7 @@ def handle_npm_del(
     all_meta_files = []
     for _, file in meta_files.items():
         all_meta_files.append(file)
-    client.delete_files(
+    deleted_files += client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
     )
     if META_FILE_GEN_KEY in meta_files:
@@ -143,7 +159,29 @@ def handle_npm_del(
             product=None,
             root=target_dir
         )
+        for m_file in [meta_files[META_FILE_GEN_KEY]]:
+            if m_file.replace(target_dir, '') in deleted_files:
+                deleted_files.remove(m_file.replace(target_dir, ''))
+            elif m_file.replace(target_dir + '/', '') in deleted_files:
+                deleted_files.remove(m_file.replace(target_dir + '/', ''))
     logger.info("package.json uploading done")
+
+    if do_index:
+        logger.info("Start uploading index to s3")
+        (delete_index, update_index) = indexing.get_update_list(deleted_files, target_dir, bucket)
+        client.delete_files(
+            file_paths=delete_index, bucket_name=bucket, product=None, root=target_dir
+        )
+        if update_index != []:
+            client.upload_metadatas(
+                meta_file_paths=update_index,
+                bucket_name=bucket,
+                product=None,
+                root=target_dir
+            )
+        logger.info("index uploading done")
+    else:
+        logger.info("Bypassing indexing")
 
 
 def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:
