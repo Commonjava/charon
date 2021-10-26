@@ -44,7 +44,7 @@ COMMONS_ROOT_INDEX = "index.html"
 
 
 @mock_s3
-class MavenFileIndexTest(BaseMRRCTest):
+class NpmFileIndexTest(BaseMRRCTest):
     def setUp(self):
         super().setUp()
         # mock_s3 is used to generate expected content
