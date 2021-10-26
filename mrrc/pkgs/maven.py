@@ -235,7 +235,7 @@ def handle_maven_uploading(
         logger.info("maven-metadata.xml uploading done")
 
     # this step generates index.html for each dir and add them to file list
-    # index is similar to metadata, this will be updated everytime
+    # index is similar to metadata, it will be overwritten everytime
     if do_index:
         index_files = valid_paths
         if META_FILE_GEN_KEY in meta_files:
@@ -327,8 +327,10 @@ def handle_maven_del(
             root=top_level
         )
         for m_file in meta_files[META_FILE_GEN_KEY]:
-            if m_file in deleted_files:
-                deleted_files.remove(m_file)
+            if m_file.replace(top_level, '') in deleted_files:
+                deleted_files.remove(m_file.replace(top_level, ''))
+            elif m_file.replace(top_level + '/', '') in deleted_files:
+                deleted_files.remove(m_file.replace(top_level + '/', ''))
     logger.info("maven-metadata.xml uploading done")
 
     if do_index:

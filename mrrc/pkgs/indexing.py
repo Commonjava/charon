@@ -20,7 +20,10 @@ from jinja2 import Template
 from treelib import Tree, Node
 import uuid
 import os
+import logging
 from typing import List, Set
+
+logger = logging.getLogger(__name__)
 
 
 class IndexedHTML(object):
@@ -76,6 +79,7 @@ def tree_convert(paths) -> Tree:
                 id_holder = temp_node.identifier
                 # continue
 
+    logger.debug('generated tree from paths: %s', tree.to_json(with_data=False))
     return tree
 
 
@@ -94,8 +98,8 @@ def get_update_list(repos: List[str], top_level: str, bucket: str):
         with open(file, 'r', encoding='utf-8') as f:
             items = set(_.replace('\n', '') for _ in f.readlines())
         if file != os.path.join(base_dir, '.index'):
-            path = os.path.join(*file.replace(base_dir, '').split('/')[:-1])
-            html_location = os.path.join(base_dir, path, 'index.html')
+            path = os.path.dirname(file).replace(base_dir, '')
+            html_location = os.path.join(os.path.dirname(file), 'index.html')
             items.add('../')
         else:
             path = '/'
@@ -104,10 +108,9 @@ def get_update_list(repos: List[str], top_level: str, bucket: str):
         update_index.append(html_location)
         with open(os.path.join(base_dir, html_location), 'w', encoding='utf-8') as index_html_file:
             index_html_file.write(index.generate_index_file_content())
-    # Add index.html for deletion
+    # Add index.html for deletion for every .index file about to delete
     for file in list(delete_index):
         delete_index.append(file.replace('.index', 'index.html'))
-
     return (delete_index, update_index)
 
 
@@ -120,10 +123,7 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
     for d_file in _deleted_files:
         if d_file in scanned:
             continue
-        if len(d_file.split('/')[:-1]) != 0:
-            path = os.path.join(*d_file.split('/')[:-1])
-        else:
-            path = ''
+        path = os.path.dirname(d_file)
 
         index_file = os.path.join(path, '.index')
         local_index_file = os.path.join(base_dir, index_file)
@@ -140,15 +140,14 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
         for _ in set(deleted_files):
             if _ in scanned:
                 continue
-            if _.startswith(path) and path != '':
-                if _.split('/')[-1] in items:
-                    items.remove(_.split('/')[-1])
-                    scanned.add(_)
-                    deleted_files.remove(_)
-                elif _.split('/')[-1]+'/' in items:
-                    items.remove(_.split('/')[-1] + '/')
-                    scanned.add(_)
-                    deleted_files.remove(_)
+            if '/' in _ and os.path.dirname(_) == path:
+                last_path = os.path.basename(_)
+                if last_path in items:
+                    items.remove(last_path)
+                elif last_path+'/' in items:
+                    items.remove(last_path + '/')
+                scanned.add(_)
+                deleted_files.remove(_)
 
         if path == '' and (d_file in items or d_file + '/' in items):
             if d_file in items:
@@ -157,8 +156,8 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
                 items.remove(d_file + '/')
             deleted_files.remove(d_file)
 
-        # if every item has been removed from list, it means the upperlevel folder is empty
-        # thus add it to removed files to scann its upper level
+        # if every item has been removed from list, it means the containing folder is empty
+        # thus add the folder to removed files to scann its upper level index
         if items == set():
             delete_index.append(local_index_file)
             if path != '':
@@ -169,13 +168,14 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
         else:
             items_location = local_index_file
             update_index.append(items_location)
-            with open(items_location, 'w', encoding='utf-8') as _file:
+            os.makedirs(os.path.dirname(items_location), exist_ok=True)
+            with open(items_location, 'w+', encoding='utf-8') as _file:
                 for item in items:
                     _file.write(str(item) + '\n')
 
     for d_file in _deleted_files:
         if d_file in deleted_files:
-            # if a line is still in the files, it's nowhere to be found in .index. delete it
+            # if a line is still in the removed files, it's nowhere to be found in .index. delete it
             deleted_files.remove(d_file)
 
     return (deleted_files, delete_index, update_index)
