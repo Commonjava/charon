@@ -93,6 +93,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
     def test_upload_and_delete_files(self):
+        ZIP_ENTRY_NUM = 30
         test_zip = zipfile.ZipFile(
             os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
         )
@@ -112,7 +113,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(26, len(objects))
+        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
         for obj in objects:
             self.assertEqual("apache-commons", obj.Object().metadata[PRODUCT_META_KEY])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
@@ -121,7 +122,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(26, len(objects))
+        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
         for obj in objects:
             self.assertEqual(
                 set("apache-commons,commons-lang3".split(",")),
@@ -134,7 +135,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(26, len(objects))
+        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
         for obj in objects:
             self.assertEqual("commons-lang3", obj.Object().metadata["rh-products"])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])

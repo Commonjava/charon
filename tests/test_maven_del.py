@@ -11,14 +11,14 @@ COMMONS_CLIENT_456_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom",
+    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom"
 ]
 
 COMMONS_CLIENT_459_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom.sha1",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar",
     "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom",
+    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom"
 ]
 
 COMMONS_CLIENT_META = "org/apache/httpcomponents/httpclient/maven-metadata.xml"
@@ -33,6 +33,17 @@ COMMONS_LOGGING_FILES = [
 ]
 
 COMMONS_LOGGING_META = "commons-logging/commons-logging/maven-metadata.xml"
+
+NON_MVN_FILES = [
+    "commons-client-4.5.6/example-settings.xml",
+    "commons-client-4.5.6/licenses/gnu",
+    "commons-client-4.5.6/licenses/licenses.txt",
+    "commons-client-4.5.6/README.md",
+    "commons-client-4.5.9/example-settings.xml",
+    "commons-client-4.5.9/licenses/gnu",
+    "commons-client-4.5.9/licenses/licenses.txt",
+    "commons-client-4.5.9/README.md"
+]
 
 
 @mock_s3
@@ -116,7 +127,7 @@ class MavenDeleteTest(BaseMRRCTest):
         objs = list(test_bucket.objects.all())
         self.assertEqual(0, len(objs))
 
-    def test_ignore_upload(self):
+    def test_ignore_del(self):
         self.__prepare_content()
         product_456 = "commons-client-4.5.6"
         product_459 = "commons-client-4.5.9"
@@ -138,11 +149,11 @@ class MavenDeleteTest(BaseMRRCTest):
 
         actual_files = [obj.key for obj in objs]
 
-        httpclient_sha1_files = [
+        httpclient_ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
-            "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
+            "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1"
         ]
-        for f in httpclient_sha1_files:
+        for f in httpclient_ignored_files:
             self.assertIn(f, actual_files)
             self.assertEqual(
                 product_456,
