@@ -41,7 +41,7 @@ class MavenMetadata(object):
         self.group_id = group_id
         self.artifact_id = artifact_id
         self.last_upd_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        self.versions = versions
+        self.versions = set(versions)
         self.sorted_versions = sorted(versions, key=ver_cmp_key())
         self._latest_version = None
         self._release_version = None
@@ -214,7 +214,7 @@ def handle_maven_uploading(
     logger.info("Start uploading files to s3")
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    s3_client.upload_files(
+    failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
     logger.info("Files uploading done\n")
@@ -224,15 +224,16 @@ def handle_maven_uploading(
     meta_files = _generate_metadatas(s3_client, bucket, valid_poms, top_level)
     logger.info("maven-metadata.xml files generation done\n")
 
+    failed_metas = []
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start uploading maven-metadata.xml to s3")
-        s3_client.upload_metadatas(
+        failed_metas.extend(s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=prod_key,
             root=top_level
-        )
+        ))
         logger.info("maven-metadata.xml uploading done\n")
 
     # this step generates index.html for each dir and add them to file list
@@ -243,15 +244,25 @@ def handle_maven_uploading(
         if META_FILE_GEN_KEY in meta_files:
             index_files = index_files + meta_files[META_FILE_GEN_KEY]
         html_files = indexing.path_to_index(top_level, index_files, bucket)
-        s3_client.upload_metadatas(
+        failed_metas.extend(s3_client.upload_metadatas(
             meta_file_paths=html_files, bucket_name=bucket, product=None, root=top_level
-        )
+        ))
         logger.info("Index files uploading done\n")
     else:
         logger.info("Bypass indexing")
 
-    logger.info("Product release %s is successfully"
-                " uploaded to mrrc service.", prod_key)
+    if len(failed_files) == 0 and len(failed_metas) == 0:
+        logger.info("Product release %s is successfully"
+                    " uploaded to mrrc service.", prod_key)
+    else:
+        logger.warning("Product release %s is uploaded to mrrc"
+                       " service, but has some failure as below: \n",
+                       prod_key)
+        if len(failed_files) > 0:
+            logger.warning("Files failed to upload: \n%s", failed_files)
+        if len(failed_metas) > 0:
+            logger.warning("Metadata files failed to refresh: \n%s",
+                           failed_metas)
 
 
 def handle_maven_del(
@@ -300,7 +311,7 @@ def handle_maven_del(
     logger.info("Start deleting files from s3")
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    deleted_files = s3_client.delete_files(
+    (deleted_files, failed_files) = s3_client.delete_files(
         valid_mvn_paths,
         bucket_name=bucket,
         product=prod_key,
@@ -319,11 +330,13 @@ def handle_maven_del(
     all_meta_files = []
     for _, files in meta_files.items():
         all_meta_files.extend(files)
-    deleted_files += s3_client.delete_files(
+    (deleted_metas, _) = s3_client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
     )
+    deleted_files += deleted_metas
+    failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        s3_client.upload_metadatas(
+        failed_metas = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
@@ -334,7 +347,7 @@ def handle_maven_del(
                 deleted_files.remove(m_file.replace(top_level, ''))
             elif m_file.replace(top_level + '/', '') in deleted_files:
                 deleted_files.remove(m_file.replace(top_level + '/', ''))
-    logger.info("maven-metadata.xml uploading done")
+    logger.info("maven-metadata.xml uploading done\n")
 
     if do_index:
         logger.info("Start uploading index to s3")
@@ -344,18 +357,29 @@ def handle_maven_del(
             file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
         )
         if update_index != []:
-            s3_client.upload_metadatas(
+            failed_metas.extend(s3_client.upload_metadatas(
                 meta_file_paths=update_index,
                 bucket_name=bucket,
                 product=None,
                 root=top_level
-            )
+            ))
         logger.info("index uploading done")
     else:
         logger.info("Bypassing indexing")
 
-    logger.info("Product release %s is successfully"
-                " rolled back from mrrc service.", prod_key)
+    if len(failed_files) == 0 and len(failed_metas) == 0:
+        logger.info("Product release %s is successfully"
+                    " rolled back from mrrc service.", prod_key)
+    else:
+        logger.warning("Product release %s is rolled back from mrrc"
+                       " service, but has some failure as below: \n",
+                       prod_key)
+        if len(failed_files) > 0:
+            logger.warning("Files failed to delete: \n%s",
+                           failed_files)
+        if len(failed_metas) > 0:
+            logger.warning("Metadata files failed to refresh: \n%s",
+                           failed_metas)
 
 
 def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
@@ -524,7 +548,6 @@ def ver_cmp_key():
                 yitems = yitems[:-1] + yitems[-1].split("-")
             big = max(len(xitems), len(yitems))
             for i in range(big):
-                xitem, yitem = None, None
                 try:
                     xitem = xitems[i]
                 except IndexError:
