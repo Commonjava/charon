@@ -22,7 +22,6 @@ from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
-from distutils.version import LooseVersion
 from zipfile import ZipFile
 from tempfile import mkdtemp
 import os
@@ -43,7 +42,7 @@ class MavenMetadata(object):
         self.artifact_id = artifact_id
         self.last_upd_time = datetime.now().strftime("%Y%m%d%H%M%S")
         self.versions = versions
-        self.sorted_versions = sorted(versions, key=LooseVersion)
+        self.sorted_versions = sorted(versions, key=ver_cmp_key())
         self._latest_version = None
         self._release_version = None
 
@@ -496,3 +495,56 @@ def _validate_maven(paths: List[str]) -> Tuple[List[str], str]:
 def _handle_error(err_msgs: List[str]):
     # Reminder: will implement later
     pass
+
+
+def ver_cmp_key():
+    'Used as key function for version sorting'
+    class K:
+        def __init__(self, obj):
+            self.obj = obj
+
+        def __lt__(self, other):
+            return self.__compare(other) < 0
+
+        def __gt__(self, other):
+            return self.__compare(other) > 0
+
+        def __eq__(self, other):
+            return self.__compare(other) == 0
+
+        def __hash__(self) -> int:
+            return self.obj.__hash__()
+
+        def __compare(self, other) -> int:
+            xitems = self.obj.split(".")
+            if "-" in xitems[-1]:
+                xitems = xitems[:-1] + xitems[-1].split("-")
+            yitems = other.obj.split(".")
+            if "-" in yitems[-1]:
+                yitems = yitems[:-1] + yitems[-1].split("-")
+            big = max(len(xitems), len(yitems))
+            for i in range(big):
+                xitem, yitem = None, None
+                try:
+                    xitem = xitems[i]
+                except IndexError:
+                    return -1
+                try:
+                    yitem = yitems[i]
+                except IndexError:
+                    return 1
+                if xitem.isnumeric() and yitem.isnumeric():
+                    xitem = int(xitem)
+                    yitem = int(yitem)
+                elif xitem.isnumeric() and not yitem.isnumeric():
+                    return 1
+                elif not xitem.isnumeric() and yitem.isnumeric():
+                    return -1
+                if xitem > yitem:
+                    return 1
+                elif xitem < yitem:
+                    return -1
+                else:
+                    continue
+            return 0
+    return K
