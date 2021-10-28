@@ -41,8 +41,7 @@ class MavenMetadata(object):
         self.group_id = group_id
         self.artifact_id = artifact_id
         self.last_upd_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        self.versions = set(versions)
-        self.sorted_versions = sorted(versions, key=ver_cmp_key())
+        self.versions = sorted(set(versions), key=ver_cmp_key())
         self._latest_version = None
         self._release_version = None
 
@@ -54,14 +53,14 @@ class MavenMetadata(object):
     def latest_version(self):
         if self._latest_version:
             return self._latest_version
-        self._latest_version = self.sorted_versions[-1]
+        self._latest_version = self.versions[-1]
         return self._latest_version
 
     @property
     def release_version(self):
         if self._release_version:
             return self._release_version
-        self._release_version = self.sorted_versions[-1]
+        self._release_version = self.versions[-1]
         return self._release_version
 
     def __str__(self) -> str:
@@ -372,7 +371,7 @@ def handle_maven_del(
                     " rolled back from mrrc service.", prod_key)
     else:
         logger.warning("Product release %s is rolled back from mrrc"
-                       " service, but has some failure as below: \n",
+                       " service, but has some failure as below:",
                        prod_key)
         if len(failed_files) > 0:
             logger.warning("Files failed to delete: \n%s",
