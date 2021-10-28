@@ -136,7 +136,7 @@ def handle_npm_del(
     logger.info("Start deleting files from s3")
     client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    deleted_files = client.delete_files(
+    (deleted_files, _) = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
     logger.info("Files deletion done\n")
@@ -149,9 +149,10 @@ def handle_npm_del(
     all_meta_files = []
     for _, file in meta_files.items():
         all_meta_files.append(file)
-    deleted_files += client.delete_files(
+    (deleted_metas, _) = client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
     )
+    deleted_files += deleted_metas
     if META_FILE_GEN_KEY in meta_files:
         client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],

@@ -28,6 +28,9 @@ import shutil
 MY_BUCKET = "my_bucket"
 MY_PREFIX = "mock_folder"
 
+COMMONS_LANG3_ZIP_ENTRY = 30
+COMMONS_LANG3_ZIP_MVN_ENTRY = 26
+
 
 @mock_s3
 class S3ClientTest(BaseMRRCTest):
@@ -93,19 +96,7 @@ class S3ClientTest(BaseMRRCTest):
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
     def test_upload_and_delete_files(self):
-        ZIP_ENTRY_NUM = 30
-        test_zip = zipfile.ZipFile(
-            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
-        )
-        temp_root = os.path.join(self.tempdir, "tmp_zip")
-        os.mkdir(temp_root)
-        extract_zip_all(test_zip, temp_root)
-        root = os.path.join(
-            temp_root, "apache-commons-maven-repository/maven-repository"
-        )
-        all_files = []
-        for (directory, _, names) in os.walk(temp_root):
-            all_files.extend([os.path.join(directory, n) for n in names])
+        (temp_root, root, all_files) = self.__prepare_files()
 
         bucket = self.mock_s3.Bucket(MY_BUCKET)
 
@@ -113,7 +104,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
+        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
         for obj in objects:
             self.assertEqual("apache-commons", obj.Object().metadata[PRODUCT_META_KEY])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
@@ -122,7 +113,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
+        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
         for obj in objects:
             self.assertEqual(
                 set("apache-commons,commons-lang3".split(",")),
@@ -135,7 +126,7 @@ class S3ClientTest(BaseMRRCTest):
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(ZIP_ENTRY_NUM, len(objects))
+        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
         for obj in objects:
             self.assertEqual("commons-lang3", obj.Object().metadata["rh-products"])
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
@@ -288,3 +279,30 @@ class S3ClientTest(BaseMRRCTest):
             Key=path, Body="test content pom"
         )
         self.assertTrue(self.s3_client.file_exists_in_bucket(MY_BUCKET, path))
+
+    def test_failed_paths(self):
+        (temp_root, root, all_files) = self.__prepare_files()
+        shutil.rmtree(root)
+
+        # test upload existed files with the product. The product will be added to metadata
+        failed_paths = self.s3_client.upload_files(
+            all_files, bucket_name=MY_BUCKET, product="apache-commons",
+            root=temp_root
+        )
+
+        self.assertEqual(COMMONS_LANG3_ZIP_MVN_ENTRY, len(failed_paths))
+
+    def __prepare_files(self):
+        test_zip = zipfile.ZipFile(
+            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+        )
+        temp_root = os.path.join(self.tempdir, "tmp_zip")
+        os.mkdir(temp_root)
+        extract_zip_all(test_zip, temp_root)
+        root = os.path.join(
+            temp_root, "apache-commons-maven-repository/maven-repository"
+        )
+        all_files = []
+        for (directory, _, names) in os.walk(temp_root):
+            all_files.extend([os.path.join(directory, n) for n in names])
+        return (temp_root, root, all_files)
