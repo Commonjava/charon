@@ -42,7 +42,9 @@ def get_index_template() -> str:
     return get_template("index.html.j2")
 
 
-def path_to_index(top_level: str, valid_paths: List[str], bucket: str):
+def path_to_index(
+    top_level: str, valid_paths: List[str], s3_client: S3Client, bucket: str
+):
     repos = []
     for path in valid_paths:
         if path.startswith(top_level):
@@ -52,7 +54,7 @@ def path_to_index(top_level: str, valid_paths: List[str], bucket: str):
             repos.append(path)
 
     tree = tree_convert(repos)
-    index_files = html_convert(tree, '/', top_level, bucket)
+    index_files = html_convert(tree, '/', top_level, s3_client, bucket)
     return index_files
 
 
@@ -83,16 +85,19 @@ def tree_convert(paths) -> Tree:
     return tree
 
 
-def get_update_list(repos: List[str], top_level: str, bucket: str):
+def get_update_list(
+    repos: List[str], top_level: str, s3_client: S3Client, bucket: str
+):
 
     base_dir = top_level
     if not top_level.endswith('/'):
         base_dir += '/'
     _repos = set(_.replace(base_dir, '') for _ in repos)
-    (deleted_files, delete_index, update_index) = update_items(_repos, [], [], base_dir, bucket)
+    (deleted_files, delete_index, update_index) = update_items(
+        _repos, [], [], base_dir, s3_client, bucket)
     while deleted_files != set():
-        (deleted_files, delete_index, update_index) = update_items(deleted_files, delete_index,
-                                                                   update_index, base_dir, bucket)
+        (deleted_files, delete_index, update_index) = update_items(
+            deleted_files, delete_index, update_index, base_dir, s3_client, bucket)
     # Generate index.html file from every .index file
     for file in list(update_index):
         with open(file, 'r', encoding='utf-8') as f:
@@ -115,8 +120,10 @@ def get_update_list(repos: List[str], top_level: str, bucket: str):
     return (delete_index, update_index)
 
 
-def update_items(deleted_files: Set[str], delete_index: List[str],
-                 update_index: List[str], base_dir: str, bucket: str):
+def update_items(
+    deleted_files: Set[str], delete_index: List[str], update_index: List[str],
+    base_dir: str, s3_client: S3Client, bucket: str
+):
 
     scanned = set()
     _deleted_files = set(deleted_files)
@@ -135,7 +142,7 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
             with open(local_index_file, 'r', encoding='utf-8') as f:
                 items = set(_.replace('\n', '') for _ in f.readlines())
         else:
-            items = load_exist_index(bucket, index_file)
+            items = load_exist_index(s3_client, bucket, index_file)
 
         # scan list to find items in same folder, and remove them from .index file
         for _ in set(deleted_files):
@@ -182,7 +189,9 @@ def update_items(deleted_files: Set[str], delete_index: List[str],
     return (deleted_files, delete_index, update_index)
 
 
-def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
+def html_convert(
+    tree: Tree, path: str, base_dir: str, s3_client: S3Client, bucket: str
+):
     # items that needs to be display, e.g org/
     items, html_files, items_files = set(), [], []
 
@@ -195,7 +204,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
 
         html_files = html_files + html_convert(tree.subtree(tree[child].identifier),
                                                os.path.join(path, tree[child].tag),
-                                               base_dir, bucket)
+                                               base_dir, s3_client, bucket)
         # items should be filled by here
 
     # input tree is already deduplicated so this will not generate duplicated index.html
@@ -204,7 +213,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
         html_location = os.path.join(base_dir, path[1:], 'index.html')
         items_location = os.path.join(base_dir, path[1:], '.index')
 
-        items = items.union(load_exist_index(bucket, os.path.join(path, '.index')[1:]))
+        items = items.union(load_exist_index(s3_client, bucket, os.path.join(path, '.index')[1:]))
 
         items_files.append(items_location)
         with open(items_location, 'w', encoding='utf-8') as index_file:
@@ -226,8 +235,7 @@ def html_convert(tree: Tree, path: str, base_dir: str, bucket: str):
     return html_files + items_files
 
 
-def load_exist_index(bucket: str, path: str) -> Set[str]:
-    s3_client = S3Client()
+def load_exist_index(s3_client: S3Client, bucket: str, path: str) -> Set[str]:
     try:
         content = s3_client.read_file_content(bucket_name=bucket, key=path)
     except ClientError as ex:
