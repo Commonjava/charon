@@ -285,7 +285,7 @@ class S3ClientTest(BaseMRRCTest):
         shutil.rmtree(root)
 
         # test upload existed files with the product. The product will be added to metadata
-        failed_paths = self.s3_client.upload_files(
+        _, failed_paths = self.s3_client.upload_files(
             all_files, bucket_name=MY_BUCKET, product="apache-commons",
             root=temp_root
         )

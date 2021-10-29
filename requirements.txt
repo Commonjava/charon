@@ -3,5 +3,4 @@ jinja2
 boto3
 botocore
 click
-treelib
 requests

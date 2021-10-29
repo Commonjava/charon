@@ -65,7 +65,7 @@ class S3Client(object):
     def upload_files(
         self, file_paths: List[str], bucket_name: str,
         product: str, root="/"
-    ) -> List[str]:
+    ) -> Tuple[List[str], List[str]]:
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
@@ -84,6 +84,8 @@ class S3Client(object):
             * Return all failed to upload files due to any exceptions.
         """
         bucket = self.get_bucket(bucket_name)
+
+        uploaded_files = []
 
         def path_upload_handler(full_file_path: str, path: str) -> bool:
             if not os.path.isfile(full_file_path):
@@ -106,6 +108,7 @@ class S3Client(object):
                     else:
                         fileObject.upload_file(full_file_path)
                     logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
+                    uploaded_files.append(path)
                 except (ClientError, HTTPClientError) as e:
                     logger.error("ERROR: file %s not uploaded to bucket"
                                  " %s due to error: %s ", full_file_path,
@@ -141,12 +144,14 @@ class S3Client(object):
                                                 {PRODUCT_META_KEY: ",".join(prods)})
             return True
 
-        return self.__do_path_cut_and(file_paths=file_paths, fn=path_upload_handler, root=root)
+        return (uploaded_files, self.__do_path_cut_and(
+            file_paths=file_paths, fn=path_upload_handler, root=root
+        ))
 
     def upload_metadatas(
         self, meta_file_paths: List[str], bucket_name: str,
         product: str, root="/"
-    ) -> List[str]:
+    ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
             * The metadata files will always be overwritten for each uploading
@@ -154,6 +159,8 @@ class S3Client(object):
             * Return all failed to upload metadata files due to exceptions
         """
         bucket = self.get_bucket(bucket_name)
+
+        uploaded_files = []
 
         def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
@@ -187,6 +194,7 @@ class S3Client(object):
                 else:
                     self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
+                uploaded_files.append(path)
             except (ClientError, HTTPClientError) as e:
                 logger.error("ERROR: file %s not uploaded to bucket"
                              " %s due to error: %s ", full_file_path,
@@ -194,9 +202,9 @@ class S3Client(object):
                 return False
             return True
 
-        return self.__do_path_cut_and(
+        return (uploaded_files, self.__do_path_cut_and(
             file_paths=meta_file_paths, fn=path_upload_handler, root=root
-        )
+        ))
 
     def delete_files(
         self, file_paths: List[str], bucket_name: str, product: str, root="/"
