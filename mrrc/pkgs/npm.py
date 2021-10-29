@@ -83,7 +83,7 @@ def handle_npm_uploading(
     client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     uploaded_files = []
-    _uploaded_files, failed_files = client.upload_files(
+    _uploaded_files, _ = client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
     uploaded_files.extend(_uploaded_files)
@@ -95,6 +95,7 @@ def handle_npm_uploading(
     )
     logger.info("package.json generation done\n")
 
+    failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
         _uploaded_files, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
@@ -102,6 +103,7 @@ def handle_npm_uploading(
             product=product,
             root=target_dir
         )
+        failed_metas.extend(_failed_metas)
         uploaded_files.extend(_uploaded_files)
         logger.info("package.json uploading done")
 
@@ -113,9 +115,10 @@ def handle_npm_uploading(
             index_files += [meta_files[META_FILE_GEN_KEY]]
         created_files = indexing.handle_create_index(target_dir, index_files, client, bucket)
         logger.info("Start uploading index files to s3")
-        client.upload_metadatas(
+        _, _failed_metas = client.upload_metadatas(
             meta_file_paths=created_files, bucket_name=bucket, product=None, root=target_dir
         )
+        failed_metas.extend(_failed_metas)
         logger.info("Index files uploading done\n")
     else:
         logger.info("Bypass indexing")

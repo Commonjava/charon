@@ -48,6 +48,7 @@ def handle_create_index(
 
     repos, updated_indexes, temp_dirs = set(), set(), set()
 
+    # chopp down every lines, left s3 client key format
     for path in uploaded_files:
         path = path.replace(top_level, '')
         repos.add(path)
@@ -58,6 +59,7 @@ def handle_create_index(
             f.write(os.path.basename(repo) + '\n')
         updated_indexes.add(os.path.join(os.path.dirname(repo), '.index'))
 
+    # updated_indexes containes only objects not in s3, record them on disk
     for index in updated_indexes:
         items = load_s3_index(s3_client, bucket, index)
         if items != set():
@@ -68,8 +70,9 @@ def handle_create_index(
         else:
             temp_dirs.add(os.path.dirname(index))
 
-    for dir in temp_dirs:
-        virtual_folder_create(dir, top_level, s3_client, bucket, updated_indexes)
+    # the function will also merge indexes on disk
+    for temp_dir in temp_dirs:
+        virtual_folder_create(temp_dir, top_level, s3_client, bucket, updated_indexes)
 
     updated_indexes = {os.path.join(top_level, _) for _ in updated_indexes}
     html_files = index_to_html(updated_indexes, top_level)
@@ -94,12 +97,14 @@ def handle_delete_index(
             f.write(os.path.basename(repo) + '\n')
         updated_indexes.add(os.path.join(os.path.dirname(repo), '.index'))
 
+    # It's certain the index is not placed locally, load them from s3
     for index in set(updated_indexes):
         items = load_s3_index(s3_client, bucket, index)
         with open(os.path.join(top_level, index), 'r+', encoding='utf-8') as f:
             _items = set(_.replace('\n', '') for _ in f.readlines())
             left_items = items.difference(_items)
             if left_items != set():
+                # cleans everthing locally
                 f.seek(0)
                 f.truncate()
                 for item in left_items:
@@ -109,8 +114,9 @@ def handle_delete_index(
                 updated_indexes.remove(index)
                 delete_indexes.add(index)
 
-    for dir in temp_dirs:
-        virtual_folder_delete(dir, top_level, s3_client, bucket, updated_indexes, delete_indexes)
+    for temp_dir in temp_dirs:
+        virtual_folder_delete(temp_dir, top_level, s3_client, bucket,
+                              updated_indexes, delete_indexes)
 
     html_files = set()
     if updated_indexes != set():
@@ -122,6 +128,7 @@ def handle_delete_index(
     return delete_indexes, updated_indexes.union(html_files)
 
 
+# e.g path: org/apache/httpcomponents/httpclient/4.5.6, updated_indexes contains every local index
 def virtual_folder_create(
     path: str, base_dir: str, s3_client: S3Client, bucket: str, updated_indexes: Set[str]
 ):
@@ -135,7 +142,8 @@ def virtual_folder_create(
         if item in items:
             return
         else:
-            with open(local_index_file, 'a+', encoding='utf-8') as f:
+            # only appends line, no truncate and no overwrite
+            with open(local_index_file, 'a', encoding='utf-8') as f:
                 f.write(item + '/\n')
     else:
         items = load_s3_index(s3_client, bucket, dir_index)
