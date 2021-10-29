@@ -242,7 +242,7 @@ def handle_maven_uploading(
         index_files = valid_mvn_paths
         if META_FILE_GEN_KEY in meta_files:
             index_files = index_files + meta_files[META_FILE_GEN_KEY]
-        html_files = indexing.path_to_index(top_level, index_files, bucket)
+        html_files = indexing.path_to_index(top_level, index_files, s3_client, bucket)
         failed_metas.extend(s3_client.upload_metadatas(
             meta_file_paths=html_files, bucket_name=bucket, product=None, root=top_level
         ))
@@ -350,7 +350,8 @@ def handle_maven_del(
 
     if do_index:
         logger.info("Start uploading index to s3")
-        (delete_index, update_index) = indexing.get_update_list(deleted_files, top_level, bucket)
+        (delete_index, update_index) = indexing.get_update_list(
+            deleted_files, top_level, s3_client, bucket)
 
         s3_client.delete_files(
             file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
