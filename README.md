@@ -29,25 +29,10 @@ These commands will upload and distribute files in AWS via AWS CDK. Please
 follow [boto3 access configuration](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html)
 to configure AWS access credentials.
 
-### mrrc-init: Init the configuration of the whole mrrc tool
-
-```bash
-usage: mrrc init
-```
-
-The command will be executed in verbose mode with several steps of prompt to let
-user input some mandatory items. This information will be stored in
-$HOME/.mrrc/config.json(or yaml or something similar) after command execution
-for the following usage. All following command will check this config.json for
-valid configurations, and if invalid will ask user to do the mrrc-init for
-correction.
-(So we can pre-define this config.json in vm/container for automation through
-configmap/secrets or similar stuff)
-
 ### mrrc-upload: upload a repo to S3
 
 ```bash
-usage: mrrc upload $tarball --product ${prod} --version ${ver} [--ga] [--debug]
+usage: mrrc upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug]
 ```
 
 This command will upload the repo in tarball to S3.
@@ -57,11 +42,13 @@ It will auto-detect if the tarball is for maven or npm
   * Scan the tarball for all paths and collect them all.
   * Check the existence in S3 for all those paths.
   * Filter out the paths in tarball based on:
-    * filter_pattern in config.json
+    * filter_pattern in flags, or
+    * filter_pattern in config.json if no flag
   * Generate/refresh all maven-metadata.xml for all GA combined
     with both S3 and local filtered pom.xml
-  * Upload these artifacts to S3 and then refresh the CDN
-    content of these artifacts.
+  * Upload these artifacts to S3 with metadata of the product.
+  * If the artifacts already exists in S3, update the metadata
+    of the product by appending the new product.
 
 * NPM type (TBH): We need to know the exact tarball structure
   of npm repo
@@ -72,36 +59,19 @@ It will auto-detect if the tarball is for maven or npm
 ### mrrc-delete: delete repo/paths from S3
 
 ```bash
-usage: mrrc delete $tarball|$pathfile --product ${prod} --version ${ver} [--ga] [--debug]
+usage: mrrc delete $tarball|$pathfile --product/-p ${prod}
+--version/-v ${ver} [--root_path] [--debug]
 ```
 
 This command will delete some paths from repo in S3.
 
 * Scan tarball or read pathfile for the paths to delete
-* During or after the paths' deletion, regenerate the metadata files and index
-  files for both types.
-
-### (Optional?) mrrc-gen: Generate metadata files
-
-```bash
-usage: mrrc gen --type ${maven|npm|index} ${GA|NpmPkg|Path}
-```
-
-This command will generate or refresh metadata files
-
-* For type maven, it will scan the GA(group:artifact) path for all artifacts
-  versions, and re-generate the maven-metadata.xml based on the scan result
-* For type npm, it will scan the NpmPkg path(Question: what's structure?) and
-  re-generate the versions in existed package.json based on the scan result.
-* For type index, it scans the specified path and regenerate the index files (
-  recursively?) in that path to refresh index file in CDN.
-
-### (Optional?)mrrc-ls: List files of repo in S3
-
-```bash
-usage: mrrc ls $path [-R]
-```
-
-This command will list paths in specified path.
-
-* -R(--recursive) means list files recursively
+* Combine the product flag by --product and --version
+* Filter out the paths in tarball based on:
+  * filter_pattern in flags, or
+  * filter_pattern in config.json if no flag
+* If the artifacts have other products in the metadata,
+  remove the product of this tarball from the metadata
+  but not delete the artifacts themselves.
+* During or after the paths' deletion, regenerate the
+  metadata files and index files for both types.
