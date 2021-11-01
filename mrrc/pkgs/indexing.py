@@ -137,6 +137,7 @@ def virtual_folder_create(
     local_index_file = os.path.join(base_dir, dir_index)
     updated_indexes.add(dir_index)
 
+    # first load from disk to see if .index file exists that should contain current path
     if os.path.exists(local_index_file):
         items = load_local_index(local_index_file)
         if item in items:
@@ -146,20 +147,25 @@ def virtual_folder_create(
             with open(local_index_file, 'a', encoding='utf-8') as f:
                 f.write(item + '/\n')
     else:
+        # if the .index file does not exist on local, try load it from s3
         items = load_s3_index(s3_client, bucket, dir_index)
+        # items will be empty if the s3 does not contain this .index file
         if items == set():
             with open(local_index_file, 'a+', encoding='utf-8') as f:
                 f.write(item + '/\n')
+            # when this is not root '.index' file, pass the upper folder to recursive
+            # this creates it's upper folder
             if dir_index != '.index':
                 virtual_folder_create(os.path.dirname(path), base_dir, s3_client, bucket,
                                       updated_indexes)
+        # if we load something from s3, that means the upper folder is present on their .index file
+        # then write everthing to local disk and our path as well
         else:
             with open(local_index_file, 'a+', encoding='utf-8') as f:
                 for _ in items:
                     f.write(_ + '\n')
                 if item not in items:
                     f.write(item + '/\n')
-                    updated_indexes.add(dir_index)
 
     return
 
