@@ -11,7 +11,7 @@ on:
 jobs:
   test:
     name: Python ${{ matrix.os.python }} tests on ${{ matrix.os.name }}-${{ matrix.os.version }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     strategy:
       fail-fast: false
@@ -65,7 +65,7 @@ jobs:
   coveralls-finish:
     name: Finish coveralls-python
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Finished
         run: |
