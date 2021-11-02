@@ -29,6 +29,15 @@ These commands will upload and distribute files in AWS via AWS CDK. Please
 follow [boto3 access configuration](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html)
 to configure AWS access credentials.
 
+### Configurations
+
+* AWS configurations. The uploader uses aws boto3 to access AWS S3 bucket, and follows the AWS configurations statndards. You can use:
+  * AWS configurations files: $HOME/.aws/config and $HOME/.aws/credentials. (For format see [AWS config format](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html))
+  * [System environment varaibles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html)
+* Configurations for uploader. We use $HOME/.mrrc/mrrc-uploader. conf to hold these configurations. Currently, The uploader has two configurations:
+  * ignore_patterns. This is used to filter out some files that are not allowed to upload. It is a json array of regular expressions. (Example: ["README.md", "example.txt"]). This can also be retrieved from "MRRC_IGNORE_PATTERNS" system environment variable.
+  * bucket. This is used to specify which AWS S3 bucket to upload to with the tool. This config can also be retrieved from "mrrc_bucket" system environment variable.
+
 ### mrrc-upload: upload a repo to S3
 
 ```bash

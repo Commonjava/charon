@@ -50,16 +50,16 @@ jobs:
       - name: Run flake8 for Python 3
         uses: containerbuildsystem/actions/flake8@master
 
-  markdownlint:
-    name: Markdownlint
-    runs-on: ubuntu-latest
+  # markdownlint:
+  #   name: Markdownlint
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Check out repo
+  #       uses: actions/checkout@v2
 
-      - name: Run markdownlint
-        uses: containerbuildsystem/actions/markdownlint@master
+  #     - name: Run markdownlint
+  #       uses: containerbuildsystem/actions/markdownlint@master
 
   pylint:
     name: Pylint analyzer for Python ${{ matrix.os.python }}
