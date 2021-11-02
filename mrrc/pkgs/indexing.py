@@ -132,10 +132,11 @@ def handle_delete_index(
 def virtual_folder_create(
     path: str, base_dir: str, s3_client: S3Client, bucket: str, updated_indexes: Set[str]
 ):
-    item = os.path.basename(path)
+    item = os.path.basename(path) + '/'
     dir_index = os.path.join(os.path.dirname(path), '.index')
     local_index_file = os.path.join(base_dir, dir_index)
     updated_indexes.add(dir_index)
+    rec_flag = False
 
     # first load from disk to see if .index file exists that should contain current path
     if os.path.exists(local_index_file):
@@ -145,19 +146,15 @@ def virtual_folder_create(
         else:
             # only appends line, no truncate and no overwrite
             with open(local_index_file, 'a', encoding='utf-8') as f:
-                f.write(item + '/\n')
+                f.write(item + '\n')
     else:
         # if the .index file does not exist on local, try load it from s3
         items = load_s3_index(s3_client, bucket, dir_index)
         # items will be empty if the s3 does not contain this .index file
         if items == set():
             with open(local_index_file, 'a+', encoding='utf-8') as f:
-                f.write(item + '/\n')
-            # when this is not root '.index' file, pass the upper folder to recursive
-            # this creates it's upper folder
-            if dir_index != '.index':
-                virtual_folder_create(os.path.dirname(path), base_dir, s3_client, bucket,
-                                      updated_indexes)
+                f.write(item + '\n')
+                rec_flag = True
         # if we load something from s3, that means the upper folder is present on their .index file
         # then write everthing to local disk and our path as well
         else:
@@ -165,7 +162,12 @@ def virtual_folder_create(
                 for _ in items:
                     f.write(_ + '\n')
                 if item not in items:
-                    f.write(item + '/\n')
+                    f.write(item + '\n')
+        # when this is not root '.index' file, pass the upper folder to recursive
+        # this creates it's upper folder
+        if rec_flag and dir_index != '.index':
+            virtual_folder_create(os.path.dirname(path), base_dir, s3_client, bucket,
+                                  updated_indexes)
 
     return
 
@@ -195,9 +197,6 @@ def virtual_folder_delete(
                 f.truncate()
                 for i in letf_items:
                     f.write(i + '\n')
-        if rec_flag and dir_index != '.index':
-            virtual_folder_delete(os.path.dirname(path), base_dir, s3_client, bucket,
-                                  updated_indexes, delete_indexes)
     else:
         items = load_s3_index(s3_client, bucket, dir_index)
         with open(local_index_file, 'w+', encoding='utf-8') as f:
@@ -205,12 +204,14 @@ def virtual_folder_delete(
             if letf_items == set():
                 updated_indexes.remove(dir_index)
                 delete_indexes.add(dir_index)
-                if dir_index != '.index':
-                    virtual_folder_delete(os.path.dirname(path), base_dir, s3_client, bucket,
-                                          updated_indexes, delete_indexes)
+                rec_flag = True
             else:
                 for i in letf_items:
                     f.write(i + '\n')
+
+    if rec_flag and dir_index != '.index':
+        virtual_folder_delete(os.path.dirname(path), base_dir, s3_client, bucket,
+                              updated_indexes, delete_indexes)
 
     return
 
