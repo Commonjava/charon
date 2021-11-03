@@ -167,7 +167,6 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/") -> str:
 def handle_maven_uploading(
     repo: str,
     prod_key: str,
-    ga: bool,
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
@@ -228,7 +227,7 @@ def handle_maven_uploading(
     failed_metas = []
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
-        logger.info("Start uploading maven-metadata.xml to s3")
+        logger.info("Start updating maven-metadata.xml to s3")
         _uploaded_files, _failed_metas = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
@@ -237,21 +236,23 @@ def handle_maven_uploading(
         )
         failed_metas.extend(_failed_metas)
         uploaded_files.extend(_uploaded_files)
-        logger.info("maven-metadata.xml uploading done\n")
+        logger.info("maven-metadata.xml updating done\n")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
-        logger.info("Start uploading index files to s3")
+        logger.info("Start generating index files to s3")
         index_files = uploaded_files
         if META_FILE_GEN_KEY in meta_files:
             index_files = index_files + meta_files[META_FILE_GEN_KEY]
         created_files = indexing.handle_create_index(top_level, index_files, s3_client, bucket)
+        logger.info("Index files generation done.\n")
+        logger.info("Start updating index files to s3")
         _uploaded_files, _failed_metas = s3_client.upload_metadatas(
             meta_file_paths=created_files, bucket_name=bucket, product=None, root=top_level
         )
         failed_metas.extend(_failed_metas)
-        logger.info("Index files uploading done\n")
+        logger.info("Index files updating done\n")
     else:
         logger.info("Bypass indexing")
 
@@ -272,7 +273,6 @@ def handle_maven_uploading(
 def handle_maven_del(
     repo: str,
     prod_key: str,
-    ga: bool,
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
@@ -330,7 +330,7 @@ def handle_maven_del(
 
     # 6. Upload all maven-metadata.xml. We need to delete metadata files
     # firstly for all affected GA, and then replace the theirs content.
-    logger.info("Start uploading maven-metadata.xml to s3")
+    logger.info("Start updating maven-metadata.xml to s3")
     all_meta_files = []
     for _, files in meta_files.items():
         all_meta_files.extend(files)
@@ -352,13 +352,14 @@ def handle_maven_del(
                 deleted_files.remove(m_file.replace(top_level, ''))
             elif m_file.replace(top_level + '/', '') in deleted_files:
                 deleted_files.remove(m_file.replace(top_level + '/', ''))
-    logger.info("maven-metadata.xml uploading done\n")
+    logger.info("maven-metadata.xml updating done\n")
 
     if do_index:
-        logger.info("Start uploading index to s3")
+        logger.info("Start generating index files for all changed entries")
         delete_index, update_index = indexing.handle_delete_index(
             top_level, deleted_files, s3_client, bucket)
-
+        logger.info("Index files generation done.\n")
+        logger.info("Start updating index to s3")
         if update_index != []:
             _, _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=update_index,
@@ -371,7 +372,7 @@ def handle_maven_del(
         s3_client.delete_files(
             file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
         )
-        logger.info("index uploading done")
+        logger.info("Index files updating done.\n")
     else:
         logger.info("Bypassing indexing")
 

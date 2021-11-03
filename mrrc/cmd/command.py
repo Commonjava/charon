@@ -47,14 +47,14 @@ def init():
     help="The product version, used in repository definition metadata",
     multiple=False,
 )
-@option(
-    "--ga",
-    "-g",
-    is_flag=True,
-    default=False,
-    multiple=False,
-    help="Push content to the GA group (as opposed to earlyaccess)",
-)
+# @option(
+#     "--ga",
+#     "-g",
+#     is_flag=True,
+#     default=False,
+#     multiple=False,
+#     help="Push content to the GA group (as opposed to earlyaccess)",
+# )
 @option(
     "--root_path",
     "-r",
@@ -77,7 +77,6 @@ def upload(
     repo: str,
     product: str,
     version: str,
-    ga=False,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False
@@ -98,7 +97,7 @@ def upload(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_uploading(archive_path, product_key, ga,
+        handle_maven_uploading(archive_path, product_key,
                                ignore_patterns_list,
                                root=root_path,
                                bucket_name=__get_bucket())
@@ -118,14 +117,14 @@ def upload(
     help="The product version, used in repository definition metadata",
     multiple=False,
 )
-@option(
-    "--ga",
-    "-g",
-    is_flag=True,
-    default=False,
-    multiple=False,
-    help="Push content to the GA group (as opposed to earlyaccess)",
-)
+# @option(
+#     "--ga",
+#     "-g",
+#     is_flag=True,
+#     default=False,
+#     multiple=False,
+#     help="Push content to the GA group (as opposed to earlyaccess)",
+# )
 @option(
     "--root_path",
     "-r",
@@ -148,7 +147,6 @@ def delete(
     repo: str,
     product: str,
     version: str,
-    ga=False,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False
@@ -169,7 +167,7 @@ def delete(
         else:
             ignore_patterns_list = __get_ignore_patterns()
         logger.info("This is a maven archive")
-        handle_maven_del(archive_path, product_key, ga,
+        handle_maven_del(archive_path, product_key,
                          ignore_patterns_list,
                          root=root_path,
                          bucket_name=__get_bucket())
