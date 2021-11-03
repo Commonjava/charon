@@ -40,8 +40,8 @@ class S3Client(object):
 
     def __init_aws_client(self, extra_conf=None):
         aws_profile = os.getenv("AWS_PROFILE", None)
-        logger.debug("Using aws profile: %s", aws_profile)
         if aws_profile:
+            logger.debug("Using aws profile: %s", aws_profile)
             s3_session = session.Session(profile_name=aws_profile)
         else:
             s3_session = session.Session()

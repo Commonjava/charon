@@ -72,7 +72,7 @@ class MavenDeleteTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
-            test_zip, product_456, True,
+            test_zip, product_456,
             bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
@@ -120,7 +120,7 @@ class MavenDeleteTest(BaseMRRCTest):
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
-            test_zip, product_459, True,
+            test_zip, product_459,
             bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
@@ -136,7 +136,7 @@ class MavenDeleteTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
 
         handle_maven_del(
-            test_zip, product_456, True,
+            test_zip, product_456,
             ignore_patterns=[".*.sha1"],
             bucket_name=TEST_BUCKET,
             dir_=self.tempdir,
@@ -188,13 +188,13 @@ class MavenDeleteTest(BaseMRRCTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, True,
+            test_zip, product_456,
             bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459, True,
+            test_zip, product_459,
             bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
