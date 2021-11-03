@@ -213,9 +213,11 @@ def handle_maven_uploading(
     logger.info("Start uploading files to s3")
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    failed_files = s3_client.upload_files(
+    uploaded_files = []
+    _uploaded_files, failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
+    uploaded_files.extend(_uploaded_files)
     logger.info("Files uploading done\n")
 
     # 5. Use uploaded poms to scan s3 for metadata refreshment
@@ -227,25 +229,28 @@ def handle_maven_uploading(
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start uploading maven-metadata.xml to s3")
-        failed_metas.extend(s3_client.upload_metadatas(
+        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=prod_key,
             root=top_level
-        ))
+        )
+        failed_metas.extend(_failed_metas)
+        uploaded_files.extend(_uploaded_files)
         logger.info("maven-metadata.xml uploading done\n")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
         logger.info("Start uploading index files to s3")
-        index_files = valid_mvn_paths
+        index_files = uploaded_files
         if META_FILE_GEN_KEY in meta_files:
             index_files = index_files + meta_files[META_FILE_GEN_KEY]
-        html_files = indexing.path_to_index(top_level, index_files, s3_client, bucket)
-        failed_metas.extend(s3_client.upload_metadatas(
-            meta_file_paths=html_files, bucket_name=bucket, product=None, root=top_level
-        ))
+        created_files = indexing.handle_create_index(top_level, index_files, s3_client, bucket)
+        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
+            meta_file_paths=created_files, bucket_name=bucket, product=None, root=top_level
+        )
+        failed_metas.extend(_failed_metas)
         logger.info("Index files uploading done\n")
     else:
         logger.info("Bypass indexing")
@@ -310,7 +315,7 @@ def handle_maven_del(
     logger.info("Start deleting files from s3")
     s3_client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    (deleted_files, failed_files) = s3_client.delete_files(
+    deleted_files, failed_files = s3_client.delete_files(
         valid_mvn_paths,
         bucket_name=bucket,
         product=prod_key,
@@ -335,13 +340,14 @@ def handle_maven_del(
     deleted_files += deleted_metas
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        failed_metas = s3_client.upload_metadatas(
+        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
             root=top_level
         )
-        for m_file in meta_files[META_FILE_GEN_KEY]:
+        failed_metas.extend(_failed_metas)
+        for m_file in _uploaded_files:
             if m_file.replace(top_level, '') in deleted_files:
                 deleted_files.remove(m_file.replace(top_level, ''))
             elif m_file.replace(top_level + '/', '') in deleted_files:
@@ -350,19 +356,21 @@ def handle_maven_del(
 
     if do_index:
         logger.info("Start uploading index to s3")
-        (delete_index, update_index) = indexing.get_update_list(
-            deleted_files, top_level, s3_client, bucket)
+        delete_index, update_index = indexing.handle_delete_index(
+            top_level, deleted_files, s3_client, bucket)
 
-        s3_client.delete_files(
-            file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
-        )
         if update_index != []:
-            failed_metas.extend(s3_client.upload_metadatas(
+            _, _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=update_index,
                 bucket_name=bucket,
                 product=None,
                 root=top_level
-            ))
+            )
+            failed_metas.extend(_failed_metas)
+
+        s3_client.delete_files(
+            file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
+        )
         logger.info("index uploading done")
     else:
         logger.info("Bypassing indexing")

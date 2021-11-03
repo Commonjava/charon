@@ -82,9 +82,11 @@ def handle_npm_uploading(
     logger.info("Start uploading files to s3")
     client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    client.upload_files(
+    uploaded_files = []
+    _uploaded_files, _ = client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
+    uploaded_files.extend(_uploaded_files)
     logger.info("Files uploading done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
@@ -93,26 +95,30 @@ def handle_npm_uploading(
     )
     logger.info("package.json generation done\n")
 
+    failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        client.upload_metadatas(
+        _uploaded_files, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=product,
             root=target_dir
         )
+        failed_metas.extend(_failed_metas)
+        uploaded_files.extend(_uploaded_files)
         logger.info("package.json uploading done")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
-        index_files = valid_paths
+        index_files = uploaded_files
         if META_FILE_GEN_KEY in meta_files:
             index_files += [meta_files[META_FILE_GEN_KEY]]
-        html_files = indexing.path_to_index(target_dir, index_files, client, bucket)
+        created_files = indexing.handle_create_index(target_dir, index_files, client, bucket)
         logger.info("Start uploading index files to s3")
-        client.upload_metadatas(
-            meta_file_paths=html_files, bucket_name=bucket, product=None, root=target_dir
+        _, _failed_metas = client.upload_metadatas(
+            meta_file_paths=created_files, bucket_name=bucket, product=None, root=target_dir
         )
+        failed_metas.extend(_failed_metas)
         logger.info("Index files uploading done\n")
     else:
         logger.info("Bypass indexing")
@@ -136,7 +142,7 @@ def handle_npm_del(
     logger.info("Start deleting files from s3")
     client = S3Client()
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    (deleted_files, _) = client.delete_files(
+    deleted_files, _ = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
     logger.info("Files deletion done\n")
@@ -149,18 +155,20 @@ def handle_npm_del(
     all_meta_files = []
     for _, file in meta_files.items():
         all_meta_files.append(file)
-    (deleted_metas, _) = client.delete_files(
+    deleted_metas, _ = client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
     )
     deleted_files += deleted_metas
+    failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        client.upload_metadatas(
+        _uploaded_files, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=None,
             root=target_dir
         )
-        for m_file in [meta_files[META_FILE_GEN_KEY]]:
+        failed_metas.extend(_failed_metas)
+        for m_file in _uploaded_files:
             if m_file.replace(target_dir, '') in deleted_files:
                 deleted_files.remove(m_file.replace(target_dir, ''))
             elif m_file.replace(target_dir + '/', '') in deleted_files:
@@ -169,18 +177,21 @@ def handle_npm_del(
 
     if do_index:
         logger.info("Start uploading index to s3")
-        (delete_index, update_index) = indexing.get_update_list(
-            deleted_files, target_dir, client, bucket)
-        client.delete_files(
-            file_paths=delete_index, bucket_name=bucket, product=None, root=target_dir
-        )
+        delete_index, update_index = indexing.handle_delete_index(
+            target_dir, deleted_files, client, bucket)
+
         if update_index != []:
-            client.upload_metadatas(
+            _, _failed_metas = client.upload_metadatas(
                 meta_file_paths=update_index,
                 bucket_name=bucket,
                 product=None,
                 root=target_dir
             )
+            failed_metas.extend(_failed_metas)
+
+        client.delete_files(
+            file_paths=delete_index, bucket_name=bucket, product=None, root=target_dir
+        )
         logger.info("index uploading done")
     else:
         logger.info("Bypassing indexing")

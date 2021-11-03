@@ -148,6 +148,15 @@ class MavenFileIndexTest(BaseMRRCTest):
             index_content)
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
 
+        indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"org/\" title=\"org/\">org/</a>", index_content)
+        self.assertIn(
+            "<a href=\"commons-logging/\" title=\"commons-logging/\">commons-logging/</a>",
+            index_content
+        )
+        self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+
     def test_deletion_index(self):
         self.__prepare_content()
 
