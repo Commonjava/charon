@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@ import os
 import boto3
 from moto import mock_s3
 
-from mrrc.pkgs.npm import handle_npm_uploading, read_package_metadata_from_content
-from mrrc.storage import S3Client
-from tests.base import BaseMRRCTest
+from hermes.pkgs.npm import handle_npm_uploading, read_package_metadata_from_content
+from hermes.storage import S3Client
+from tests.base import BaseTest
 
 MY_BUCKET = "npm_bucket"
 
 
 @mock_s3
-class NPMMetadataOnS3Test(BaseMRRCTest):
+class NPMMetadataOnS3Test(BaseTest):
     def setUp(self):
         super().setUp()
         self.mock_s3 = self.__prepare_s3()

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,20 +17,20 @@ import unittest
 import tempfile
 import os
 import shutil
-from mrrc.utils.files import write_file
+from hermes.utils.files import write_file
 
 
-class BaseMRRCTest(unittest.TestCase):
+class BaseTest(unittest.TestCase):
     def setUp(self):
         self.change_home()
-        mrrc_config_base = os.path.join(self.tempdir, '.mrrc')
-        self.__prepare_template(mrrc_config_base)
+        config_base = self.get_config_base()
+        self.__prepare_template(config_base)
         default_config_content = """
-        [mrrc]
+        [hermes]
         ignore_patterns = [".*^(redhat).*",".*snapshot.*"]
-        bucket = mrrc-test
+        bucket = hermes-test
         """
-        self.prepare_config(mrrc_config_base, default_config_content)
+        self.prepare_config(config_base, default_config_content)
 
     def tearDown(self):
         shutil.rmtree(self.tempdir, ignore_errors=True)
@@ -38,22 +38,25 @@ class BaseMRRCTest(unittest.TestCase):
 
     def change_home(self):
         self.old_environ = os.environ.copy()
-        self.tempdir = tempfile.mkdtemp(prefix='mrrc-test-')
+        self.tempdir = tempfile.mkdtemp(prefix='hermes-test-')
         # Configure environment and copy templates
         os.environ['HOME'] = self.tempdir
 
     def __prepare_template(self, config_base):
-        mrrc_template_path = os.path.join(config_base, 'template')
+        template_path = os.path.join(config_base, 'template')
         os.mkdir(config_base)
-        shutil.copytree(os.path.join(os.getcwd(), "template"), mrrc_template_path)
-        if not os.path.isdir(mrrc_template_path):
+        shutil.copytree(os.path.join(os.getcwd(), "template"), template_path)
+        if not os.path.isdir(template_path):
             self.fail("Template initilization failed!")
 
     def prepare_config(self, config_base, file_content):
-        config_path = os.path.join(config_base, "mrrc-uploader.conf")
+        config_path = os.path.join(config_base, "hermes.conf")
         write_file(config_path, file_content)
         if not os.path.isfile(config_path):
             self.fail("Configuration initilization failed!")
 
     def get_temp_dir(self) -> str:
         return self.tempdir
+
+    def get_config_base(self) -> str:
+        return os.path.join(self.get_temp_dir(), '.hermes')

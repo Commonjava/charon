@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,31 +19,32 @@ import os
 import logging
 import json
 
-CONFIG_FILE = "mrrc-uploader.conf"
+CONFIG_FILE = "hermes.conf"
 
-SECTION_MRRC = "mrrc"
-MRRC_IGNORE_PATTERN = "ignore_patterns"
+SECTION_HERMES = "hermes"
+IGNORE_PATTERN = "ignore_patterns"
 
 AWS_BUCKET = "bucket"
-AWS_DEFAULT_BUCKET = "mrrc"
+AWS_DEFAULT_BUCKET = "hermes"
 
 
 logger = logging.getLogger(__name__)
 
 
-class MrrcConfig(object):
-    """MrrcConfig is used to store all configurations for mrrc-uploader tools.
-    The configuration file will be named as mrrc-uploader.conf, and will be stored
-    in $HOME/.mrrc/ folder by default.
+class HermesConfig(object):
+    """HermesConfig is used to store all configurations for hermes
+    tools.
+    The configuration file will be named as hermes.conf, and will be stored
+    in $HOME/.hermes/ folder by default.
     """
     def __init__(self, data: ConfigParser):
         try:
-            self.__mrrc_configs = dict(data.items(SECTION_MRRC))
+            self.__hermes_configs = dict(data.items(SECTION_HERMES))
         except NoSectionError:
             pass
 
     def get_ignore_patterns(self) -> List[str]:
-        pattern_str = self.__val_or_default(self.__mrrc_configs, MRRC_IGNORE_PATTERN)
+        pattern_str = self.__val_or_default(self.__hermes_configs, IGNORE_PATTERN)
         if pattern_str and pattern_str.strip() != "":
             try:
                 return json.loads(pattern_str)
@@ -54,10 +55,10 @@ class MrrcConfig(object):
         return None
 
     def get_aws_bucket(self) -> str:
-        bucket = self.__val_or_default(self.__mrrc_configs, AWS_BUCKET)
+        bucket = self.__val_or_default(self.__hermes_configs, AWS_BUCKET)
         if not bucket:
-            logger.warning("%s not defined in mrrc configuration,"
-                           " will use default 'mrrc' bucket.", AWS_BUCKET)
+            logger.warning("%s not defined in hermes configuration,"
+                           " will use default 'hermes' bucket.", AWS_BUCKET)
             return AWS_DEFAULT_BUCKET
         return bucket
 
@@ -67,18 +68,18 @@ class MrrcConfig(object):
         return section[key] if section and key in section else default
 
 
-def mrrc_config():
+def get_config():
     parser = ConfigParser()
-    config_file = os.path.join(os.getenv("HOME"), ".mrrc", CONFIG_FILE)
+    config_file = os.path.join(os.getenv("HOME"), ".hermes", CONFIG_FILE)
     if not parser.read(config_file):
         logger.warning("Warning: config file does not exist: %s", config_file)
         return None
-    return MrrcConfig(parser)
+    return HermesConfig(parser)
 
 
 def get_template(template_file: str) -> str:
     template = os.path.join(
-        os.getenv("HOME"), ".mrrc/template", template_file
+        os.getenv("HOME"), ".hermes/template", template_file
     )
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:

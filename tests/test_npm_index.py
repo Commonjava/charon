@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.pkgs.npm import handle_npm_uploading, handle_npm_del
-from mrrc.storage import CHECKSUM_META_KEY
-from tests.base import BaseMRRCTest
+from hermes.pkgs.npm import handle_npm_uploading, handle_npm_del
+from hermes.storage import CHECKSUM_META_KEY
+from tests.base import BaseTest
 from moto import mock_s3
 import boto3
 import os
@@ -44,7 +44,7 @@ COMMONS_ROOT_INDEX = "index.html"
 
 
 @mock_s3
-class NpmFileIndexTest(BaseMRRCTest):
+class NpmFileIndexTest(BaseTest):
     def setUp(self):
         super().setUp()
         # mock_s3 is used to generate expected content

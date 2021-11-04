@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from botocore.exceptions import ClientError
-from mrrc.config import get_template
-from mrrc.storage import S3Client
+from hermes.config import get_template
+from hermes.storage import S3Client
 from jinja2 import Template
 import os
 import logging

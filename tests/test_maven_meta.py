@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ import shutil
 import zipfile
 from xml.dom import minidom
 
-import mrrc.pkgs.maven as mvn
-import mrrc.utils.archive as archive
-from tests.base import BaseMRRCTest
+import hermes.pkgs.maven as mvn
+import hermes.utils.archive as archive
+from tests.base import BaseTest
 
 
-class MavenMetadataTest(BaseMRRCTest):
+class MavenMetadataTest(BaseTest):
     def test_general_meta(self):
         try:
             mvn.MavenMetadata("foo", "bar", ["1.0", "1.0.GA"])

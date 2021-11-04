@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import sys
 from locale import nl_langinfo, CODESET
 from os import fdopen, dup
 
-from mrrc.constants import MRRC_LOGGING_FMT
+from hermes.constants import HERMES_LOGGING_FMT
 
 
 class EncodedStream(object):
@@ -45,7 +45,7 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(name="mrrc", level=logging.DEBUG, handler=None):
+def set_logging(name="hermes", level=logging.DEBUG, handler=None):
     # create logger
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
@@ -54,7 +54,7 @@ def set_logging(name="mrrc", level=logging.DEBUG, handler=None):
     logger.setLevel(level)
 
     # create formatter
-    formatter = logging.Formatter(fmt=MRRC_LOGGING_FMT)
+    formatter = logging.Formatter(fmt=HERMES_LOGGING_FMT)
 
     if not handler:
         # create console handler and set level to debug
@@ -69,6 +69,6 @@ def set_logging(name="mrrc", level=logging.DEBUG, handler=None):
     # add ch to logger
     logger.addHandler(handler)
 
-    logger = logging.getLogger('mrrc')
+    logger = logging.getLogger('hermes')
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
         hdlr.setFormatter(formatter)

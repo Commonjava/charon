@@ -1,9 +1,9 @@
-# mrrc-uploader - Synchronize repositories to MRRC over AWS
+# hermes - Synchronize repositories to Mercury over AWS
 
-This mrrc-uploader is a tool to synchronize several types of artifacts
-repository data to RedHat MRRC service (maven.repository.redhat.com). These
+This hermes is a tool to synchronize several types of artifacts
+repository data to RedHat Mercury service (maven.repository.redhat.com). These
 repositories including types of maven, npm or some others like python in the
-future. And MRRC service will be hosted in AWS S3.
+future. And Mercury service will be hosted in AWS S3.
 
 ## Prerequisites
 
@@ -15,11 +15,11 @@ See [AWS CLi V2 installation](https://docs.aws.amazon.com/cli/latest/userguide/i
 
 ### From git
 
-Clone this git repo and install MRRC using python installer:
+Clone this git repo and install hermes using python installer:
 
 ```bash
-git clone https://github.com/Commonjava/mrrc-uploader.git
-cd mrrc-uploader
+git clone https://github.com/Commonjava/hermes.git
+cd hermes
 sudo pip install .
 ```
 
@@ -34,14 +34,14 @@ to configure AWS access credentials.
 * AWS configurations. The uploader uses aws boto3 to access AWS S3 bucket, and follows the AWS configurations statndards. You can use:
   * AWS configurations files: $HOME/.aws/config and $HOME/.aws/credentials. (For format see [AWS config format](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html))
   * [System environment varaibles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html)
-* Configurations for uploader. We use $HOME/.mrrc/mrrc-uploader. conf to hold these configurations. Currently, The uploader has two configurations:
-  * ignore_patterns. This is used to filter out some files that are not allowed to upload. It is a json array of regular expressions. (Example: ["README.md", "example.txt"]). This can also be retrieved from "MRRC_IGNORE_PATTERNS" system environment variable.
-  * bucket. This is used to specify which AWS S3 bucket to upload to with the tool. This config can also be retrieved from "mrrc_bucket" system environment variable.
+* Configurations for uploader. We use $HOME/.hermes/hermes.conf to hold these configurations. Currently, The uploader has two configurations:
+  * ignore_patterns. This is used to filter out some files that are not allowed to upload. It is a json array of regular expressions. (Example: ["README.md", "example.txt"]). This can also be retrieved from "HERMES_IGNORE_PATTERNS" system environment variable.
+  * bucket. This is used to specify which AWS S3 bucket to upload to with the tool. This config can also be retrieved from "hermes_bucket" system environment variable.
 
-### mrrc-upload: upload a repo to S3
+### hermes-upload: upload a repo to S3
 
 ```bash
-usage: mrrc upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug]
+usage: hermes upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug]
 ```
 
 This command will upload the repo in tarball to S3.
@@ -65,10 +65,10 @@ It will auto-detect if the tarball is for maven or npm
 * For both types, after uploading the files, regenerate/refresh
   the index files for these paths.
 
-### mrrc-delete: delete repo/paths from S3
+### hermes-delete: delete repo/paths from S3
 
 ```bash
-usage: mrrc delete $tarball|$pathfile --product/-p ${prod}
+usage: hermes delete $tarball|$pathfile --product/-p ${prod}
 --version/-v ${ver} [--root_path] [--debug]
 ```
 

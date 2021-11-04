@@ -1,6 +1,6 @@
-from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
-from mrrc.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
-from tests.base import BaseMRRCTest
+from hermes.pkgs.maven import handle_maven_uploading, handle_maven_del
+from hermes.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from tests.base import BaseTest
 from moto import mock_s3
 import boto3
 import os
@@ -47,7 +47,7 @@ NON_MVN_FILES = [
 
 
 @mock_s3
-class MavenDeleteTest(BaseMRRCTest):
+class MavenDeleteTest(BaseTest):
     def setUp(self):
         super().setUp()
         # mock_s3 is used to generate expected content
