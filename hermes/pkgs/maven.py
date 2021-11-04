@@ -18,7 +18,7 @@ from hermes.utils.files import write_file
 from hermes.utils.archive import extract_zip_all
 from hermes.storage import S3Client
 from hermes.config import AWS_DEFAULT_BUCKET, get_template
-from hermes.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
+from hermes.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, MAVEN_METADATA_TEMPLATE
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -32,84 +32,18 @@ import re
 
 logger = logging.getLogger(__name__)
 
-MAVEN_METADATA_TEMPLATE = '''
-<metadata>
-  {%- if meta.group_id is defined %}
-  <groupId>{{ meta.group_id }}</groupId>
-  {%- endif %}
-  {%- if meta.artifact_id is defined %}
-  <artifactId>{{ meta.artifact_id }}</artifactId>
-  {%- endif %}
-  {%- if meta.versioned is defined %}
-  <version>{{ meta.versioned }}</version>
-  {%- endif %}
-  {%- if meta.versions is defined or meta.snapshoted is defined %}
-  <versioning>
-    {%- if meta.latest_version is defined %}
-    <latest>{{ meta.latest_version }}</latest>
-    {%- endif %}
-    {%- if meta.release_version is defined %}
-    <release>{{ meta.release_version }}</release>
-    {%- endif %}
-    {%- if meta.versions is defined %}
-    <versions>
-      {% for ver in meta.versions -%}
-      <version>{{ ver }}</version>
-      {% endfor %}
-    </versions>
-    {%- endif %}
-    {%- if meta.last_upd_time is defined %}
-    <lastUpdated>{{ meta.last_upd_time }}</lastUpdated>
-    {%- endif %}
-    {%- if meta.snapshoted is defined %}
-    <snapshot>
-      {%- if meta.snapshoted.time is defined %}
-      <timestamp>{{ meta.snapshoted.time }}</timestamp>
-      {%- endif %}
-      {%- if meta.snapshoted.build is defined %}
-      <buildNumber>{{ meta.snapshoted.build }}</buildNumber>
-      {%- endif %}
-      {%- if meta.snapshoted.localcopy is defined %}
-      <localCopy>{{ meta.snapshoted.localcopy }}</localCopy>
-      {%- endif %}
-    </snapshot>
-    {%- endif %}
-    {%- if meta.snapshot_versions is defined %}
-    <snapshotVersions>
-      {% for snapshot_ver in meta.snapshot_versions -%}
-      <snapshotVersion>
-        {%- if snapshot_ver.classifier is defined %}
-        <classifier>{{ snapshot_ver.classifier }}</classifier>
-        {%- endif %}
-        {%- if snapshot_ver.ext is defined %}
-        <extension>{{ snapshot_ver.ext }}</extension>
-        {%- endif %}
-        {%- if snapshot_ver.val is defined %}
-        <value>{{ snapshot_ver.val }}</value>
-        {%- endif %}
-        {%- if snapshot_ver.upd is defined %}
-        <updated>{{ snapshot_ver.upd }}</updated>
-        {%- endif %}
-      </snapshotVersion>
-      {% endfor %}
-    </snapshotVersions>
-    {%- endif %}
-  </versioning>
-  {%- endif %}
 
-  {%- if meta.plugins is defined %}
-  <plugins>
-    {% for plugin in meta.plugins -%}
-    <plugin>
-      <name>{{ plugin.name }}</name>
-      <prefix>{{ plugin.prefix }}</prefix>
-      <artifactId>{{ plugin.artifact_id }}</artifactId>
-    </plugin>
-    {% endfor %}
-  </plugins>
-  {%- endif %}
-</metadata>
-'''
+def __get_mvn_template() -> str:
+    """Gets the jinja2 template file content for maven-metadata.xml generation"""
+    try:
+        return get_template("maven-metadata.xml.j2")
+    except FileNotFoundError:
+        logger.info("maven-metadata.xml template file not defined,"
+                    " will use default template.")
+        return MAVEN_METADATA_TEMPLATE
+
+
+META_TEMPLATE = __get_mvn_template()
 
 
 class MavenMetadata(object):
@@ -126,7 +60,7 @@ class MavenMetadata(object):
         self._release_version = None
 
     def generate_meta_file_content(self) -> str:
-        template = Template(get_mvn_template())
+        template = Template(META_TEMPLATE)
         return template.render(meta=self)
 
     @property
@@ -145,14 +79,6 @@ class MavenMetadata(object):
 
     def __str__(self) -> str:
         return f"{self.group_id}:{self.artifact_id}\n{self.versions}\n\n"
-
-
-def get_mvn_template() -> str:
-    """Gets the jinja2 template file content for maven-metadata.xml generation"""
-    try:
-        return get_template("maven-metadata.xml.j2")
-    except FileNotFoundError:
-        return MAVEN_METADATA_TEMPLATE
 
 
 def scan_for_poms(full_path: str) -> List[str]:

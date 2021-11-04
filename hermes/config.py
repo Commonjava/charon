@@ -85,5 +85,4 @@ def get_template(template_file: str) -> str:
         with open(template, encoding="utf-8") as file_:
             return file_.read()
 
-    logger.error("Error: can not find template file %s", template_file)
     raise FileNotFoundError
