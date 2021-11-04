@@ -6,14 +6,15 @@
 # 0. Step into the project dir
 #
 # 1. Build the image
-#   docker build -t mrrc-uploader:1.0.0 .
+#   docker/podman build -t mrrc-uploader:1.0.0 .
 #
 # 2. Run the container as daemon, mount the host ~/upload/ path to container /root/upload/ path,
 #   the uploading path is the dir location where you will upload the tarballs from
-#   docker run -dit -v ~/upload/:/root/upload/ --name mrrc-uploader mrrc-uploader:1.0.0
+#   add -e to set specific environment variables, such as: AWS_PROFILE, aws_endpoint_url, bucket
+#   docker/podman run -dit -v ~/upload/:/root/upload/ --name mrrc-uploader mrrc-uploader:1.0.0
 #
 # 3. Execute the container
-#   docker exec -it mrrc-uploader bash
+#   docker/podman exec -it mrrc-uploader bash
 #
 # 4. Start using uploader
 #   mrrc upload/delete from /root/upload/...
@@ -59,12 +60,6 @@ ADD ./config/aws-credentials /root/.aws/credentials
 # prepare templates for mrrc uploder
 ADD ./template/index.html.j2 /root/.mrrc/template/index.html.j2
 ADD ./template/maven-metadata.xml.j2 /root/.mrrc/template/maven-metadata.xml.j2
-
-# prepare envs for mrrc uploader
-ENV AWS_PROFILE=default
-ENV aws_endpoint_url=https://s3.upshift.redhat.com
-# alternative bucket setting
-# ENV bucket=mrrc
 
 # install mrrc uploader
 RUN pip3 install --no-cache-dir .
