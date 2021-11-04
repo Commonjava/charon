@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pytest --cov mrrc -v --cov-report html
+pytest --cov hermes -v --cov-report html

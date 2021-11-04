@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,3 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import logging
+
+from hermes.cmd.command import cli, upload, delete
+from hermes.utils.logs import set_logging
+
+# init group command
+cli.add_command(upload)
+cli.add_command(delete)
+
+set_logging(level=logging.INFO)  # override this however you want

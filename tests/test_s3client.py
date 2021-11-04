@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
-from mrrc.utils.archive import extract_zip_all
-from mrrc.utils.files import write_file, read_sha1
-from tests.base import BaseMRRCTest
+from hermes.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from hermes.utils.archive import extract_zip_all
+from hermes.utils.files import write_file, read_sha1
+from tests.base import BaseTest
 from moto import mock_s3
 import boto3
 import os
@@ -33,7 +33,7 @@ COMMONS_LANG3_ZIP_MVN_ENTRY = 26
 
 
 @mock_s3
-class S3ClientTest(BaseMRRCTest):
+class S3ClientTest(BaseTest):
     def setUp(self):
         super().setUp()
         # mock_s3 is used to generate expected content

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import sys
 import tarfile
 import requests
 import tempfile
+import shutil
 from enum import Enum
 from json import load, JSONDecodeError
 from typing import Tuple
@@ -64,11 +65,11 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
             valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
             if is_for_upload:
                 os.makedirs(tarball_parent_path)
-                os.system("cp " + path + " " + tarball_parent_path)
+                target = os.path.join(tarball_parent_path, os.path.basename(path))
+                shutil.copyfile(path, target)
                 os.makedirs(version_metadata_parent_path)
-                os.system(
-                    "cp " + f.path + " " + version_metadata_parent_path
-                )
+                target = os.path.join(version_metadata_parent_path, os.path.basename(f.path))
+                shutil.copyfile(f.path, target)
             break
     return package_name_path, valid_paths
 

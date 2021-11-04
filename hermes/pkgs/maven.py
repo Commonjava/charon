@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import mrrc.pkgs.indexing as indexing
-from mrrc.utils.files import write_file
-from mrrc.utils.archive import extract_zip_all
-from mrrc.storage import S3Client
-from mrrc.config import AWS_DEFAULT_BUCKET, get_template
-from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
+import hermes.pkgs.indexing as indexing
+from hermes.utils.files import write_file
+from hermes.utils.archive import extract_zip_all
+from hermes.storage import S3Client
+from hermes.config import AWS_DEFAULT_BUCKET, get_template
+from hermes.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, MAVEN_METADATA_TEMPLATE
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -29,7 +29,21 @@ import sys
 import logging
 import re
 
+
 logger = logging.getLogger(__name__)
+
+
+def __get_mvn_template() -> str:
+    """Gets the jinja2 template file content for maven-metadata.xml generation"""
+    try:
+        return get_template("maven-metadata.xml.j2")
+    except FileNotFoundError:
+        logger.info("maven-metadata.xml template file not defined,"
+                    " will use default template.")
+        return MAVEN_METADATA_TEMPLATE
+
+
+META_TEMPLATE = __get_mvn_template()
 
 
 class MavenMetadata(object):
@@ -46,7 +60,7 @@ class MavenMetadata(object):
         self._release_version = None
 
     def generate_meta_file_content(self) -> str:
-        template = Template(get_mvn_template())
+        template = Template(META_TEMPLATE)
         return template.render(meta=self)
 
     @property
@@ -65,11 +79,6 @@ class MavenMetadata(object):
 
     def __str__(self) -> str:
         return f"{self.group_id}:{self.artifact_id}\n{self.versions}\n\n"
-
-
-def get_mvn_template() -> str:
-    """Gets the jinja2 template file content for maven-metadata.xml generation"""
-    return get_template("maven-metadata.xml.j2")
 
 
 def scan_for_poms(full_path: str) -> List[str]:
@@ -258,9 +267,9 @@ def handle_maven_uploading(
 
     if len(failed_files) == 0 and len(failed_metas) == 0:
         logger.info("Product release %s is successfully"
-                    " uploaded to mrrc service.", prod_key)
+                    " uploaded to Mercury service.", prod_key)
     else:
-        logger.warning("Product release %s is uploaded to mrrc"
+        logger.warning("Product release %s is uploaded to Mercury"
                        " service, but has some failure as below: \n",
                        prod_key)
         if len(failed_files) > 0:
@@ -359,6 +368,7 @@ def handle_maven_del(
         delete_index, update_index = indexing.handle_delete_index(
             top_level, deleted_files, s3_client, bucket)
         logger.info("Index files generation done.\n")
+
         logger.info("Start updating index to s3")
         if update_index != []:
             _, _failed_metas = s3_client.upload_metadatas(
@@ -378,9 +388,9 @@ def handle_maven_del(
 
     if len(failed_files) == 0 and len(failed_metas) == 0:
         logger.info("Product release %s is successfully"
-                    " rolled back from mrrc service.", prod_key)
+                    " rolled back from Mercury service.", prod_key)
     else:
-        logger.warning("Product release %s is rolled back from mrrc"
+        logger.warning("Product release %s is rolled back from Mercury"
                        " service, but has some failure as below:",
                        prod_key)
         if len(failed_files) > 0:
@@ -395,7 +405,7 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     if os.path.exists(repo):
         logger.info("Extracting tarball %s", repo)
         repo_zip = ZipFile(repo)
-        tmp_root = mkdtemp(prefix=f"mrrc-{prefix}-", dir=dir__)
+        tmp_root = mkdtemp(prefix=f"hermes-{prefix}-", dir=dir__)
         extract_zip_all(repo_zip, tmp_root)
         return tmp_root
     logger.error("Error: archive %s does not exist", repo)

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from mrrc.utils.files import read_sha1
+from hermes.utils.files import read_sha1
 
 from boto3 import session
 from botocore.errorfactory import ClientError
@@ -32,7 +32,7 @@ ENDPOINT_ENV = "aws_endpoint_url"
 
 class S3Client(object):
     """The S3Client is a wrapper of the original boto3 s3 client, which will provide
-    some convenient methods to be used in the mrrc uploader.
+    some convenient methods to be used in the hermes.
     """
 
     def __init__(self, extra_conf=None) -> None:

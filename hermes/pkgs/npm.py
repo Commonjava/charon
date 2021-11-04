@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ from typing import Tuple
 
 from semantic_version import compare
 
-import mrrc.pkgs.indexing as indexing
-from mrrc.config import AWS_DEFAULT_BUCKET
-from mrrc.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
-from mrrc.storage import S3Client
-from mrrc.utils.archive import extract_npm_tarball
+import hermes.pkgs.indexing as indexing
+from hermes.config import AWS_DEFAULT_BUCKET
+from hermes.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
+from hermes.storage import S3Client
+from hermes.utils.archive import extract_npm_tarball
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +274,7 @@ def _gen_npm_package_metadata_for_del(
 
 def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
         str, list, NPMPackageMetadata]:
-    tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
+    tmp_root = mkdtemp(prefix=f"npm-hermes-{prefix}-", dir=dir__)
     _, valid_paths = extract_npm_tarball(path, tmp_root, True)
     if len(valid_paths) > 1:
         version = _scan_for_version(valid_paths[1])
@@ -283,7 +283,7 @@ def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple
 
 
 def _scan_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, str, list]:
-    tmp_root = mkdtemp(prefix=f"npm-mrrc-{prefix}-", dir=dir__)
+    tmp_root = mkdtemp(prefix=f"npm-hermes-{prefix}-", dir=dir__)
     package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, False)
     return tmp_root, package_name_path, valid_paths
 

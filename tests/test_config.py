@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,37 +15,37 @@ limitations under the License.
 """
 import unittest
 import os
-import mrrc.config as config
-from tests.base import BaseMRRCTest
+import hermes.config as config
+from tests.base import BaseTest
 
 
 class ConfigTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.__base = BaseMRRCTest()
+        self.__base = BaseTest()
 
     def tearDown(self) -> None:
         self.__base.tearDown()
 
     def test_config(self):
         self.__base.setUp()
-        conf = config.mrrc_config()
+        conf = config.get_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
-        self.assertEqual('mrrc-test', conf.get_aws_bucket())
+        self.assertEqual('hermes-test', conf.get_aws_bucket())
 
     def test_no_config(self):
         self.__base.change_home()
-        conf = config.mrrc_config()
+        conf = config.get_config()
         self.assertIsNone(conf)
 
     def test_config_default(self):
         self.__base.change_home()
         default_config_content = """
-        [mrrc]
+        [hermes]
         """
-        mrrc_config_base = os.path.join(self.__base.get_temp_dir(), '.mrrc')
-        os.mkdir(mrrc_config_base)
-        self.__base.prepare_config(mrrc_config_base, default_config_content)
+        config_base = self.__base.get_config_base()
+        os.mkdir(config_base)
+        self.__base.prepare_config(config_base, default_config_content)
 
-        conf = config.mrrc_config()
+        conf = config.get_config()
         self.assertEqual(None, conf.get_ignore_patterns())
-        self.assertEqual('mrrc', conf.get_aws_bucket())
+        self.assertEqual('hermes', conf.get_aws_bucket())

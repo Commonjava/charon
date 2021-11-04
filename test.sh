@@ -8,7 +8,7 @@ OS_VERSION=${OS_VERSION:="8"}
 PYTHON_VERSION=${PYTHON_VERSION:="3"}
 ACTION=${ACTION:="test"}
 IMAGE="$OS:$OS_VERSION"
-CONTAINER_NAME="mrrc-$OS-$OS_VERSION-py$PYTHON_VERSION"
+CONTAINER_NAME="hermes-$OS-$OS_VERSION-py$PYTHON_VERSION"
 
 # Use arrays to prevent globbing and word splitting
 engine_mounts=(-v "$PWD":"$PWD":z)
@@ -24,7 +24,7 @@ elif [[ $($ENGINE ps -q -f name="$CONTAINER_NAME" | wc -l) -eq 0 ]]; then
   $ENGINE container start "$CONTAINER_NAME"
 fi
 
-function setup_mrrc() {
+function setup_hermes() {
   RUN="$ENGINE exec -i $CONTAINER_NAME"
   PYTHON="python$PYTHON_VERSION"
   PIP_PKG="$PYTHON-pip"
@@ -49,8 +49,8 @@ function setup_mrrc() {
 
   # RPM install basic dependencies
   $RUN $PKG $ENABLE_REPO install -y "${PKG_EXTRA[@]}"
-  # RPM install build dependencies for mrrc
-  $RUN "${BUILDDEP[@]}" -y mrrc.spec
+  # RPM install build dependencies for hermes
+  $RUN "${BUILDDEP[@]}" -y hermes.spec
 
   # Install package
   $RUN $PKG install -y $PIP_PKG
@@ -67,7 +67,7 @@ function setup_mrrc() {
 
   # install with RPM_PY_SYS=true to avoid error caused by installing on system python
   $RUN sh -c "RPM_PY_SYS=true ${PIP_INST[*]} rpm-py-installer"
-  # Setuptools install mrrc from source
+  # Setuptools install hermes from source
   $RUN $PYTHON setup.py install
 
   # Pip install packages for unit tests
@@ -76,18 +76,18 @@ function setup_mrrc() {
 
 case ${ACTION} in
 "test")
-  setup_mrrc
-  TEST_CMD="coverage run --source=mrrc -m pytest tests"
+  setup_hermes
+  TEST_CMD="coverage run --source=hermes -m pytest tests"
   ;;
 "pylint")
-  setup_mrrc
-  PACKAGES='mrrc tests'
+  setup_hermes
+  PACKAGES='hermes tests'
   TEST_CMD="${PYTHON} -m pylint ${PACKAGES}"
   ;;
 "bandit")
-  setup_mrrc
+  setup_hermes
   $RUN "${PIP_INST[@]}" bandit
-  TEST_CMD="bandit-baseline -r mrrc -ll -ii"
+  TEST_CMD="bandit-baseline -r hermes -ll -ii"
   ;;
 *)
   echo "Unknown action: ${ACTION}"
