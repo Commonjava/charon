@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-from mrrc.config import mrrc_config, AWS_DEFAULT_BUCKET
-from mrrc.utils.logs import set_logging
-from mrrc.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
-from mrrc.pkgs.maven import handle_maven_uploading, handle_maven_del
-from mrrc.pkgs.npm import handle_npm_uploading, handle_npm_del
+from hermes.config import get_config, AWS_DEFAULT_BUCKET
+from hermes.utils.logs import set_logging
+from hermes.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
+from hermes.pkgs.maven import handle_maven_uploading, handle_maven_del
+from hermes.pkgs.npm import handle_npm_uploading, handle_npm_del
 from click import command, option, argument, group
 from json import loads
 
@@ -174,7 +174,7 @@ def delete(
 
 
 def __get_ignore_patterns() -> List[str]:
-    ignore_patterns = os.getenv("MRRC_IGNORE_PATTERNS")
+    ignore_patterns = os.getenv("HERMES_IGNORE_PATTERNS")
     if ignore_patterns:
         try:
             return loads(ignore_patterns)
@@ -182,20 +182,20 @@ def __get_ignore_patterns() -> List[str]:
             logger.warning("Warning: ignore_patterns %s specified in "
                            "system environment, but not a valid json "
                            "style array. Will skip it.", ignore_patterns)
-    conf = mrrc_config()
+    conf = get_config()
     if conf:
         return conf.get_ignore_patterns()
     return None
 
 
 def __get_bucket() -> str:
-    MRRC_BUCKET = "mrrc_bucket"
-    bucket = os.getenv(MRRC_BUCKET)
+    TARGET_BUCKET = "hermes_bucket"
+    bucket = os.getenv(TARGET_BUCKET)
     if bucket:
         logger.info("AWS bucket '%s' found in system environment var '%s'"
-                    ", will use it for following process", bucket, MRRC_BUCKET)
+                    ", will use it for following process", bucket, TARGET_BUCKET)
         return bucket
-    conf = mrrc_config()
+    conf = get_config()
     if conf:
         return conf.get_aws_bucket()
     return AWS_DEFAULT_BUCKET

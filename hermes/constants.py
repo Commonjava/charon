@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/mrrc-uploader)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-# Logging format used in MRRC Uploader
-MRRC_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
-DESCRIPTION = "mrrc-uploader is a tool to synchronize several types of artifacts "
-"repository data to RedHat MRRC service (maven.repository.redhat.com)."
-PROG = 'mrrc'
+# Logging format used
+HERMES_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
+DESCRIPTION = "hermes is a tool to synchronize several types of artifacts "
+"repository data to RedHat Mercury service (maven.repository.redhat.com)."
+PROG = 'hermes'
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
