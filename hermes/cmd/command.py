@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
     """,
     nargs=1,
     required=True,
+    multiple=False,
 )
 @option(
     "--version",
@@ -78,6 +79,7 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
+@option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def upload(
     repo: str,
@@ -86,7 +88,8 @@ def upload(
     bucket,
     root_path="maven-repository",
     ignore_patterns=None,
-    debug=False
+    debug=False,
+    dryrun=False
 ):
     """Upload all files from a released product REPO to Mercury
     Service. The REPO points to a product released tarball which
@@ -94,13 +97,17 @@ def upload(
     """
     if debug:
         set_logging(level=logging.DEBUG)
+    if dryrun:
+        logger.info("Running in dry-run mode,"
+                    "no files will be uploaded.")
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_uploading(archive_path, product_key,
-                             bucket_name=__get_bucket(bucket))
+                             bucket_name=__get_bucket(bucket),
+                             dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -111,7 +118,8 @@ def upload(
         handle_maven_uploading(archive_path, product_key,
                                ignore_patterns_list,
                                root=root_path,
-                               bucket_name=__get_bucket(bucket))
+                               bucket_name=__get_bucket(bucket),
+                               dry_run=dryrun)
 
 
 @argument(
@@ -127,12 +135,13 @@ def upload(
     """,
     nargs=1,
     required=True,
+    multiple=False,
 )
 @option(
     "--version",
     "-v",
     help="""
-        The product version, will combine with key to decide
+        The product version, will combine with product to decide
         the metadata of the files in tarball.
     """,
     required=True,
@@ -163,6 +172,7 @@ def upload(
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
+@option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def delete(
     repo: str,
@@ -171,7 +181,8 @@ def delete(
     bucket,
     root_path="maven-repository",
     ignore_patterns=None,
-    debug=False
+    debug=False,
+    dryrun=False
 ):
     """Roll back all files in a released product REPO from
     Mercury Service. The REPO points to a product released
@@ -179,13 +190,17 @@ def delete(
     """
     if debug:
         set_logging(level=logging.DEBUG)
+    if dryrun:
+        logger.info("Running in dry-run mode,"
+                    "no files will be deleted.")
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_del(archive_path, product_key,
-                       bucket_name=__get_bucket(bucket))
+                       bucket_name=__get_bucket(bucket),
+                       dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -196,7 +211,8 @@ def delete(
         handle_maven_del(archive_path, product_key,
                          ignore_patterns_list,
                          root=root_path,
-                         bucket_name=__get_bucket(bucket))
+                         bucket_name=__get_bucket(bucket),
+                         dry_run=dryrun)
 
 
 def __get_ignore_patterns() -> List[str]:

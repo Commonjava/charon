@@ -35,8 +35,9 @@ class S3Client(object):
     some convenient methods to be used in the hermes.
     """
 
-    def __init__(self, extra_conf=None) -> None:
+    def __init__(self, extra_conf=None, dry_run=False) -> None:
         self.client = self.__init_aws_client(extra_conf)
+        self.dry_run = dry_run
 
     def __init_aws_client(self, extra_conf=None):
         aws_profile = os.getenv("AWS_PROFILE", None)
@@ -103,10 +104,11 @@ class S3Client(object):
                 if product:
                     f_meta[PRODUCT_META_KEY] = product
                 try:
-                    if len(f_meta) > 0:
-                        fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
-                    else:
-                        fileObject.upload_file(full_file_path)
+                    if not self.dry_run:
+                        if len(f_meta) > 0:
+                            fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
+                        else:
+                            fileObject.upload_file(full_file_path)
                     logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
                     uploaded_files.append(path)
                 except (ClientError, HTTPClientError) as e:
@@ -133,7 +135,7 @@ class S3Client(object):
                     prods = f_meta[PRODUCT_META_KEY].split(",")
                 except KeyError:
                     pass
-                if product not in prods:
+                if not self.dry_run and product not in prods:
                     logger.info(
                         "File %s has new product, updating the product %s",
                         full_file_path,
@@ -189,10 +191,11 @@ class S3Client(object):
                 prods.append(product)
                 f_meta[PRODUCT_META_KEY] = ",".join(prods)
             try:
-                if need_overwritten:
-                    fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
-                else:
-                    self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
+                if not self.dry_run:
+                    if need_overwritten:
+                        fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
+                    else:
+                        self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
                 uploaded_files.append(path)
             except (ClientError, HTTPClientError) as e:
@@ -261,7 +264,8 @@ class S3Client(object):
                         return False
                 elif len(prods) == 0:
                     try:
-                        bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
+                        if not self.dry_run:
+                            bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
                         return True
@@ -325,12 +329,13 @@ class S3Client(object):
     def __update_file_metadata(
         self, fileObject, bucket_name: str, key: str, metadata: Dict
     ):
-        fileObject.metadata.update(metadata)
-        fileObject.copy_from(
-            CopySource={"Bucket": bucket_name, "Key": key},
-            Metadata=fileObject.metadata,
-            MetadataDirective="REPLACE",
-        )
+        if not self.dry_run:
+            fileObject.metadata.update(metadata)
+            fileObject.copy_from(
+                CopySource={"Bucket": bucket_name, "Key": key},
+                Metadata=fileObject.metadata,
+                MetadataDirective="REPLACE",
+            )
 
     def __do_path_cut_and(
         self, file_paths: List[str], fn: Callable[[str, str], bool], root="/"
