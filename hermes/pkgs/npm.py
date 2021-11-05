@@ -60,7 +60,9 @@ class NPMPackageMetadata(object):
 
 
 def handle_npm_uploading(
-        tarball_path: str, product: str, bucket_name=None, dir_=None, do_index=True
+        tarball_path: str, product: str,
+        bucket_name=None, dir_=None,
+        do_index=True, dry_run=False
 ):
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
@@ -80,7 +82,7 @@ def handle_npm_uploading(
         sys.exit(1)
 
     logger.info("Start uploading files to s3")
-    client = S3Client()
+    client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     uploaded_files = []
     _uploaded_files, _ = client.upload_files(
@@ -125,7 +127,9 @@ def handle_npm_uploading(
 
 
 def handle_npm_del(
-        tarball_path: str, product: str, bucket_name=None, dir_=None, do_index=True
+        tarball_path: str, product: str,
+        bucket_name=None, dir_=None,
+        do_index=True, dry_run=False
 ):
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
@@ -140,7 +144,7 @@ def handle_npm_del(
     )
 
     logger.info("Start deleting files from s3")
-    client = S3Client()
+    client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     deleted_files, _ = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir

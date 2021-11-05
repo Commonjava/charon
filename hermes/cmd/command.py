@@ -40,11 +40,13 @@ def init():
     help="The product key, used to lookup profileId from the configuration",
     nargs=1,
     required=True,
+    multiple=False,
 )
 @option(
     "--version",
     "-v",
     help="The product version, used in repository definition metadata",
+    required=True,
     multiple=False,
 )
 # @option(
@@ -77,6 +79,7 @@ def init():
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
+@option("--dryrun", "-d", is_flag=True, default=False)
 @command()
 def upload(
     repo: str,
@@ -85,17 +88,22 @@ def upload(
     bucket,
     root_path="maven-repository",
     ignore_patterns=None,
-    debug=False
+    debug=False,
+    dryrun=False
 ):
     if debug:
         set_logging(level=logging.DEBUG)
+    if dryrun:
+        logger.info("Running in dry-run mode,"
+                    "no files will be uploaded.")
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_uploading(archive_path, product_key,
-                             bucket_name=__get_bucket(bucket))
+                             bucket_name=__get_bucket(bucket),
+                             dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -106,7 +114,8 @@ def upload(
         handle_maven_uploading(archive_path, product_key,
                                ignore_patterns_list,
                                root=root_path,
-                               bucket_name=__get_bucket(bucket))
+                               bucket_name=__get_bucket(bucket),
+                               dry_run=dryrun)
 
 
 @argument("repo", type=str)
@@ -116,11 +125,13 @@ def upload(
     help="The product key, used to lookup profileId from the configuration",
     nargs=1,
     required=True,
+    multiple=False,
 )
 @option(
     "--version",
     "-v",
     help="The product version, used in repository definition metadata",
+    required=True,
     multiple=False,
 )
 # @option(
@@ -153,6 +164,7 @@ def upload(
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
+@option("--dryrun", "-d", is_flag=True, default=False)
 @command()
 def delete(
     repo: str,
@@ -161,17 +173,22 @@ def delete(
     bucket,
     root_path="maven-repository",
     ignore_patterns=None,
-    debug=False
+    debug=False,
+    dryrun=False
 ):
     if debug:
         set_logging(level=logging.DEBUG)
+    if dryrun:
+        logger.info("Running in dry-run mode,"
+                    "no files will be deleted.")
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_del(archive_path, product_key,
-                       bucket_name=__get_bucket(bucket))
+                       bucket_name=__get_bucket(bucket),
+                       dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -182,7 +199,8 @@ def delete(
         handle_maven_del(archive_path, product_key,
                          ignore_patterns_list,
                          root=root_path,
-                         bucket_name=__get_bucket(bucket))
+                         bucket_name=__get_bucket(bucket),
+                         dry_run=dryrun)
 
 
 def __get_ignore_patterns() -> List[str]:
