@@ -189,7 +189,7 @@ def __get_ignore_patterns() -> List[str]:
 
 
 def __get_bucket() -> str:
-    TARGET_BUCKET = "hermes_bucket"
+    TARGET_BUCKET = "HERMES_BUCKET"
     bucket = os.getenv(TARGET_BUCKET)
     if bucket:
         logger.info("AWS bucket '%s' found in system environment var '%s'"
