@@ -98,3 +98,31 @@ MAVEN_METADATA_TEMPLATE = '''
   {%- endif %}
 </metadata>
 '''
+INDEX_HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ index.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+body {
+  background: #fff;
+}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ index.header }}</h1>
+  </header>
+  <hr/>
+  <main>
+    <pre id="contents">
+    {% for item in index.items %}
+          <a href="{{ item }}" title="{{ item }}">{{ item }}</a>
+    {% endfor%}
+    </pre>
+  </main>
+  <hr/>
+</body>
+</html>
+'''

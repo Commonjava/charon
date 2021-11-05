@@ -16,12 +16,26 @@ limitations under the License.
 from botocore.exceptions import ClientError
 from hermes.config import get_template
 from hermes.storage import S3Client
+from hermes.constants import INDEX_HTML_TEMPLATE
 from jinja2 import Template
 import os
 import logging
 from typing import List, Set
 
 logger = logging.getLogger(__name__)
+
+
+def __get_index_template() -> str:
+    """Gets the jinja2 template file content for index generation"""
+    try:
+        return get_template("index.html.j2")
+    except FileNotFoundError:
+        logger.info("index template file not defined,"
+                    " will use default template.")
+        return INDEX_HTML_TEMPLATE
+
+
+INDEX_TEMPLATE = __get_index_template()
 
 
 class IndexedHTML(object):
@@ -32,12 +46,8 @@ class IndexedHTML(object):
         self.items = items
 
     def generate_index_file_content(self) -> str:
-        template = Template(get_index_template())
+        template = Template(INDEX_TEMPLATE)
         return template.render(index=self)
-
-
-def get_index_template() -> str:
-    return get_template("index.html.j2")
 
 
 def handle_create_index(
