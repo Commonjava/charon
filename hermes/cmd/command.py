@@ -56,6 +56,11 @@ def init():
 #     help="Push content to the GA group (as opposed to earlyaccess)",
 # )
 @option(
+    "--bucket",
+    "-b",
+    help="""The name of S3 bucket which will be used to upload files.""",
+)
+@option(
     "--root_path",
     "-r",
     default="maven-repository",
@@ -77,6 +82,7 @@ def upload(
     repo: str,
     product: str,
     version: str,
+    bucket,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False
@@ -89,7 +95,7 @@ def upload(
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_uploading(archive_path, product_key,
-                             bucket_name=__get_bucket())
+                             bucket_name=__get_bucket(bucket))
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -100,7 +106,7 @@ def upload(
         handle_maven_uploading(archive_path, product_key,
                                ignore_patterns_list,
                                root=root_path,
-                               bucket_name=__get_bucket())
+                               bucket_name=__get_bucket(bucket))
 
 
 @argument("repo", type=str)
@@ -126,6 +132,11 @@ def upload(
 #     help="Push content to the GA group (as opposed to earlyaccess)",
 # )
 @option(
+    "--bucket",
+    "-b",
+    help="""The name of S3 bucket which will be used to delete files.""",
+)
+@option(
     "--root_path",
     "-r",
     default="maven-repository",
@@ -147,6 +158,7 @@ def delete(
     repo: str,
     product: str,
     version: str,
+    bucket,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False
@@ -159,7 +171,7 @@ def delete(
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_del(archive_path, product_key,
-                       bucket_name=__get_bucket())
+                       bucket_name=__get_bucket(bucket))
     else:
         ignore_patterns_list = None
         if ignore_patterns:
@@ -170,7 +182,7 @@ def delete(
         handle_maven_del(archive_path, product_key,
                          ignore_patterns_list,
                          root=root_path,
-                         bucket_name=__get_bucket())
+                         bucket_name=__get_bucket(bucket))
 
 
 def __get_ignore_patterns() -> List[str]:
@@ -188,7 +200,11 @@ def __get_ignore_patterns() -> List[str]:
     return None
 
 
-def __get_bucket() -> str:
+def __get_bucket(param_bucket: str) -> str:
+    if param_bucket and param_bucket != "":
+        logger.info("AWS bucket '%s' is specified in option"
+                    ", will use it for following process", param_bucket)
+        return param_bucket
     TARGET_BUCKET = "HERMES_BUCKET"
     bucket = os.getenv(TARGET_BUCKET)
     if bucket:
