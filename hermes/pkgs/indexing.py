@@ -77,7 +77,7 @@ def handle_create_index(
                 _items = set(_.replace('\n', '') for _ in f.readlines())
                 for item in items.difference(_items):
                     f.write(item + '\n')
-        else:
+        elif index != '.index':
             temp_dirs.add(os.path.dirname(index))
 
     # the function will also merge indexes on disk
