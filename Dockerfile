@@ -26,7 +26,7 @@
 FROM python:3.8
 
 # ensure the latest version of pip
-RUN pip3 install --upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
 
 RUN adduser hermes
 USER hermes
