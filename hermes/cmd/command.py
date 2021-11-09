@@ -87,6 +87,9 @@ def upload(
     ignore_patterns=None,
     debug=False
 ):
+    """Upload all files from a released product tarball to Mercury
+    Service.
+    """
     if debug:
         set_logging(level=logging.DEBUG)
     archive_path = __get_local_repo(repo)
@@ -163,6 +166,9 @@ def delete(
     ignore_patterns=None,
     debug=False
 ):
+    """Roll back all files in a released product tarball from
+    Mercury Service.
+    """
     if debug:
         set_logging(level=logging.DEBUG)
     archive_path = __get_local_repo(repo)
@@ -228,4 +234,7 @@ def __get_local_repo(url: str) -> str:
 
 @group()
 def cli():
-    pass
+    """Hermes is a tool to synchronize several types of
+       artifacts repository data to Red Hat Mercury
+       service (maven.repository.redhat.com).
+    """
