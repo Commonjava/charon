@@ -28,52 +28,53 @@ import os
 logger = logging.getLogger(__name__)
 
 
-@command()
-def init():
-    print("init not yet implemented!")
-
-
-@argument("repo", type=str)
+@argument(
+    "repo",
+    type=str,
+)
 @option(
     "--product",
     "-p",
-    help="The product key, used to lookup profileId from the configuration",
+    help="""
+    The product key, will combine with version to decide
+    the metadata of the files in tarball.
+    """,
     nargs=1,
     required=True,
 )
 @option(
     "--version",
     "-v",
-    help="The product version, used in repository definition metadata",
+    help="""
+    The product version, will combine with key to decide
+    the metadata of the files in tarball.
+    """,
+    required=True,
     multiple=False,
 )
-# @option(
-#     "--ga",
-#     "-g",
-#     is_flag=True,
-#     default=False,
-#     multiple=False,
-#     help="Push content to the GA group (as opposed to earlyaccess)",
-# )
 @option(
     "--bucket",
     "-b",
-    help="""The name of S3 bucket which will be used to upload files.""",
+    help="""
+    The name of S3 bucket which will be used to upload files.
+    """,
 )
 @option(
     "--root_path",
     "-r",
     default="maven-repository",
-    help="""The root path in the tarball before the real maven paths,
-            will be trailing off before uploading
+    help="""
+    The root path in the tarball before the real maven paths,
+    will be trailing off before uploading.
     """,
 )
 @option(
     "--ignore_patterns",
     "-i",
     multiple=True,
-    help="""The regex patterns list to filter out the paths which should
-            not be allowed to upload to S3. Can accept more than one pattern
+    help="""
+    The regex patterns list to filter out the files which should
+    not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
@@ -87,8 +88,9 @@ def upload(
     ignore_patterns=None,
     debug=False
 ):
-    """Upload all files from a released product tarball to Mercury
-    Service.
+    """Upload all files from a released product REPO to Mercury
+    Service. The REPO points to a product released tarball which
+    is hosted in a remote url or a local path.
     """
     if debug:
         set_logging(level=logging.DEBUG)
@@ -112,32 +114,36 @@ def upload(
                                bucket_name=__get_bucket(bucket))
 
 
-@argument("repo", type=str)
+@argument(
+    "repo",
+    type=str,
+)
 @option(
     "--product",
     "-p",
-    help="The product key, used to lookup profileId from the configuration",
+    help="""
+        The product key, will combine with version to decide
+        the metadata of the files in tarball.
+    """,
     nargs=1,
     required=True,
 )
 @option(
     "--version",
     "-v",
-    help="The product version, used in repository definition metadata",
+    help="""
+        The product version, will combine with key to decide
+        the metadata of the files in tarball.
+    """,
+    required=True,
     multiple=False,
 )
-# @option(
-#     "--ga",
-#     "-g",
-#     is_flag=True,
-#     default=False,
-#     multiple=False,
-#     help="Push content to the GA group (as opposed to earlyaccess)",
-# )
 @option(
     "--bucket",
     "-b",
-    help="""The name of S3 bucket which will be used to delete files.""",
+    help="""
+        The name of S3 bucket which will be used to delete files.
+    """,
 )
 @option(
     "--root_path",
@@ -151,8 +157,9 @@ def upload(
     "--ignore_patterns",
     "-i",
     multiple=True,
-    help="""The regex patterns list to filter out the paths which should
-            not be allowed to upload to S3. Can accept more than one pattern
+    help="""
+    The regex patterns list to filter out the files which should
+    not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
 @option("--debug", "-D", is_flag=True, default=False)
@@ -166,8 +173,9 @@ def delete(
     ignore_patterns=None,
     debug=False
 ):
-    """Roll back all files in a released product tarball from
-    Mercury Service.
+    """Roll back all files in a released product REPO from
+    Mercury Service. The REPO points to a product released
+    tarball which is hosted in a remote url or a local path.
     """
     if debug:
         set_logging(level=logging.DEBUG)
