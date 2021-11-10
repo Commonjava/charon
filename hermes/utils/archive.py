@@ -148,7 +148,8 @@ def download_archive(url: str, base_dir=None) -> str:
     # https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
     local_filename = os.path.join(dir_, url.split('/')[-1])
     # NOTE the stream=True parameter below
-    with requests.get(url, stream=True) as r:
+    # NOTE(2) timeout=30 parameter to set a 30-second timeout, and prevent indefinite hang.
+    with requests.get(url, stream=True, timeout=30) as r:
         r.raise_for_status()
         with open(local_filename, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
