@@ -180,7 +180,8 @@ def handle_maven_uploading(
     root="maven-repository",
     bucket_name=None,
     dir_=None,
-    do_index=True
+    do_index=True,
+    dry_run=False
 ):
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -219,7 +220,7 @@ def handle_maven_uploading(
 
     # 4. Do uploading
     logger.info("Start uploading files to s3")
-    s3_client = S3Client()
+    s3_client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     uploaded_files = []
     _uploaded_files, failed_files = s3_client.upload_files(
@@ -286,7 +287,8 @@ def handle_maven_del(
     root="maven-repository",
     bucket_name=None,
     dir_=None,
-    do_index=True
+    do_index=True,
+    dry_run=False
 ):
     """ Handle the maven product release tarball deletion process.
         * repo is the location of the tarball in filesystem
@@ -322,7 +324,7 @@ def handle_maven_del(
 
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
-    s3_client = S3Client()
+    s3_client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     deleted_files, failed_files = s3_client.delete_files(
         valid_mvn_paths,
