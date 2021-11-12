@@ -78,7 +78,13 @@ logger = logging.getLogger(__name__)
     not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
-@option("--debug", "-D", is_flag=True, default=False)
+@option(
+    "--debug",
+    "-D",
+    help="Debug mode, will print all debug logs for problem tracking.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def upload(
@@ -171,7 +177,13 @@ def upload(
     not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
-@option("--debug", "-D", is_flag=True, default=False)
+@option(
+    "--debug",
+    "-D",
+    help="Debug mode, will print all debug logs for problem tracking.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def delete(
