@@ -1,9 +1,9 @@
-# hermes - Synchronize repositories to Mercury over AWS
+# hermes - Synchronize repositories to Ronda over AWS
 
 This hermes is a tool to synchronize several types of artifacts
-repository data to RedHat Mercury service (maven.repository.redhat.com). These
+repository data to RedHat Ronda service (maven.repository.redhat.com). These
 repositories including types of maven, npm or some others like python in the
-future. And Mercury service will be hosted in AWS S3.
+future. And Ronda service will be hosted in AWS S3.
 
 ## Prerequisites
 

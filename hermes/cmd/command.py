@@ -91,7 +91,7 @@ def upload(
     debug=False,
     dryrun=False
 ):
-    """Upload all files from a released product REPO to Mercury
+    """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
     is hosted in a remote url or a local path.
     """
@@ -185,7 +185,7 @@ def delete(
     dryrun=False
 ):
     """Roll back all files in a released product REPO from
-    Mercury Service. The REPO points to a product released
+    Ronda Service. The REPO points to a product released
     tarball which is hosted in a remote url or a local path.
     """
     if debug:
@@ -259,6 +259,6 @@ def __get_local_repo(url: str) -> str:
 @group()
 def cli():
     """Hermes is a tool to synchronize several types of
-       artifacts repository data to Red Hat Mercury
+       artifacts repository data to Red Hat Ronda
        service (maven.repository.redhat.com).
     """

@@ -268,9 +268,9 @@ def handle_maven_uploading(
 
     if len(failed_files) == 0 and len(failed_metas) == 0:
         logger.info("Product release %s is successfully"
-                    " uploaded to Mercury service.", prod_key)
+                    " uploaded to Ronda service.", prod_key)
     else:
-        logger.warning("Product release %s is uploaded to Mercury"
+        logger.warning("Product release %s is uploaded to Ronda"
                        " service, but has some failure as below: \n",
                        prod_key)
         if len(failed_files) > 0:
@@ -390,9 +390,9 @@ def handle_maven_del(
 
     if len(failed_files) == 0 and len(failed_metas) == 0:
         logger.info("Product release %s is successfully"
-                    " rolled back from Mercury service.", prod_key)
+                    " rolled back from Ronda service.", prod_key)
     else:
-        logger.warning("Product release %s is rolled back from Mercury"
+        logger.warning("Product release %s is rolled back from Ronda"
                        " service, but has some failure as below:",
                        prod_key)
         if len(failed_files) > 0:
