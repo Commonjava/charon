@@ -28,9 +28,9 @@ version = "1.0.0"
 # f.close()
 long_description = """
 This hermes is a tool to synchronize several types of
-artifacts repository data to RedHat Mercury service (maven.repository.redhat.com).
+artifacts repository data to RedHat Ronda service (maven.repository.redhat.com).
 These repositories including types of maven, npm or some others like python
-in future. And Mercury service will be hosted in AWS S3.
+in future. And Ronda service will be hosted in AWS S3.
 """
 
 

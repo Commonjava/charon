@@ -78,7 +78,13 @@ logger = logging.getLogger(__name__)
     not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
-@option("--debug", "-D", is_flag=True, default=False)
+@option(
+    "--debug",
+    "-D",
+    help="Debug mode, will print all debug logs for problem tracking.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def upload(
@@ -91,7 +97,7 @@ def upload(
     debug=False,
     dryrun=False
 ):
-    """Upload all files from a released product REPO to Mercury
+    """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
     is hosted in a remote url or a local path.
     """
@@ -171,7 +177,13 @@ def upload(
     not be allowed to upload to S3. Can accept more than one pattern.
     """,
 )
-@option("--debug", "-D", is_flag=True, default=False)
+@option(
+    "--debug",
+    "-D",
+    help="Debug mode, will print all debug logs for problem tracking.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def delete(
@@ -185,7 +197,7 @@ def delete(
     dryrun=False
 ):
     """Roll back all files in a released product REPO from
-    Mercury Service. The REPO points to a product released
+    Ronda Service. The REPO points to a product released
     tarball which is hosted in a remote url or a local path.
     """
     if debug:
@@ -259,6 +271,6 @@ def __get_local_repo(url: str) -> str:
 @group()
 def cli():
     """Hermes is a tool to synchronize several types of
-       artifacts repository data to Red Hat Mercury
+       artifacts repository data to Red Hat Ronda
        service (maven.repository.redhat.com).
     """

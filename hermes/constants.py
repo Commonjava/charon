@@ -16,7 +16,7 @@ limitations under the License.
 # Logging format used
 HERMES_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
 DESCRIPTION = "hermes is a tool to synchronize several types of artifacts "
-"repository data to RedHat Mercury service (maven.repository.redhat.com)."
+"repository data to RedHat Ronda service (maven.repository.redhat.com)."
 PROG = 'hermes'
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
