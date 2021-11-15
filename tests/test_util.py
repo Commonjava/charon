@@ -21,9 +21,6 @@ import unittest
 class UtilTest(unittest.TestCase):
     def test_digest(self):
         test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
-        self.assertEqual(
-            "ffb4098abd638ce91598008422769ec2", digest(test_file, HashType.MD5)
-        )
         self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         self.assertEqual(
             "61ff1d38cfeb281b05fcd6b9a2318ed47cd62c7f99b8a9d3e819591c03fe6804",
