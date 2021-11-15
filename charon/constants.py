@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 # Logging format used
-HERMES_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
-DESCRIPTION = "hermes is a tool to synchronize several types of artifacts "
+CHARON_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
+DESCRIPTION = "charon is a tool to synchronize several types of artifacts "
 "repository data to RedHat Ronda service (maven.repository.redhat.com)."
-PROG = 'hermes'
+PROG = 'charon'
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
 MAVEN_METADATA_TEMPLATE = '''

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import unittest
 import tempfile
 import os
 import shutil
-from hermes.utils.files import write_file
+from charon.utils.files import write_file
 
 
 class BaseTest(unittest.TestCase):
@@ -26,9 +26,9 @@ class BaseTest(unittest.TestCase):
         config_base = self.get_config_base()
         self.__prepare_template(config_base)
         default_config_content = """
-        [hermes]
+        [charon]
         ignore_patterns = [".*^(redhat).*",".*snapshot.*"]
-        bucket = hermes-test
+        bucket = charon-test
         """
         self.prepare_config(config_base, default_config_content)
 
@@ -38,7 +38,7 @@ class BaseTest(unittest.TestCase):
 
     def change_home(self):
         self.old_environ = os.environ.copy()
-        self.tempdir = tempfile.mkdtemp(prefix='hermes-test-')
+        self.tempdir = tempfile.mkdtemp(prefix='charon-test-')
         # Configure environment and copy templates
         os.environ['HOME'] = self.tempdir
 
@@ -50,7 +50,7 @@ class BaseTest(unittest.TestCase):
             self.fail("Template initilization failed!")
 
     def prepare_config(self, config_base, file_content):
-        config_path = os.path.join(config_base, "hermes.conf")
+        config_path = os.path.join(config_base, "charon.conf")
         write_file(config_path, file_content)
         if not os.path.isfile(config_path):
             self.fail("Configuration initilization failed!")
@@ -59,4 +59,4 @@ class BaseTest(unittest.TestCase):
         return self.tempdir
 
     def get_config_base(self) -> str:
-        return os.path.join(self.get_temp_dir(), '.hermes')
+        return os.path.join(self.get_temp_dir(), '.charon')

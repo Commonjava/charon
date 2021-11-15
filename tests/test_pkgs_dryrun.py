@@ -1,5 +1,5 @@
-from hermes.pkgs.maven import handle_maven_uploading, handle_maven_del
-from hermes.pkgs.npm import handle_npm_uploading, handle_npm_del
+from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
+from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from tests.base import BaseTest
 from moto import mock_s3
 import boto3

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from hermes.pkgs.maven import handle_maven_uploading, handle_maven_del
-from hermes.storage import CHECKSUM_META_KEY
+from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
+from charon.storage import CHECKSUM_META_KEY
 from tests.base import BaseTest
 from moto import mock_s3
 import boto3

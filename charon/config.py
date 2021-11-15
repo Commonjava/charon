@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,32 +19,32 @@ import os
 import logging
 import json
 
-CONFIG_FILE = "hermes.conf"
+CONFIG_FILE = "charon.conf"
 
-SECTION_HERMES = "hermes"
+SECTION_CHARON = "charon"
 IGNORE_PATTERN = "ignore_patterns"
 
 AWS_BUCKET = "bucket"
-AWS_DEFAULT_BUCKET = "hermes"
+AWS_DEFAULT_BUCKET = "charon"
 
 
 logger = logging.getLogger(__name__)
 
 
-class HermesConfig(object):
-    """HermesConfig is used to store all configurations for hermes
+class CharonConfig(object):
+    """CharonConfig is used to store all configurations for charon
     tools.
-    The configuration file will be named as hermes.conf, and will be stored
-    in $HOME/.hermes/ folder by default.
+    The configuration file will be named as charon.conf, and will be stored
+    in $HOME/.charon/ folder by default.
     """
     def __init__(self, data: ConfigParser):
         try:
-            self.__hermes_configs = dict(data.items(SECTION_HERMES))
+            self.__charon_configs = dict(data.items(SECTION_CHARON))
         except NoSectionError:
             pass
 
     def get_ignore_patterns(self) -> List[str]:
-        pattern_str = self.__val_or_default(self.__hermes_configs, IGNORE_PATTERN)
+        pattern_str = self.__val_or_default(self.__charon_configs, IGNORE_PATTERN)
         if pattern_str and pattern_str.strip() != "":
             try:
                 return json.loads(pattern_str)
@@ -55,10 +55,10 @@ class HermesConfig(object):
         return None
 
     def get_aws_bucket(self) -> str:
-        bucket = self.__val_or_default(self.__hermes_configs, AWS_BUCKET)
+        bucket = self.__val_or_default(self.__charon_configs, AWS_BUCKET)
         if not bucket:
-            logger.warning("%s not defined in hermes configuration,"
-                           " will use default 'hermes' bucket.", AWS_BUCKET)
+            logger.warning("%s not defined in charon configuration,"
+                           " will use default 'charon' bucket.", AWS_BUCKET)
             return AWS_DEFAULT_BUCKET
         return bucket
 
@@ -70,16 +70,16 @@ class HermesConfig(object):
 
 def get_config():
     parser = ConfigParser()
-    config_file = os.path.join(os.getenv("HOME"), ".hermes", CONFIG_FILE)
+    config_file = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
     if not parser.read(config_file):
         logger.warning("Warning: config file does not exist: %s", config_file)
         return None
-    return HermesConfig(parser)
+    return CharonConfig(parser)
 
 
 def get_template(template_file: str) -> str:
     template = os.path.join(
-        os.getenv("HOME"), ".hermes/template", template_file
+        os.getenv("HOME"), ".charon/template", template_file
     )
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:

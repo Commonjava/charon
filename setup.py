@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ version = "1.0.0"
 # long_description = long_description.split('split here', 1)[1]
 # f.close()
 long_description = """
-This hermes is a tool to synchronize several types of
+This charon is a tool to synchronize several types of
 artifacts repository data to RedHat Ronda service (maven.repository.redhat.com).
 These repositories including types of maven, npm or some others like python
 in future. And Ronda service will be hosted in AWS S3.
@@ -47,7 +47,7 @@ def _get_requirements(path):
 
 setup(
     zip_safe=True,
-    name="hermes",
+    name="charon",
     version=version,
     long_description=long_description,
     classifiers=[
@@ -58,13 +58,13 @@ setup(
         "Topic :: Software Development :: Build Tools",
         "Topic :: Utilities",
     ],
-    keywords="hermes mrrc maven npm build java",
+    keywords="charon mrrc maven npm build java",
     author="RedHat EXD SPMM",
     license="APLv2",
     packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
     install_requires=_get_requirements('requirements.txt'),
     test_suite="tests",
     entry_points={
-        "console_scripts": ["hermes = hermes:cli"],
+        "console_scripts": ["charon = charon:cli"],
     },
 )
