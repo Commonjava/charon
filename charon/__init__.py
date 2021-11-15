@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@ limitations under the License.
 """
 import logging
 
-from hermes.cmd.command import cli, upload, delete
-from hermes.utils.logs import set_logging
+from charon.cmd.command import cli, upload, delete
+from charon.utils.logs import set_logging
 
 # init group command
 cli.add_command(upload)

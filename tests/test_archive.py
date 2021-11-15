@@ -1,5 +1,5 @@
 from tests.base import BaseTest
-from hermes.utils.archive import NpmArchiveType, detect_npm_archive
+from charon.utils.archive import NpmArchiveType, detect_npm_archive
 import os
 
 

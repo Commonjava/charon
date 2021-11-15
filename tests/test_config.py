@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 """
 import unittest
 import os
-import hermes.config as config
+import charon.config as config
 from tests.base import BaseTest
 
 
@@ -30,7 +30,7 @@ class ConfigTest(unittest.TestCase):
         self.__base.setUp()
         conf = config.get_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
-        self.assertEqual('hermes-test', conf.get_aws_bucket())
+        self.assertEqual('charon-test', conf.get_aws_bucket())
 
     def test_no_config(self):
         self.__base.change_home()
@@ -40,7 +40,7 @@ class ConfigTest(unittest.TestCase):
     def test_config_default(self):
         self.__base.change_home()
         default_config_content = """
-        [hermes]
+        [charon]
         """
         config_base = self.__base.get_config_base()
         os.mkdir(config_base)
@@ -48,4 +48,4 @@ class ConfigTest(unittest.TestCase):
 
         conf = config.get_config()
         self.assertEqual(None, conf.get_ignore_patterns())
-        self.assertEqual('hermes', conf.get_aws_bucket())
+        self.assertEqual('charon', conf.get_aws_bucket())

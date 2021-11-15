@@ -1,3 +1,3 @@
 #!/bin/sh
 
-pytest --cov hermes -v --cov-report html
+pytest --cov charon -v --cov-report html

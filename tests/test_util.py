@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from hermes.utils.files import digest, read_sha1, HashType
+from charon.utils.files import digest, read_sha1, HashType
 import os
 import unittest
 
@@ -21,9 +21,6 @@ import unittest
 class UtilTest(unittest.TestCase):
     def test_digest(self):
         test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
-        self.assertEqual(
-            "ffb4098abd638ce91598008422769ec2", digest(test_file, HashType.MD5)
-        )
         self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         self.assertEqual(
             "61ff1d38cfeb281b05fcd6b9a2318ed47cd62c7f99b8a9d3e819591c03fe6804",

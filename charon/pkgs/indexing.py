@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from botocore.exceptions import ClientError
-from hermes.config import get_template
-from hermes.storage import S3Client
-from hermes.constants import INDEX_HTML_TEMPLATE
+from charon.config import get_template
+from charon.storage import S3Client
+from charon.constants import INDEX_HTML_TEMPLATE
 from jinja2 import Template
 import os
 import logging

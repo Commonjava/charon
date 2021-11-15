@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ import os
 import boto3
 from moto import mock_s3
 
-from hermes.pkgs.npm import handle_npm_uploading, handle_npm_del
-from hermes.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
+from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import BaseTest
 
 TEST_BUCKET = "npm_bucket"

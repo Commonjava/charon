@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import hermes.pkgs.indexing as indexing
-from hermes.utils.files import write_file
-from hermes.utils.archive import extract_zip_all
-from hermes.storage import S3Client
-from hermes.config import AWS_DEFAULT_BUCKET, get_template
-from hermes.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, MAVEN_METADATA_TEMPLATE
+import charon.pkgs.indexing as indexing
+from charon.utils.files import write_file
+from charon.utils.archive import extract_zip_all
+from charon.storage import S3Client
+from charon.config import AWS_DEFAULT_BUCKET, get_template
+from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, MAVEN_METADATA_TEMPLATE
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -407,7 +407,7 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     if os.path.exists(repo):
         logger.info("Extracting tarball %s", repo)
         repo_zip = ZipFile(repo)
-        tmp_root = mkdtemp(prefix=f"hermes-{prefix}-", dir=dir__)
+        tmp_root = mkdtemp(prefix=f"charon-{prefix}-", dir=dir__)
         extract_zip_all(repo_zip, tmp_root)
         return tmp_root
     logger.error("Error: archive %s does not exist", repo)

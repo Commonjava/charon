@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from hermes.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
-from hermes.utils.archive import extract_zip_all
-from hermes.utils.files import write_file, read_sha1
+from charon.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from charon.utils.archive import extract_zip_all
+from charon.utils.files import write_file, read_sha1
 from tests.base import BaseTest
 from moto import mock_s3
 import boto3

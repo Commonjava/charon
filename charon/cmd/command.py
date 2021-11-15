@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-from hermes.config import get_config, AWS_DEFAULT_BUCKET
-from hermes.utils.logs import set_logging
-from hermes.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
-from hermes.pkgs.maven import handle_maven_uploading, handle_maven_del
-from hermes.pkgs.npm import handle_npm_uploading, handle_npm_del
+from charon.config import get_config, AWS_DEFAULT_BUCKET
+from charon.utils.logs import set_logging
+from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
+from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
+from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from click import command, option, argument, group
 from json import loads
 
@@ -228,7 +228,7 @@ def delete(
 
 
 def __get_ignore_patterns() -> List[str]:
-    ignore_patterns = os.getenv("HERMES_IGNORE_PATTERNS")
+    ignore_patterns = os.getenv("CHARON_IGNORE_PATTERNS")
     if ignore_patterns:
         try:
             return loads(ignore_patterns)
@@ -247,7 +247,7 @@ def __get_bucket(param_bucket: str) -> str:
         logger.info("AWS bucket '%s' is specified in option"
                     ", will use it for following process", param_bucket)
         return param_bucket
-    TARGET_BUCKET = "HERMES_BUCKET"
+    TARGET_BUCKET = "CHARON_BUCKET"
     bucket = os.getenv(TARGET_BUCKET)
     if bucket:
         logger.info("AWS bucket '%s' found in system environment var '%s'"
@@ -270,7 +270,7 @@ def __get_local_repo(url: str) -> str:
 
 @group()
 def cli():
-    """Hermes is a tool to synchronize several types of
+    """Charon is a tool to synchronize several types of
        artifacts repository data to Red Hat Ronda
        service (maven.repository.redhat.com).
     """

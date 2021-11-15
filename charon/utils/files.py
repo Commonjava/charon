@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/hermes)
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,9 +60,7 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
     BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
 
     hash_obj = None
-    if hash_type == HashType.MD5:
-        hash_obj = hashlib.md5()
-    elif hash_type == HashType.SHA1:
+    if hash_type == HashType.SHA1:
         hash_obj = hashlib.sha1()
     elif hash_type == HashType.SHA256:
         hash_obj = hashlib.sha256()
