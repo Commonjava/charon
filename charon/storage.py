@@ -60,7 +60,7 @@ class S3Client(object):
         if endpoint_url:
             logger.debug("Using endpoint url for aws client: %s", endpoint_url)
         else:
-            logger.debug("Not using any endpoint url, will use default s3 endpoint")
+            logger.debug("No user-specified endpoint url is used.")
         return endpoint_url
 
     def upload_files(

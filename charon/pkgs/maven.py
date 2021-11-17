@@ -448,8 +448,8 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
 
     if len(non_mvn_paths) > 0:
         non_mvn_items = [n.replace(files_root, "") for n in non_mvn_paths]
-        logger.info("These files are not under the specified "
-                    "prefix dir %s, so will be ignored: \n%s",
+        logger.info("These files are not in the specified "
+                    "root dir %s, so will be ignored: \n%s",
                     root, non_mvn_items)
     if not top_found and top_level.strip() != "":
         logger.warning(
