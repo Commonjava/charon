@@ -106,6 +106,8 @@ def upload(
     if dryrun:
         logger.info("Running in dry-run mode,"
                     "no files will be uploaded.")
+    if not __validate_prod_key(product, version):
+        return
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
@@ -205,6 +207,8 @@ def delete(
     if dryrun:
         logger.info("Running in dry-run mode,"
                     "no files will be deleted.")
+    if not __validate_prod_key(product, version):
+        return
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
@@ -266,6 +270,22 @@ def __get_local_repo(url: str) -> str:
         archive_path = download_archive(url)
         logger.info("Tarball downloaded at: %s", archive_path)
     return archive_path
+
+
+def __validate_prod_key(product: str, version: str) -> bool:
+    if not product or product.strip() == "":
+        logger.error("Error: product can not be empty!")
+        return False
+    if not version or version.strip() == "":
+        logger.error("Error: version can not be empty!")
+        return False
+    if "," in product:
+        logger.error("Error: there are invalid characters in product!")
+        return False
+    if "," in version:
+        logger.error("Error: there are invalid characters in version!")
+        return False
+    return True
 
 
 @group()
