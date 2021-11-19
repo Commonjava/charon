@@ -20,6 +20,7 @@ DESCRIPTION = "charon is a tool to synchronize several types of artifacts "
 PROG = 'charon'
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
+META_FILE_FAILED = "Fail"
 MAVEN_METADATA_TEMPLATE = '''
 <metadata>
   {%- if meta.group_id is defined %}

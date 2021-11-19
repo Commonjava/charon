@@ -70,7 +70,7 @@ class NPMMetadataOnS3Test(BaseTest):
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
             dir_=self.tempdir
             )
-        files = self.s3_client.get_files(
+        (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
             prefix='@redhat/kogito-tooling-workspace/package.json'
             )
@@ -122,7 +122,7 @@ class NPMMetadataOnS3Test(BaseTest):
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
             dir_=self.tempdir
         )
-        files = self.s3_client.get_files(
+        (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
             prefix='@redhat/kogito-tooling-workspace/package.json'
         )

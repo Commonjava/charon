@@ -65,28 +65,28 @@ class S3ClientTest(BaseTest):
         bucket.put_object(Key="org/x/y/1.0/x-y-1.0.pom", Body="test content pom")
         bucket.put_object(Key="org/x/y/1.0/x-y-1.0.jar", Body="test content jar")
 
-        files = self.s3_client.get_files(bucket_name=MY_BUCKET)
+        (files, _) = self.s3_client.get_files(bucket_name=MY_BUCKET)
         self.assertEqual(4, len(files))
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.pom", files)
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.jar", files)
         self.assertIn("org/x/y/1.0/x-y-1.0.pom", files)
         self.assertIn("org/x/y/1.0/x-y-1.0.jar", files)
 
-        files = self.s3_client.get_files(bucket_name=MY_BUCKET, suffix=".pom")
+        (files, _) = self.s3_client.get_files(bucket_name=MY_BUCKET, suffix=".pom")
         self.assertEqual(2, len(files))
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.pom", files)
         self.assertNotIn("org/foo/bar/1.0/foo-bar-1.0.jar", files)
         self.assertIn("org/x/y/1.0/x-y-1.0.pom", files)
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
-        files = self.s3_client.get_files(bucket_name=MY_BUCKET, prefix="org/foo/bar")
+        (files, _) = self.s3_client.get_files(bucket_name=MY_BUCKET, prefix="org/foo/bar")
         self.assertEqual(2, len(files))
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.pom", files)
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.jar", files)
         self.assertNotIn("org/x/y/1.0/x-y-1.0.pom", files)
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
-        files = self.s3_client.get_files(
+        (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET, prefix="org/foo/bar", suffix=".pom"
         )
         self.assertEqual(1, len(files))
