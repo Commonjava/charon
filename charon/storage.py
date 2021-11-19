@@ -58,7 +58,7 @@ class S3Client(object):
             if isinstance(extra_conf, Dict):
                 endpoint_url = extra_conf.get(ENDPOINT_ENV, None)
         if endpoint_url:
-            logger.debug("Using endpoint url for aws client: %s", endpoint_url)
+            logger.info("Using endpoint url for aws client: %s", endpoint_url)
         else:
             logger.debug("No user-specified endpoint url is used.")
         return endpoint_url
