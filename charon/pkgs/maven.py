@@ -18,7 +18,8 @@ from charon.utils.files import write_file
 from charon.utils.archive import extract_zip_all
 from charon.storage import S3Client
 from charon.config import AWS_DEFAULT_BUCKET, get_template
-from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, MAVEN_METADATA_TEMPLATE
+from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
+                              META_FILE_FAILED, MAVEN_METADATA_TEMPLATE)
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -234,7 +235,7 @@ def handle_maven_uploading(
     meta_files = _generate_metadatas(s3_client, bucket, valid_poms, top_level)
     logger.info("maven-metadata.xml files generation done\n")
 
-    failed_metas = []
+    failed_metas = meta_files.get(META_FILE_FAILED, [])
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start updating maven-metadata.xml to s3")
@@ -349,7 +350,7 @@ def handle_maven_del(
         file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
     )
     deleted_files += deleted_metas
-    failed_metas = []
+    failed_metas = meta_files.get(META_FILE_FAILED, [])
     if META_FILE_GEN_KEY in meta_files:
         _uploaded_files, _failed_metas = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
@@ -494,14 +495,21 @@ def _generate_metadatas(
         # but got a/b-1
         if not path.endswith("/"):
             path = path + "/"
-        existed_poms = s3.get_files(bucket, path, ".pom")
+        (existed_poms, success) = s3.get_files(bucket, path, ".pom")
         if len(existed_poms) == 0:
-            logger.debug(
-                "No poms found in s3 bucket %s for GA path %s", bucket, path
-            )
-            meta_files_deletion = meta_files.get(META_FILE_DEL_KEY, [])
-            meta_files_deletion.append(os.path.join(path, "maven-metadata.xml"))
-            meta_files[META_FILE_DEL_KEY] = meta_files_deletion
+            if success:
+                logger.debug(
+                    "No poms found in s3 bucket %s for GA path %s", bucket, path
+                )
+                meta_files_deletion = meta_files.get(META_FILE_DEL_KEY, [])
+                meta_files_deletion.append(os.path.join(path, "maven-metadata.xml"))
+                meta_files[META_FILE_DEL_KEY] = meta_files_deletion
+            else:
+                logger.warning("An error happened when scanning remote "
+                               "artifacts under GA path %s", path)
+                meta_failed_path = meta_files.get(META_FILE_FAILED, [])
+                meta_failed_path.append(os.path.join(path, "maven-metadata.xml"))
+                meta_files[META_FILE_FAILED] = meta_failed_path
         else:
             logger.debug(
                 "Got poms in s3 bucket %s for GA path %s: %s", bucket, path, poms

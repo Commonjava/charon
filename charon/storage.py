@@ -284,14 +284,20 @@ class S3Client(object):
 
         return (deleted_files, failed_files)
 
-    def get_files(self, bucket_name: str, prefix=None, suffix=None) -> List[str]:
+    def get_files(self, bucket_name: str, prefix=None, suffix=None) -> Tuple[List[str], bool]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
-        files wanted.
+        files wanted. If some error happend, will return an empty file list and false result
         """
         bucket = self.get_bucket(bucket_name)
         objs = []
         if prefix and prefix.strip() != "":
-            objs = list(bucket.objects.filter(Prefix=prefix))
+            try:
+                objs = list(bucket.objects.filter(Prefix=prefix))
+            except (ClientError, HTTPClientError) as e:
+                logger.error("ERROR: Can not get files under %s in bucket"
+                             " %s due to error: %s ", prefix,
+                             bucket_name, e)
+                return ([], False)
         else:
             objs = list(bucket.objects.all())
         files = []
@@ -299,7 +305,7 @@ class S3Client(object):
             files = [i.key for i in objs if i.key.endswith(suffix)]
         else:
             files = [i.key for i in objs]
-        return files
+        return (files, True)
 
     def read_file_content(self, bucket_name=None, key=None):
         bucket = self.get_bucket(bucket_name)

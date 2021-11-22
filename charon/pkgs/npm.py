@@ -221,7 +221,10 @@ def _gen_npm_package_metadata_for_upload(
     """
     meta_files = {}
     package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
-    package_json_files = client.get_files(bucket_name=bucket, prefix=package_metadata_key)
+    (package_json_files, success) = client.get_files(bucket_name=bucket,
+                                                     prefix=package_metadata_key)
+    if not success:
+        logger.warning("Error to get remote metadata files for %s", package_metadata_key)
     result = source_package
     if len(package_json_files) > 0:
         result = _merge_package_metadata(
@@ -245,9 +248,12 @@ def _gen_npm_package_metadata_for_del(
     """
     meta_files = {}
     package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
-    existed_version_metas = client.get_files(
+    (existed_version_metas, success) = client.get_files(
         bucket_name=bucket, prefix=package_path_prefix, suffix=PACKAGE_JSON
     )
+    if not success:
+        logger.warning("Error to get remote metadata files "
+                       "for %s when deletion", package_path_prefix)
     # ensure the metas only contain version package.json
     existed_version_metas.remove(package_metadata_key)
     # Still have versions in S3 and need to maintain the package metadata
