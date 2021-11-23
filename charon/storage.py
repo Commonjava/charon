@@ -18,6 +18,7 @@ from charon.utils.files import read_sha1
 from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
+from botocore.config import Config
 from typing import Callable, Dict, List, Tuple
 import os
 import logging
@@ -28,6 +29,7 @@ PRODUCT_META_KEY = "rh-products"
 CHECKSUM_META_KEY = "checksum"
 
 ENDPOINT_ENV = "aws_endpoint_url"
+ACCELERATION_ENABLE_ENV = "aws_enable_acceleration"
 
 
 class S3Client(object):
@@ -39,7 +41,7 @@ class S3Client(object):
         self.client = self.__init_aws_client(extra_conf)
         self.dry_run = dry_run
 
-    def __init_aws_client(self, extra_conf=None):
+    def __init_aws_client(self, extra_conf=None, enable_acc=False):
         aws_profile = os.getenv("AWS_PROFILE", None)
         if aws_profile:
             logger.debug("Using aws profile: %s", aws_profile)
@@ -47,9 +49,15 @@ class S3Client(object):
         else:
             s3_session = session.Session()
         endpoint_url = self.__get_endpoint(extra_conf)
+        config = None
+        if self.__enable_acceleration(extra_conf):
+            logger.info("S3 acceleration config enabled, "
+                        "will enable s3 use_accelerate_endpoint config")
+            config = Config(s3={"use_accelerate_endpoint": True})
         return s3_session.resource(
             's3',
-            endpoint_url=endpoint_url
+            endpoint_url=endpoint_url,
+            config=config
         )
 
     def __get_endpoint(self, extra_conf) -> str:
@@ -62,6 +70,15 @@ class S3Client(object):
         else:
             logger.debug("No user-specified endpoint url is used.")
         return endpoint_url
+
+    def __enable_acceleration(self, extra_conf) -> bool:
+        enable_acc = os.getenv(ACCELERATION_ENABLE_ENV)
+        if not enable_acc or enable_acc.strip() == "":
+            if isinstance(extra_conf, Dict):
+                enable_acc = extra_conf.get(ACCELERATION_ENABLE_ENV, "False")
+        if enable_acc and enable_acc.strip().lower() == "true":
+            return True
+        return False
 
     def upload_files(
         self, file_paths: List[str], bucket_name: str,
