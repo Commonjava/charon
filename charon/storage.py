@@ -22,6 +22,7 @@ from botocore.config import Config
 from typing import Callable, Dict, List, Tuple
 import os
 import logging
+import mimetypes
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ CHECKSUM_META_KEY = "checksum"
 
 ENDPOINT_ENV = "aws_endpoint_url"
 ACCELERATION_ENABLE_ENV = "aws_enable_acceleration"
+
+DEFAULT_MIME_TYPE = "application/octet-stream"
 
 
 class S3Client(object):
@@ -114,6 +117,9 @@ class S3Client(object):
             fileObject = bucket.Object(path)
             existed = self.file_exists(fileObject)
             sha1 = read_sha1(full_file_path)
+            (content_type, _) = mimetypes.guess_type(full_file_path)
+            if not content_type:
+                content_type = DEFAULT_MIME_TYPE
             if not existed:
                 f_meta = {}
                 if sha1.strip() != "":
@@ -123,9 +129,16 @@ class S3Client(object):
                 try:
                     if not self.dry_run:
                         if len(f_meta) > 0:
-                            fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
+                            fileObject.put(
+                                Body=open(full_file_path, "rb"),
+                                Metadata=f_meta,
+                                ContentType=content_type
+                            )
                         else:
-                            fileObject.upload_file(full_file_path)
+                            fileObject.upload_file(
+                                full_file_path,
+                                ExtraArgs={'ContentType': content_type}
+                            )
                     logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
                     uploaded_files.append(path)
                 except (ClientError, HTTPClientError) as e:
@@ -192,6 +205,9 @@ class S3Client(object):
             f_meta = {}
             need_overwritten = True
             sha1 = read_sha1(full_file_path)
+            (content_type, _) = mimetypes.guess_type(full_file_path)
+            if not content_type:
+                content_type = DEFAULT_MIME_TYPE
             if existed:
                 f_meta = fileObject.metadata
                 need_overwritten = (
@@ -210,7 +226,11 @@ class S3Client(object):
             try:
                 if not self.dry_run:
                     if need_overwritten:
-                        fileObject.put(Body=open(full_file_path, "rb"), Metadata=f_meta)
+                        fileObject.put(
+                            Body=open(full_file_path, "rb"),
+                            Metadata=f_meta,
+                            ContentType=content_type
+                        )
                     else:
                         self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
