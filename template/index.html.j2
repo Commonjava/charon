@@ -2,28 +2,32 @@
 <html>
 
 <head>
-	<title>{{ index.title }}</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<style>
+  <title>{{ index.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
 body {
-	background: #fff;
+  background: #fff;
 }
-	</style>
+  </style>
 </head>
 
 <body>
-	<header>
-		<h1>{{ index.header }}</h1>
-	</header>
-	<hr/>
-	<main>
-		<pre id="contents">
+  <header>
+    <h1>{{ index.header }}</h1>
+  </header>
+  <hr/>
+  <main>
+    <pre id="contents">
     {% for item in index.items %}
-      		<a href="{{ item }}" title="{{ item }}">{{ item }}</a>
+      {% if item.endswith("/") %}
+        <a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a>
+      {% else %}
+        <a href="{{ item }}" title="{{ item }}">{{ item }}</a>
+      {% endif %}
     {% endfor%}
-		</pre>
-	</main>
-	<hr/>
+    </pre>
+  </main>
+  <hr/>
 </body>
 
 </html>
