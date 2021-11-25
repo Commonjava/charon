@@ -119,7 +119,11 @@ body {
   <main>
     <pre id="contents">
     {% for item in index.items %}
-          <a href="{{ item }}" title="{{ item }}">{{ item }}</a>
+      {% if item.endswith("/") %}
+        <a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a>
+      {% else %}
+        <a href="{{ item }}" title="{{ item }}">{{ item }}</a>
+      {% endif %}
     {% endfor%}
     </pre>
   </main>

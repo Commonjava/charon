@@ -98,21 +98,22 @@ class MavenFileIndexTest(BaseTest):
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn("<a href=\"4.5.6/index.html\" title=\"4.5.6/\">4.5.6/</a>", index_content)
         self.assertIn(
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content
         )
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"org/\" title=\"org/\">org/</a>", index_content)
+        self.assertIn("<a href=\"org/index.html\" title=\"org/\">org/</a>", index_content)
         self.assertIn(
-            "<a href=\"commons-logging/\" title=\"commons-logging/\">commons-logging/</a>",
+            "<a href=\"commons-logging/index.html\" "
+            "title=\"commons-logging/\">commons-logging/</a>",
             index_content
         )
-        self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
     def test_overlap_upload_index(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -133,29 +134,30 @@ class MavenFileIndexTest(BaseTest):
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
-        self.assertIn("<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>", index_content)
+        self.assertIn("<a href=\"4.5.6/index.html\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn("<a href=\"4.5.9/index.html\" title=\"4.5.9/\">4.5.9/</a>", index_content)
         self.assertIn(
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_LOGGING_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"1.2/\" title=\"1.2/\">1.2/</a>", index_content)
+        self.assertIn("<a href=\"1.2/index.html\" title=\"1.2/\">1.2/</a>", index_content)
         self.assertIn(
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"org/\" title=\"org/\">org/</a>", index_content)
+        self.assertIn("<a href=\"org/index.html\" title=\"org/\">org/</a>", index_content)
         self.assertIn(
-            "<a href=\"commons-logging/\" title=\"commons-logging/\">commons-logging/</a>",
+            "<a href=\"commons-logging/index.html\" "
+            "title=\"commons-logging/\">commons-logging/</a>",
             index_content
         )
-        self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
     def test_deletion_index(self):
         self.__prepare_content()
@@ -186,21 +188,22 @@ class MavenFileIndexTest(BaseTest):
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"4.5.9/\" title=\"4.5.9/\">4.5.9/</a>", index_content)
-        self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertIn("<a href=\"4.5.9/index.html\" title=\"4.5.9/\">4.5.9/</a>", index_content)
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
         self.assertIn(
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
-        self.assertNotIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertNotIn("<a href=\"4.5.6/index.html\" title=\"4.5.6/\">4.5.6/</a>", index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"org/\" title=\"org/\">org/</a>", index_content)
+        self.assertIn("<a href=\"org/index.html\" title=\"org/\">org/</a>", index_content)
         self.assertIn(
-            "<a href=\"commons-logging/\" title=\"commons-logging/\">commons-logging/</a>",
+            "<a href=\"commons-logging/index.html\" "
+            "title=\"commons-logging/\">commons-logging/</a>",
             index_content
         )
-        self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
         product_459 = "commons-client-4.5.9"
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
