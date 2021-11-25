@@ -42,6 +42,7 @@ class S3Client(object):
 
     def __init__(self, extra_conf=None, dry_run=False) -> None:
         self.client = self.__init_aws_client(extra_conf)
+        self.bucket = None
         self.dry_run = dry_run
 
     def __init_aws_client(self, extra_conf=None, enable_acc=False):
@@ -350,7 +351,11 @@ class S3Client(object):
         return str(fileObject.get()['Body'].read(), 'utf-8')
 
     def get_bucket(self, bucket_name: str):
-        return self.client.Bucket(bucket_name)
+        if self.bucket and self.bucket.name == bucket_name:
+            return self.bucket
+        logger.info("Changing the bucket to %s", bucket_name)
+        self.bucket = self.client.Bucket(bucket_name)
+        return self.bucket
 
     def file_exists(self, fileObject) -> bool:
         try:
