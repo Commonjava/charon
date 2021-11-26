@@ -19,6 +19,8 @@ from pathlib import Path
 import os
 import logging
 
+from charon.utils.strings import remove_prefix
+
 CONFIG_FILE = "charon.yaml"
 
 logger = logging.getLogger(__name__)
@@ -62,8 +64,8 @@ class CharonConfig(object):
                            "in charon configuration, so no prefix will "
                            "be used", target)
             prefix = ""
-        if prefix.startswith("/"):
-            prefix = prefix[1:]
+        # removing first slash as it is not needed.
+        prefix = remove_prefix(prefix, "/")
         return prefix
 
 

@@ -1,6 +1,7 @@
 from charon.pkgs.maven import handle_maven_uploading
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
-from tests.base import BaseTest
+from charon.utils.strings import remove_prefix
+from tests.base import BaseTest, SHORT_TEST_PREFIX, LONG_TEST_PREFIX
 from moto import mock_s3
 import boto3
 import os
@@ -215,3 +216,59 @@ class MavenUploadTest(BaseTest):
 
         for f in ignored_files:
             self.assertNotIn(f, actual_files)
+
+    def test_short_prefix_upload(self):
+        self.__test_prefix_upload(SHORT_TEST_PREFIX)
+
+    def test_long_prefix_upload(self):
+        self.__test_prefix_upload(LONG_TEST_PREFIX)
+
+    def test_root_prefix_upload(self):
+        self.__test_prefix_upload("/")
+
+    def __test_prefix_upload(self, prefix: str):
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        product = "commons-client-4.5.6"
+        handle_maven_uploading(
+            test_zip, product,
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir,
+            do_index=False
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(12, len(actual_files))
+
+        prefix_ = remove_prefix(prefix, "/")
+        PREFIXED_COMMONS_CLIENT_456_FILES = [
+            os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES]
+        for f in PREFIXED_COMMONS_CLIENT_456_FILES:
+            self.assertIn(f, actual_files)
+        PREFIXED_COMMONS_CLIENT_META = os.path.join(prefix_, COMMONS_CLIENT_META)
+        self.assertIn(PREFIXED_COMMONS_CLIENT_META, actual_files)
+
+        PREFIXED_COMMONS_LOGGING_FILES = [
+            os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES]
+        for f in PREFIXED_COMMONS_LOGGING_FILES:
+            self.assertIn(f, actual_files)
+        PREFIXED_COMMONS_LOGGING_META = os.path.join(prefix_, COMMONS_LOGGING_META)
+        self.assertIn(PREFIXED_COMMONS_LOGGING_META, actual_files)
+
+        PREFIXED_NON_MVN_FILES = [
+            os.path.join(prefix_, f) for f in NON_MVN_FILES]
+        for f in PREFIXED_NON_MVN_FILES:
+            self.assertNotIn(f, actual_files)
+
+        for obj in objs:
+            self.assertEqual(product, obj.Object().metadata[PRODUCT_META_KEY])
+            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+
+        meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_META)
+        self.assertIsNotNone(meta_obj_client)
+
+        meta_obj_logging = test_bucket.Object(PREFIXED_COMMONS_LOGGING_META)
+        self.assertIsNotNone(meta_obj_logging)

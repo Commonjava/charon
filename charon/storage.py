@@ -86,7 +86,7 @@ class S3Client(object):
 
     def upload_files(
         self, file_paths: List[str], bucket_name: str,
-        product: str, root="/"
+        product: str, root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
@@ -115,7 +115,8 @@ class S3Client(object):
                                full_file_path, product)
                 return False
             logger.info('Uploading %s to bucket %s', full_file_path, bucket_name)
-            fileObject = bucket.Object(path)
+            path_key = os.path.join(key_prefix, path) if key_prefix else path
+            fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
             sha1 = read_sha1(full_file_path)
             (content_type, _) = mimetypes.guess_type(full_file_path)
@@ -141,7 +142,7 @@ class S3Client(object):
                                 ExtraArgs={'ContentType': content_type}
                             )
                     logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
-                    uploaded_files.append(path)
+                    uploaded_files.append(path_key)
                 except (ClientError, HTTPClientError) as e:
                     logger.error("ERROR: file %s not uploaded to bucket"
                                  " %s due to error: %s ", full_file_path,
@@ -158,7 +159,7 @@ class S3Client(object):
                 )
                 if checksum != "" and checksum.strip() != sha1:
                     logger.error('Error: checksum check failed. The file %s is different from the '
-                                 'one in S3. Product: %s', path, product)
+                                 'one in S3. Product: %s', path_key, product)
                     return False
 
                 prods = []
@@ -173,7 +174,7 @@ class S3Client(object):
                         product,
                     )
                     prods.append(product)
-                    self.__update_file_metadata(fileObject, bucket_name, path,
+                    self.__update_file_metadata(fileObject, bucket_name, path_key,
                                                 {PRODUCT_META_KEY: ",".join(prods)})
             return True
 
@@ -183,7 +184,7 @@ class S3Client(object):
 
     def upload_metadatas(
         self, meta_file_paths: List[str], bucket_name: str,
-        product: str, root="/"
+        product: str, root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
@@ -201,7 +202,8 @@ class S3Client(object):
                                full_file_path, product)
                 return False
             logger.info('Updating metadata %s to bucket %s', path, bucket_name)
-            fileObject = bucket.Object(path)
+            path_key = os.path.join(key_prefix, path) if key_prefix else path
+            fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
             f_meta = {}
             need_overwritten = True
@@ -233,9 +235,9 @@ class S3Client(object):
                             ContentType=content_type
                         )
                     else:
-                        self.__update_file_metadata(fileObject, bucket_name, path, f_meta)
+                        self.__update_file_metadata(fileObject, bucket_name, path_key, f_meta)
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
-                uploaded_files.append(path)
+                uploaded_files.append(path_key)
             except (ClientError, HTTPClientError) as e:
                 logger.error("ERROR: file %s not uploaded to bucket"
                              " %s due to error: %s ", full_file_path,
@@ -248,7 +250,8 @@ class S3Client(object):
         ))
 
     def delete_files(
-        self, file_paths: List[str], bucket_name: str, product: str, root="/"
+        self, file_paths: List[str], bucket_name: str,
+        product: str, root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
@@ -266,7 +269,8 @@ class S3Client(object):
 
         def path_delete_handler(full_file_path: str, path: str):
             logger.info('Deleting %s from bucket %s', path, bucket_name)
-            fileObject = bucket.Object(path)
+            path_key = os.path.join(key_prefix, path) if key_prefix else path
+            fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
             if existed:
                 prods = []
@@ -286,7 +290,7 @@ class S3Client(object):
                         self.__update_file_metadata(
                             fileObject,
                             bucket_name,
-                            path,
+                            path_key,
                             {PRODUCT_META_KEY: ",".join(prods)},
                         )
                         logger.info(
@@ -303,7 +307,7 @@ class S3Client(object):
                 elif len(prods) == 0:
                     try:
                         if not self.dry_run:
-                            bucket.delete_objects(Delete={"Objects": [{"Key": path}]})
+                            bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
                         return True
@@ -416,7 +420,8 @@ class S3Client(object):
             )
 
     def __do_path_cut_and(
-        self, file_paths: List[str], fn: Callable[[str, str], bool], root="/"
+        self, file_paths: List[str],
+        fn: Callable[[str, str], bool], root="/"
     ) -> List[str]:
         slash_root = root
         if not root.endswith("/"):

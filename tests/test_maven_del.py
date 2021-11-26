@@ -1,6 +1,7 @@
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
-from tests.base import BaseTest
+from charon.utils.strings import remove_prefix
+from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
 from moto import mock_s3
 import boto3
 import os
@@ -184,17 +185,87 @@ class MavenDeleteTest(BaseTest):
         for f in non_sha1_files:
             self.assertNotIn(f, actual_files)
 
-    def __prepare_content(self):
+    def test_short_prefix_deletion(self):
+        self.__test_prefix_deletion(SHORT_TEST_PREFIX)
+
+    def test_long_prefix_deletion(self):
+        self.__test_prefix_deletion(LONG_TEST_PREFIX)
+
+    def test_root_prefix_deletion(self):
+        self.__test_prefix_deletion("/")
+
+    def __test_prefix_deletion(self, prefix: str):
+        self.__prepare_content(prefix)
+
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        product_456 = "commons-client-4.5.6"
+        handle_maven_del(
+            test_zip, product_456,
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir, do_index=False
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(12, len(actual_files))
+
+        prefix_ = remove_prefix(prefix, "/")
+        PREFIXED_COMMONS_CLIENT_456_FILES = [
+            os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES]
+        for f in PREFIXED_COMMONS_CLIENT_456_FILES:
+            self.assertNotIn(f, actual_files)
+        PREFIXED_COMMONS_CLIENT_META = os.path.join(prefix_, COMMONS_CLIENT_META)
+        self.assertIn(PREFIXED_COMMONS_CLIENT_META, actual_files)
+
+        PREFIXED_COMMONS_LOGGING_FILES = [
+            os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES]
+        for f in PREFIXED_COMMONS_LOGGING_FILES:
+            self.assertIn(f, actual_files)
+        PREFIXED_COMMONS_LOGGING_META = os.path.join(prefix_, COMMONS_LOGGING_META)
+        self.assertIn(PREFIXED_COMMONS_LOGGING_META, actual_files)
+
+        for obj in objs:
+            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+
+        product_459 = "commons-client-4.5.9"
+        meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_META)
+        self.assertEqual(product_459, meta_obj_client.metadata[PRODUCT_META_KEY])
+
+        meta_obj_logging = test_bucket.Object(PREFIXED_COMMONS_LOGGING_META)
+        self.assertEqual(product_459, meta_obj_logging.metadata[PRODUCT_META_KEY])
+
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        handle_maven_del(
+            test_zip, product_459,
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir,
+            do_index=False
+        )
+
+        objs = list(test_bucket.objects.all())
+        self.assertEqual(0, len(objs))
+
+    def __prepare_content(self, prefix=None):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir,
+            do_index=False
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir,
+            do_index=False
         )
