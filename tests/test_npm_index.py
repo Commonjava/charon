@@ -72,7 +72,8 @@ class NpmFileIndexTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(13, len(objs))
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(8, len(actual_files))
 
         actual_files = [obj.key for obj in objs]
 
@@ -99,9 +100,8 @@ class NpmFileIndexTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(17, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(11, len(objs))
 
         for assert_file in CODE_FRAME_7_14_5_INDEXES:
             self.assertIn(assert_file, actual_files)
@@ -122,14 +122,15 @@ class NpmFileIndexTest(BaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product_7_14_5, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_tgz, product_7_14_5,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(13, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(8, len(objs))
 
         for assert_file in CODE_FRAME_7_15_8_INDEXES:
             self.assertIn(assert_file, actual_files)

@@ -77,14 +77,15 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(30, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(21, len(actual_files))
 
         for f in COMMONS_LOGGING_INDEXES:
             self.assertIn(f, actual_files)
@@ -125,12 +126,14 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(36, len(objs))
+        self.assertEqual(26, len(objs))
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -165,14 +168,15 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
-            test_zip, product_456, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(30, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(21, len(actual_files))
 
         for assert_file in COMMONS_CLIENT_459_INDEXES:
             self.assertIn(assert_file, actual_files)
@@ -218,11 +222,15 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir
         )

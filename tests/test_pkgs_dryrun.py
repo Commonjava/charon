@@ -56,7 +56,7 @@ class PkgsDryRunTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(36, len(objs))
+        self.assertEqual(26, len(objs))
 
     def test_npm_upload_dry_run(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
@@ -86,7 +86,7 @@ class PkgsDryRunTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(17, len(objs))
+        self.assertEqual(11, len(objs))
 
     def __prepare_maven_content(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")

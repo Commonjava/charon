@@ -205,7 +205,8 @@ def handle_maven_uploading(
     # and also collect poms for later metadata generation
     (top_level,
      valid_mvn_paths,
-     valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
+     valid_poms,
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
@@ -224,11 +225,9 @@ def handle_maven_uploading(
     logger.info("Start uploading files to s3")
     s3_client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    uploaded_files = []
-    _uploaded_files, failed_files = s3_client.upload_files(
+    (_, failed_files) = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
-    uploaded_files.extend(_uploaded_files)
     logger.info("Files uploading done\n")
 
     # 5. Use uploaded poms to scan s3 for metadata refreshment
@@ -240,28 +239,27 @@ def handle_maven_uploading(
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start updating maven-metadata.xml to s3")
-        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
+        (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=prod_key,
             root=top_level
         )
         failed_metas.extend(_failed_metas)
-        uploaded_files.extend(_uploaded_files)
         logger.info("maven-metadata.xml updating done\n")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
         logger.info("Start generating index files to s3")
-        index_files = uploaded_files
-        if META_FILE_GEN_KEY in meta_files:
-            index_files = index_files + meta_files[META_FILE_GEN_KEY]
-        created_files = indexing.handle_create_index(top_level, index_files, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
         logger.info("Index files generation done.\n")
+
         logger.info("Start updating index files to s3")
-        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
-            meta_file_paths=created_files, bucket_name=bucket, product=None, root=top_level
+        (_, _failed_metas) = s3_client.upload_metadatas(
+            meta_file_paths=created_indexes,
+            bucket_name=bucket,
+            product=None, root=top_level
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -301,7 +299,8 @@ def handle_maven_del(
     # and also collect poms for later metadata generation
     (top_level,
      valid_mvn_paths,
-     valid_poms) = _scan_paths(tmp_root, ignore_patterns, root)
+     valid_poms,
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # 3. Parse GA from valid_poms for later maven metadata refreshing
     logger.info("Start generating maven-metadata.xml files for all artifacts")
@@ -317,7 +316,7 @@ def handle_maven_del(
     logger.info("Start deleting files from s3")
     s3_client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
-    deleted_files, failed_files = s3_client.delete_files(
+    (_, failed_files) = s3_client.delete_files(
         valid_mvn_paths,
         bucket_name=bucket,
         product=prod_key,
@@ -336,45 +335,33 @@ def handle_maven_del(
     all_meta_files = []
     for _, files in meta_files.items():
         all_meta_files.extend(files)
-    (deleted_metas, _) = s3_client.delete_files(
+    s3_client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
     )
-    deleted_files += deleted_metas
     failed_metas = meta_files.get(META_FILE_FAILED, [])
     if META_FILE_GEN_KEY in meta_files:
-        _uploaded_files, _failed_metas = s3_client.upload_metadatas(
+        (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
             root=top_level
         )
         failed_metas.extend(_failed_metas)
-        for m_file in _uploaded_files:
-            if m_file.replace(top_level, '') in deleted_files:
-                deleted_files.remove(m_file.replace(top_level, ''))
-            elif m_file.replace(top_level + '/', '') in deleted_files:
-                deleted_files.remove(m_file.replace(top_level + '/', ''))
     logger.info("maven-metadata.xml updating done\n")
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
-        delete_index, update_index = indexing.handle_delete_index(
-            top_level, deleted_files, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
-        if update_index != []:
-            _, _failed_metas = s3_client.upload_metadatas(
-                meta_file_paths=update_index,
-                bucket_name=bucket,
-                product=None,
-                root=top_level
-            )
-            failed_metas.extend(_failed_metas)
-
-        s3_client.delete_files(
-            file_paths=delete_index, bucket_name=bucket, product=None, root=top_level
+        (_, _failed_index_files) = s3_client.upload_metadatas(
+            meta_file_paths=created_indexes,
+            bucket_name=bucket,
+            product=None,
+            root=top_level
         )
+        failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
     else:
         logger.info("Bypassing indexing")
@@ -398,23 +385,24 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str],
-                root: str) -> Tuple[str, List, List]:
+                root: str) -> Tuple[str, List[str], List[str], List[str]]:
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", files_root)
     top_level = root
-    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms = [], [], [], []
+    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms, valid_dirs = [], [], [], [], []
+    changed_dirs = set()
     top_found = False
     for root_dir, dirs, names in os.walk(files_root):
         for directory in dirs:
-            if directory == top_level:
-                top_level = os.path.join(root_dir, directory)
-                top_found = True
-                break
-            if os.path.join(root_dir, directory) == os.path.join(files_root, top_level):
-                top_level = os.path.join(files_root, top_level)
-                top_found = True
-                break
+            changed_dirs.add(os.path.join(root_dir, directory))
+            if not top_found:
+                if directory == top_level:
+                    top_level = os.path.join(root_dir, directory)
+                    top_found = True
+                if os.path.join(root_dir, directory) == os.path.join(files_root, top_level):
+                    top_level = os.path.join(files_root, top_level)
+                    top_found = True
 
         for name in names:
             path = os.path.join(root_dir, name)
@@ -441,6 +429,10 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
             top_level
         )
         top_level = files_root
+    else:
+        for c in changed_dirs:
+            if c.startswith(top_level):
+                valid_dirs.append(c)
     logger.info("Files scanning done.\n")
 
     if ignore_patterns and len(ignore_patterns) > 0:
@@ -449,7 +441,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
             ignore_patterns, "\n".join(ignored_paths)
         )
 
-    return (top_level, valid_mvn_paths, valid_poms)
+    return (top_level, valid_mvn_paths, valid_poms, valid_dirs)
 
 
 def _generate_metadatas(
