@@ -344,10 +344,40 @@ class S3Client(object):
             files = [i.key for i in objs]
         return (files, True)
 
-    def read_file_content(self, bucket_name=None, key=None):
+    def read_file_content(self, bucket_name, key):
         bucket = self.get_bucket(bucket_name)
         fileObject = bucket.Object(key)
         return str(fileObject.get()['Body'].read(), 'utf-8')
+
+    def list_folder_content(self, bucket_name, folder) -> List[str]:
+        bucket = self.get_bucket(bucket_name)
+        try:
+            if not folder or folder.strip() == "/" or folder.strip() == "":
+                result = bucket.meta.client.list_objects(
+                    Bucket=bucket.name,
+                    Delimiter='/'
+                )
+            else:
+                prefix = folder if folder.endswith("/") else folder+"/"
+                result = bucket.meta.client.list_objects(
+                    Bucket=bucket.name,
+                    Prefix=prefix,
+                    Delimiter='/'
+                )
+        except (ClientError, HTTPClientError) as e:
+            logger.error("ERROR: Can not get contents of %s from bucket"
+                         " %s due to error: %s ", folder,
+                         bucket_name, e)
+            return []
+
+        contents = []
+        folders = result.get("CommonPrefixes")
+        if folders:
+            contents.extend([f.get("Prefix") for f in folders])
+        files = result.get("Contents")
+        if files:
+            contents.extend([f.get("Key") for f in files])
+        return contents
 
     def get_bucket(self, bucket_name: str):
         return self.client.Bucket(bucket_name)

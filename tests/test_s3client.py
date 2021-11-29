@@ -95,6 +95,52 @@ class S3ClientTest(BaseTest):
         self.assertNotIn("org/x/y/1.0/x-y-1.0.pom", files)
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
+    def test_list_folder_content(self):
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        bucket.put_object(
+            Key="index.html", Body="test content html"
+        )
+        bucket.put_object(
+            Key="org/index.html", Body="test content html"
+        )
+        bucket.put_object(
+            Key="org/foo/bar/1.0/foo-bar-1.0.pom", Body="test content pom"
+        )
+        bucket.put_object(
+            Key="org/foo/bar/1.0/foo-bar-1.0.jar", Body="test content jar"
+        )
+        bucket.put_object(Key="org/x/y/1.0/x-y-1.0.pom", Body="test content pom")
+        bucket.put_object(Key="org/x/y/1.0/x-y-1.0.jar", Body="test content jar")
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "/")
+        self.assertEqual(2, len(contents))
+        self.assertIn("index.html", contents)
+        self.assertIn("org/", contents)
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "org")
+        self.assertEqual(3, len(contents))
+        self.assertIn("org/foo/", contents)
+        self.assertIn("org/x/", contents)
+        self.assertIn("org/index.html", contents)
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "org/foo")
+        self.assertEqual(1, len(contents))
+        self.assertIn("org/foo/bar/", contents)
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "org/foo/bar")
+        self.assertEqual(1, len(contents))
+        self.assertIn("org/foo/bar/1.0/", contents)
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "org/foo/bar/1.0")
+        self.assertEqual(2, len(contents))
+        self.assertIn("org/foo/bar/1.0/foo-bar-1.0.pom", contents)
+        self.assertIn("org/foo/bar/1.0/foo-bar-1.0.jar", contents)
+
+        contents = self.s3_client.list_folder_content(MY_BUCKET, "org/x/y/1.0")
+        self.assertEqual(2, len(contents))
+        self.assertIn("org/x/y/1.0/x-y-1.0.pom", contents)
+        self.assertIn("org/x/y/1.0/x-y-1.0.jar", contents)
+
     def test_upload_and_delete_files(self):
         (temp_root, root, all_files) = self.__prepare_files()
 
