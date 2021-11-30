@@ -57,7 +57,7 @@ class MavenMetadata(object):
         self.group_id = group_id
         self.artifact_id = artifact_id
         self.last_upd_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        self.versions = sorted(set(versions), key=ver_cmp_key())
+        self.versions = sorted(set(versions), key=VersionCompareKey)
         self._latest_version = None
         self._release_version = None
 
@@ -532,53 +532,57 @@ def _handle_error(err_msgs: List[str]):
     pass
 
 
-def ver_cmp_key():
+class VersionCompareKey:
     'Used as key function for version sorting'
-    class K:
-        def __init__(self, obj):
-            self.obj = obj
+    def __init__(self, obj):
+        self.obj = obj
 
-        def __lt__(self, other):
-            return self.__compare(other) < 0
+    def __lt__(self, other):
+        return self.__compare(other) < 0
 
-        def __gt__(self, other):
-            return self.__compare(other) > 0
+    def __gt__(self, other):
+        return self.__compare(other) > 0
 
-        def __eq__(self, other):
-            return self.__compare(other) == 0
+    def __le__(self, other):
+        return self.__compare(other) <= 0
 
-        def __hash__(self) -> int:
-            return self.obj.__hash__()
+    def __ge__(self, other):
+        return self.__compare(other) >= 0
 
-        def __compare(self, other) -> int:
-            xitems = self.obj.split(".")
-            if "-" in xitems[-1]:
-                xitems = xitems[:-1] + xitems[-1].split("-")
-            yitems = other.obj.split(".")
-            if "-" in yitems[-1]:
-                yitems = yitems[:-1] + yitems[-1].split("-")
-            big = max(len(xitems), len(yitems))
-            for i in range(big):
-                try:
-                    xitem = xitems[i]
-                except IndexError:
-                    return -1
-                try:
-                    yitem = yitems[i]
-                except IndexError:
-                    return 1
-                if xitem.isnumeric() and yitem.isnumeric():
-                    xitem = int(xitem)
-                    yitem = int(yitem)
-                elif xitem.isnumeric() and not yitem.isnumeric():
-                    return 1
-                elif not xitem.isnumeric() and yitem.isnumeric():
-                    return -1
-                if xitem > yitem:
-                    return 1
-                elif xitem < yitem:
-                    return -1
-                else:
-                    continue
-            return 0
-    return K
+    def __eq__(self, other):
+        return self.__compare(other) == 0
+
+    def __hash__(self) -> int:
+        return self.obj.__hash__()
+
+    def __compare(self, other) -> int:
+        xitems = self.obj.split(".")
+        if "-" in xitems[-1]:
+            xitems = xitems[:-1] + xitems[-1].split("-")
+        yitems = other.obj.split(".")
+        if "-" in yitems[-1]:
+            yitems = yitems[:-1] + yitems[-1].split("-")
+        big = max(len(xitems), len(yitems))
+        for i in range(big):
+            try:
+                xitem = xitems[i]
+            except IndexError:
+                return -1
+            try:
+                yitem = yitems[i]
+            except IndexError:
+                return 1
+            if xitem.isnumeric() and yitem.isnumeric():
+                xitem = int(xitem)
+                yitem = int(yitem)
+            elif xitem.isnumeric() and not yitem.isnumeric():
+                return 1
+            elif not xitem.isnumeric() and yitem.isnumeric():
+                return -1
+            if xitem > yitem:
+                return 1
+            elif xitem < yitem:
+                return -1
+            else:
+                continue
+        return 0
