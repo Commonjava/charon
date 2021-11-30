@@ -17,13 +17,14 @@ import charon.pkgs.indexing as indexing
 from charon.utils.files import write_file
 from charon.utils.archive import extract_zip_all
 from charon.storage import S3Client
+from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import AWS_DEFAULT_BUCKET, get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE)
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
-from zipfile import ZipFile
+from zipfile import ZipFile, BadZipFile
 from tempfile import mkdtemp
 import os
 import sys
@@ -267,18 +268,7 @@ def handle_maven_uploading(
     else:
         logger.info("Bypass indexing")
 
-    if len(failed_files) == 0 and len(failed_metas) == 0:
-        logger.info("Product release %s is successfully"
-                    " uploaded to Ronda service.", prod_key)
-    else:
-        logger.warning("Product release %s is uploaded to Ronda"
-                       " service, but has some failure as below: \n",
-                       prod_key)
-        if len(failed_files) > 0:
-            logger.warning("Files failed to upload: \n%s", failed_files)
-        if len(failed_metas) > 0:
-            logger.warning("Metadata files failed to refresh: \n%s",
-                           failed_metas)
+    upload_post_process(failed_files, failed_metas, prod_key)
 
 
 def handle_maven_del(
@@ -389,28 +379,20 @@ def handle_maven_del(
     else:
         logger.info("Bypassing indexing")
 
-    if len(failed_files) == 0 and len(failed_metas) == 0:
-        logger.info("Product release %s is successfully"
-                    " rolled back from Ronda service.", prod_key)
-    else:
-        logger.warning("Product release %s is rolled back from Ronda"
-                       " service, but has some failure as below:",
-                       prod_key)
-        if len(failed_files) > 0:
-            logger.warning("Files failed to delete: \n%s",
-                           failed_files)
-        if len(failed_metas) > 0:
-            logger.warning("Metadata files failed to refresh: \n%s",
-                           failed_metas)
+    rollback_post_process(failed_files, failed_metas, prod_key)
 
 
 def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     if os.path.exists(repo):
-        logger.info("Extracting tarball %s", repo)
-        repo_zip = ZipFile(repo)
-        tmp_root = mkdtemp(prefix=f"charon-{prefix}-", dir=dir__)
-        extract_zip_all(repo_zip, tmp_root)
-        return tmp_root
+        try:
+            logger.info("Extracting tarball %s", repo)
+            repo_zip = ZipFile(repo)
+            tmp_root = mkdtemp(prefix=f"charon-{prefix}-", dir=dir__)
+            extract_zip_all(repo_zip, tmp_root)
+            return tmp_root
+        except BadZipFile as e:
+            logger.error("Tarball extraction error: %s", e)
+            sys.exit(1)
     logger.error("Error: archive %s does not exist", repo)
     sys.exit(1)
 
@@ -452,7 +434,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
         logger.info("These files are not in the specified "
                     "root dir %s, so will be ignored: \n%s",
                     root, non_mvn_items)
-    if not top_found and top_level.strip() != "":
+    if not top_found or top_level.strip() == "" or top_level.strip() == "/":
         logger.warning(
             "Warning: the root path %s does not exist in tarball,"
             " will use empty trailing prefix for the uploading",
