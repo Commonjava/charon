@@ -92,7 +92,7 @@ class MavenMetadataTest(BaseTest):
         shutil.rmtree(temp_root)
 
     def test_ver_cmp_key(self):
-        comp_class = mvn.ver_cmp_key()
+        comp_class = mvn.VersionCompareKey
         # Normal versions comparasion
         self.assertLess(comp_class('1.0.0'), comp_class('1.0.1'))
         self.assertGreater(comp_class('1.10.0'), comp_class('1.9.1'))
