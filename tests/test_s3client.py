@@ -330,13 +330,32 @@ class S3ClientTest(BaseTest):
         (temp_root, root, all_files) = self.__prepare_files()
         shutil.rmtree(root)
 
-        # test upload existed files with the product. The product will be added to metadata
         _, failed_paths = self.s3_client.upload_files(
             all_files, bucket_name=MY_BUCKET, product="apache-commons",
             root=temp_root
         )
 
         self.assertEqual(COMMONS_LANG3_ZIP_MVN_ENTRY, len(failed_paths))
+
+    def test_exists_override_failing(self):
+        (temp_root, _, all_files) = self.__prepare_files()
+        uploaded_paths, failed_paths = self.s3_client.upload_files(
+            all_files, bucket_name=MY_BUCKET, product="apache-commons",
+            root=temp_root
+        )
+        self.assertEqual(30, len(uploaded_paths))
+        self.assertEqual(0, len(failed_paths))
+
+        # Change content to make hash changes
+        with open(all_files[0], "w+", encoding="utf-8") as f:
+            f.write("changed content")
+        uploaded_paths, failed_paths = self.s3_client.upload_files(
+            all_files, bucket_name=MY_BUCKET, product="apache-commons-2",
+            root=temp_root
+        )
+        self.assertEqual(0, len(uploaded_paths))
+        self.assertEqual(1, len(failed_paths))
+        self.assertIn(failed_paths[0], all_files[0])
 
     def __prepare_files(self):
         test_zip = zipfile.ZipFile(
