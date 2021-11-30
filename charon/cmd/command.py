@@ -85,6 +85,13 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     default=False
 )
+@option(
+    "--quiet",
+    "-q",
+    help="Quiet mode, will shrink most of the logs except warning and errors.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def upload(
@@ -95,17 +102,17 @@ def upload(
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False,
+    quiet=False,
     dryrun=False
 ):
     """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
     is hosted in a remote url or a local path.
     """
-    if debug:
-        set_logging(level=logging.DEBUG)
     if dryrun:
         logger.info("Running in dry-run mode,"
                     "no files will be uploaded.")
+    __decide_mode(is_quiet=quiet, is_debug=debug)
     if not __validate_prod_key(product, version):
         return
     archive_path = __get_local_repo(repo)
@@ -186,6 +193,13 @@ def upload(
     is_flag=True,
     default=False
 )
+@option(
+    "--quiet",
+    "-q",
+    help="Quiet mode, will shrink most of the logs except warning and errors.",
+    is_flag=True,
+    default=False
+)
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
 def delete(
@@ -196,17 +210,17 @@ def delete(
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False,
+    quiet=False,
     dryrun=False
 ):
     """Roll back all files in a released product REPO from
     Ronda Service. The REPO points to a product released
     tarball which is hosted in a remote url or a local path.
     """
-    if debug:
-        set_logging(level=logging.DEBUG)
     if dryrun:
         logger.info("Running in dry-run mode,"
                     "no files will be deleted.")
+    __decide_mode(is_quiet=quiet, is_debug=debug)
     if not __validate_prod_key(product, version):
         return
     archive_path = __get_local_repo(repo)
@@ -286,6 +300,17 @@ def __validate_prod_key(product: str, version: str) -> bool:
         logger.error("Error: there are invalid characters in version!")
         return False
     return True
+
+
+def __decide_mode(is_quiet: bool, is_debug: bool):
+    if is_quiet:
+        logger.info("Quiet mode enabled, "
+                    "will only give warning and error logs.")
+        set_logging(level=logging.WARNING)
+    elif is_debug:
+        logger.info("Debug mode enabled, "
+                    "will give all debug logs for tracing.")
+        set_logging(level=logging.DEBUG)
 
 
 @group()
