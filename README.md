@@ -7,6 +7,9 @@ future. And Ronda service will be hosted in AWS S3.
 
 ## Prerequisites
 
+* python 3.5+
+* git
+
 ### [Optional] Install AWS CLI tool
 
 See [AWS CLi V2 installation](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html#cliv2-linux-install)
@@ -20,7 +23,12 @@ Clone this git repo and install charon using python installer:
 ```bash
 git clone https://github.com/Commonjava/charon.git
 cd charon
-sudo pip install .
+pip install --upgrade pip --user
+pip install virtualenv --user
+python3 -m venv ./venv
+source ./venv/bin/activate
+pip install -r requirements-dev.txt
+python setup.py install 
 ```
 
 ## Command guide
