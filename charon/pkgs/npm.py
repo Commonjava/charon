@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 from json import load, loads, dump, JSONDecodeError
+import tarfile
 from tempfile import mkdtemp
 from typing import Tuple
 
@@ -27,6 +28,7 @@ from charon.config import AWS_DEFAULT_BUCKET
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
+from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ def handle_npm_uploading(
     client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
     uploaded_files = []
-    _uploaded_files, _ = client.upload_files(
+    _uploaded_files, failed_files = client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
     uploaded_files.extend(_uploaded_files)
@@ -123,7 +125,9 @@ def handle_npm_uploading(
         failed_metas.extend(_failed_metas)
         logger.info("Index files uploading done\n")
     else:
-        logger.info("Bypass indexing")
+        logger.info("Bypass indexing\n")
+
+    upload_post_process(failed_files, failed_metas, product)
 
 
 def handle_npm_del(
@@ -159,7 +163,7 @@ def handle_npm_del(
     all_meta_files = []
     for _, file in meta_files.items():
         all_meta_files.append(file)
-    deleted_metas, _ = client.delete_files(
+    deleted_metas, failed_files = client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
     )
     deleted_files += deleted_metas
@@ -198,7 +202,9 @@ def handle_npm_del(
         )
         logger.info("index uploading done")
     else:
-        logger.info("Bypassing indexing")
+        logger.info("Bypassing indexing\n")
+
+    rollback_post_process(failed_files, failed_metas, product)
 
 
 def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:
@@ -285,11 +291,15 @@ def _gen_npm_package_metadata_for_del(
 def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
         str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prefix}-", dir=dir__)
-    _, valid_paths = extract_npm_tarball(path, tmp_root, True)
-    if len(valid_paths) > 1:
-        version = _scan_for_version(valid_paths[1])
-        package = NPMPackageMetadata(version, True)
-    return tmp_root, valid_paths, package
+    try:
+        _, valid_paths = extract_npm_tarball(path, tmp_root, True)
+        if len(valid_paths) > 1:
+            version = _scan_for_version(valid_paths[1])
+            package = NPMPackageMetadata(version, True)
+        return tmp_root, valid_paths, package
+    except tarfile.TarError as e:
+        logger.error("Tarball extraction error: %s", e)
+        sys.exit(1)
 
 
 def _scan_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, str, list]:
