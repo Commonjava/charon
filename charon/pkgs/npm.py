@@ -19,7 +19,7 @@ import sys
 from json import load, loads, dump, JSONDecodeError
 import tarfile
 from tempfile import mkdtemp
-from typing import Tuple
+from typing import Set, Tuple
 
 from semantic_version import compare
 
@@ -83,6 +83,8 @@ def handle_npm_uploading(
         logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
         sys.exit(1)
 
+    valid_dirs = __get_path_tree(valid_paths, target_dir)
+
     logger.info("Start uploading files to s3")
     client = S3Client(dry_run=dry_run)
     bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
@@ -114,16 +116,18 @@ def handle_npm_uploading(
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
-        index_files = uploaded_files
-        if META_FILE_GEN_KEY in meta_files:
-            index_files += [meta_files[META_FILE_GEN_KEY]]
-        created_files = indexing.handle_create_index(target_dir, index_files, client, bucket)
-        logger.info("Start uploading index files to s3")
-        _, _failed_metas = client.upload_metadatas(
-            meta_file_paths=created_files, bucket_name=bucket, product=None, root=target_dir
+        logger.info("Start generating index files to s3")
+        created_indexes = indexing.generate_indexes(target_dir, valid_dirs, client, bucket)
+        logger.info("Index files generation done.\n")
+
+        logger.info("Start updating index files to s3")
+        (_, _failed_metas) = client.upload_metadatas(
+            meta_file_paths=created_indexes,
+            bucket_name=bucket,
+            product=None, root=target_dir
         )
         failed_metas.extend(_failed_metas)
-        logger.info("Index files uploading done\n")
+        logger.info("Index files updating done\n")
     else:
         logger.info("Bypass indexing\n")
 
@@ -146,6 +150,8 @@ def handle_npm_del(
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
         tarball_path, prefix=product, dir__=dir_
     )
+
+    valid_dirs = __get_path_tree(valid_paths, target_dir)
 
     logger.info("Start deleting files from s3")
     client = S3Client(dry_run=dry_run)
@@ -184,23 +190,19 @@ def handle_npm_del(
     logger.info("package.json uploading done")
 
     if do_index:
-        logger.info("Start uploading index to s3")
-        delete_index, update_index = indexing.handle_delete_index(
-            target_dir, deleted_files, client, bucket)
+        logger.info("Start generating index files for all changed entries")
+        created_indexes = indexing.generate_indexes(target_dir, valid_dirs, client, bucket)
+        logger.info("Index files generation done.\n")
 
-        if update_index != []:
-            _, _failed_metas = client.upload_metadatas(
-                meta_file_paths=update_index,
-                bucket_name=bucket,
-                product=None,
-                root=target_dir
-            )
-            failed_metas.extend(_failed_metas)
-
-        client.delete_files(
-            file_paths=delete_index, bucket_name=bucket, product=None, root=target_dir
+        logger.info("Start updating index to s3")
+        (_, _failed_index_files) = client.upload_metadatas(
+            meta_file_paths=created_indexes,
+            bucket_name=bucket,
+            product=None,
+            root=target_dir
         )
-        logger.info("index uploading done")
+        failed_metas.extend(_failed_index_files)
+        logger.info("Index files updating done.\n")
     else:
         logger.info("Bypassing indexing\n")
 
@@ -423,3 +425,21 @@ def _del_none(d):
         elif isinstance(value, dict):
             _del_none(value)
     return d
+
+
+def __get_path_tree(paths: str, prefix: str) -> Set[str]:
+    valid_dirs = set()
+    for f in paths:
+        dir_ = os.path.dirname(f)
+        if dir_.startswith(prefix):
+            dir_ = dir_[len(prefix):]
+        if dir_.startswith("/"):
+            dir_ = dir_[1:]
+        temp = ""
+        for d in dir_.split("/"):
+            temp = os.path.join(temp, d)
+            if f.startswith(prefix):
+                valid_dirs.add(os.path.join(prefix, temp))
+            else:
+                valid_dirs.add(temp)
+    return valid_dirs
