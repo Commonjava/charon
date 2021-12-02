@@ -21,13 +21,6 @@ import logging
 
 CONFIG_FILE = "charon.yaml"
 
-SECTION_CHARON = "charon"
-IGNORE_PATTERN = "ignore_patterns"
-
-AWS_BUCKET = "bucket"
-AWS_DEFAULT_BUCKET = "charon"
-
-
 logger = logging.getLogger(__name__)
 
 

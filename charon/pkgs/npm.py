@@ -24,7 +24,6 @@ from typing import Set, Tuple
 from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
-from charon.config import AWS_DEFAULT_BUCKET
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
@@ -87,7 +86,7 @@ def handle_npm_uploading(
 
     logger.info("Start uploading files to s3")
     client = S3Client(dry_run=dry_run)
-    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    bucket = bucket_name
     uploaded_files = []
     _uploaded_files, failed_files = client.upload_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
@@ -155,7 +154,7 @@ def handle_npm_del(
 
     logger.info("Start deleting files from s3")
     client = S3Client(dry_run=dry_run)
-    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    bucket = bucket_name
     deleted_files, _ = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
     )
