@@ -13,20 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from typing import List
-from configparser import ConfigParser, NoSectionError
+from typing import Dict, List
+from ruamel.yaml import YAML
+from pathlib import Path
 import os
 import logging
-import json
 
-CONFIG_FILE = "charon.conf"
-
-SECTION_CHARON = "charon"
-IGNORE_PATTERN = "ignore_patterns"
-
-AWS_BUCKET = "bucket"
-AWS_DEFAULT_BUCKET = "charon"
-
+CONFIG_FILE = "charon.yaml"
 
 logger = logging.getLogger(__name__)
 
@@ -34,47 +27,59 @@ logger = logging.getLogger(__name__)
 class CharonConfig(object):
     """CharonConfig is used to store all configurations for charon
     tools.
-    The configuration file will be named as charon.conf, and will be stored
+    The configuration file will be named as charon.yaml, and will be stored
     in $HOME/.charon/ folder by default.
     """
-    def __init__(self, data: ConfigParser):
-        try:
-            self.__charon_configs = dict(data.items(SECTION_CHARON))
-        except NoSectionError:
-            pass
+    def __init__(self, data: Dict):
+        self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
+        self.__targets: Dict = data.get("targets", None)
+        if not self.__targets or not isinstance(self.__targets, Dict):
+            raise TypeError("Charon configuration is not correct: targets is invalid.")
 
     def get_ignore_patterns(self) -> List[str]:
-        pattern_str = self.__val_or_default(self.__charon_configs, IGNORE_PATTERN)
-        if pattern_str and pattern_str.strip() != "":
-            try:
-                return json.loads(pattern_str)
-            except (ValueError, TypeError):
-                logger.warning("Warning: ignore_patterns %s specified in "
-                               "system environment, but not a valid json "
-                               "style array. Will skip it.", pattern_str)
-        return None
+        return self.__ignore_patterns
 
-    def get_aws_bucket(self) -> str:
-        bucket = self.__val_or_default(self.__charon_configs, AWS_BUCKET)
+    def get_aws_bucket(self, target: str) -> str:
+        target_: Dict = self.__targets.get(target, None)
+        if not target_ or not isinstance(target_, Dict):
+            logger.error("The target %s is not found in charon configuration.")
+            return None
+        bucket = target_.get("bucket", None)
         if not bucket:
-            logger.warning("%s not defined in charon configuration,"
-                           " will use default 'charon' bucket.", AWS_BUCKET)
-            return AWS_DEFAULT_BUCKET
+            logger.error("The bucket %s is not found for target %s "
+                         "in charon configuration.")
         return bucket
 
-    def __val_or_default(self, section: dict, key: str, default=None):
-        if not section:
-            return default
-        return section[key] if section and key in section else default
+    def get_bucket_prefix(self, target: str) -> str:
+        target_: Dict = self.__targets.get(target, None)
+        if not target_ or not isinstance(target_, Dict):
+            logger.error("The target %s is not found in charon "
+                         "configuration.", target)
+            return None
+        prefix = target_.get("prefix", None)
+        if not prefix:
+            logger.warning("The prefix is not found for target %s "
+                           "in charon configuration, so no prefix will "
+                           "be used", target)
+            prefix = ""
+        if prefix.startswith("/"):
+            prefix = prefix[1:]
+        return prefix
 
 
-def get_config():
-    parser = ConfigParser()
+def get_config() -> CharonConfig:
     config_file = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
-    if not parser.read(config_file):
-        logger.warning("Warning: config file does not exist: %s", config_file)
+    try:
+        yaml = YAML(typ='safe')
+        data = yaml.load(stream=Path(config_file))
+    except Exception as e:
+        logger.error("Can not load charon config file due to error: %s", e)
         return None
-    return CharonConfig(parser)
+    try:
+        return CharonConfig(data)
+    except TypeError as e:
+        logger.error(e)
+        return None
 
 
 def get_template(template_file: str) -> str:
@@ -84,5 +89,4 @@ def get_template(template_file: str) -> str:
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()
-
     raise FileNotFoundError

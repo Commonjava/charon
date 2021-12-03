@@ -30,22 +30,60 @@ class ConfigTest(unittest.TestCase):
         self.__base.setUp()
         conf = config.get_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
-        self.assertEqual('charon-test', conf.get_aws_bucket())
+        self.assertEqual('charon-test', conf.get_aws_bucket("ga"))
+        self.assertEqual('ga', conf.get_bucket_prefix("ga"))
+        self.assertEqual('charon-test-ea', conf.get_aws_bucket("ea"))
+        self.assertEqual('earlyaccess/all', conf.get_bucket_prefix("ea"))
 
     def test_no_config(self):
         self.__base.change_home()
         conf = config.get_config()
         self.assertIsNone(conf)
 
-    def test_config_default(self):
-        self.__base.change_home()
-        default_config_content = """
-        [charon]
+    def test_config_missing_targets(self):
+        content_missing_targets = """
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
         """
+        self.__change_config_content(content_missing_targets)
+        conf = config.get_config()
+        self.assertIsNone(conf)
+
+    def test_config_missing_bucket(self):
+        content_missing_targets = """
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
+
+targets:
+    ga:
+        prefix: ga
+        """
+        self.__change_config_content(content_missing_targets)
+        conf = config.get_config()
+        self.assertIsNotNone(conf)
+        self.assertEqual("ga", conf.get_bucket_prefix("ga"))
+        self.assertIsNone(conf.get_aws_bucket("ga"))
+
+    def test_config_missing_prefix(self):
+        content_missing_targets = """
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
+
+targets:
+    ga:
+        bucket: charon-test
+        """
+        self.__change_config_content(content_missing_targets)
+        conf = config.get_config()
+        self.assertIsNotNone(conf)
+        self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
+        self.assertEqual("", conf.get_bucket_prefix("ga"))
+
+    def __change_config_content(self, content: str):
+        self.__base.change_home()
         config_base = self.__base.get_config_base()
         os.mkdir(config_base)
-        self.__base.prepare_config(config_base, default_config_content)
-
-        conf = config.get_config()
-        self.assertEqual(None, conf.get_ignore_patterns())
-        self.assertEqual('charon', conf.get_aws_bucket())
+        self.__base.prepare_config(config_base, content)

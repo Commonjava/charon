@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-from charon.config import get_config, AWS_DEFAULT_BUCKET
+from charon.config import CharonConfig, get_config
 from charon.utils.logs import set_logging
 from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
@@ -24,6 +24,7 @@ from json import loads
 
 import logging
 import os
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +55,14 @@ logger = logging.getLogger(__name__)
     multiple=False,
 )
 @option(
-    "--bucket",
-    "-b",
+    "--target",
+    "-t",
     help="""
-    The name of S3 bucket which will be used to upload files.
+    The target to do the uploading, which will decide which s3 bucket
+    and what root path where all files will be uploaded to.
     """,
+    required=True,
+    multiple=False,
 )
 @option(
     "--root_path",
@@ -98,7 +102,7 @@ def upload(
     repo: str,
     product: str,
     version: str,
-    bucket,
+    target: str,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False,
@@ -115,25 +119,31 @@ def upload(
     __decide_mode(is_quiet=quiet, is_debug=debug)
     if not __validate_prod_key(product, version):
         return
+    conf = get_config()
+    if not conf:
+        sys.exit(1)
+    aws_bucket = conf.get_aws_bucket(target)
+    if not aws_bucket:
+        sys.exit(1)
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_uploading(archive_path, product_key,
-                             bucket_name=__get_bucket(bucket),
+                             bucket_name=aws_bucket,
                              dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
             ignore_patterns_list = ignore_patterns
         else:
-            ignore_patterns_list = __get_ignore_patterns()
+            ignore_patterns_list = __get_ignore_patterns(conf)
         logger.info("This is a maven archive")
         handle_maven_uploading(archive_path, product_key,
                                ignore_patterns_list,
                                root=root_path,
-                               bucket_name=__get_bucket(bucket),
+                               bucket_name=aws_bucket,
                                dry_run=dryrun)
 
 
@@ -163,11 +173,14 @@ def upload(
     multiple=False,
 )
 @option(
-    "--bucket",
-    "-b",
+    "--target",
+    "-t",
     help="""
-        The name of S3 bucket which will be used to delete files.
+    The target to do the deletion, which will decide which s3 bucket
+    and what root path where all files will be deleted from.
     """,
+    required=True,
+    multiple=False,
 )
 @option(
     "--root_path",
@@ -206,7 +219,7 @@ def delete(
     repo: str,
     product: str,
     version: str,
-    bucket,
+    target: str,
     root_path="maven-repository",
     ignore_patterns=None,
     debug=False,
@@ -223,29 +236,35 @@ def delete(
     __decide_mode(is_quiet=quiet, is_debug=debug)
     if not __validate_prod_key(product, version):
         return
+    conf = get_config()
+    if not conf:
+        sys.exit(1)
+    aws_bucket = conf.get_aws_bucket(target)
+    if not aws_bucket:
+        sys.exit(1)
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_del(archive_path, product_key,
-                       bucket_name=__get_bucket(bucket),
+                       bucket_name=aws_bucket,
                        dry_run=dryrun)
     else:
         ignore_patterns_list = None
         if ignore_patterns:
             ignore_patterns_list = ignore_patterns
         else:
-            ignore_patterns_list = __get_ignore_patterns()
+            ignore_patterns_list = __get_ignore_patterns(conf)
         logger.info("This is a maven archive")
         handle_maven_del(archive_path, product_key,
                          ignore_patterns_list,
                          root=root_path,
-                         bucket_name=__get_bucket(bucket),
+                         bucket_name=aws_bucket,
                          dry_run=dryrun)
 
 
-def __get_ignore_patterns() -> List[str]:
+def __get_ignore_patterns(conf: CharonConfig) -> List[str]:
     ignore_patterns = os.getenv("CHARON_IGNORE_PATTERNS")
     if ignore_patterns:
         try:
@@ -254,27 +273,9 @@ def __get_ignore_patterns() -> List[str]:
             logger.warning("Warning: ignore_patterns %s specified in "
                            "system environment, but not a valid json "
                            "style array. Will skip it.", ignore_patterns)
-    conf = get_config()
     if conf:
         return conf.get_ignore_patterns()
     return None
-
-
-def __get_bucket(param_bucket: str) -> str:
-    if param_bucket and param_bucket != "":
-        logger.info("AWS bucket '%s' is specified in option"
-                    ", will use it for following process", param_bucket)
-        return param_bucket
-    TARGET_BUCKET = "CHARON_BUCKET"
-    bucket = os.getenv(TARGET_BUCKET)
-    if bucket:
-        logger.info("AWS bucket '%s' found in system environment var '%s'"
-                    ", will use it for following process", bucket, TARGET_BUCKET)
-        return bucket
-    conf = get_config()
-    if conf:
-        return conf.get_aws_bucket()
-    return AWS_DEFAULT_BUCKET
 
 
 def __get_local_repo(url: str) -> str:

@@ -18,6 +18,7 @@ import tempfile
 import os
 import shutil
 from charon.utils.files import write_file
+from charon.config import CONFIG_FILE
 
 
 class BaseTest(unittest.TestCase):
@@ -26,9 +27,17 @@ class BaseTest(unittest.TestCase):
         config_base = self.get_config_base()
         self.__prepare_template(config_base)
         default_config_content = """
-        [charon]
-        ignore_patterns = [".*^(redhat).*",".*snapshot.*"]
-        bucket = charon-test
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
+
+targets:
+    ga:
+        bucket: "charon-test"
+        prefix: ga
+    ea:
+        bucket: "charon-test-ea"
+        prefix: earlyaccess/all
         """
         self.prepare_config(config_base, default_config_content)
 
@@ -50,7 +59,7 @@ class BaseTest(unittest.TestCase):
             self.fail("Template initilization failed!")
 
     def prepare_config(self, config_base, file_content):
-        config_path = os.path.join(config_base, "charon.conf")
+        config_path = os.path.join(config_base, CONFIG_FILE)
         write_file(config_path, file_content)
         if not os.path.isfile(config_path):
             self.fail("Configuration initilization failed!")

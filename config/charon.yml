@@ -1,0 +1,14 @@
+ignore_patterns:
+  - ".*^(redhat).*"
+  - ".*snapshot.*"
+
+targets:
+  ga:
+    bucket: "maven-prod-ga"
+    prefix: ga
+  ea:
+    bucket: "maven-prod-ea"
+    prefix: earlyaccess/all
+  npm:
+    bucket: "npm-prod"
+    prefix: npmjs

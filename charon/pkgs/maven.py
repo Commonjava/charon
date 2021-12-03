@@ -18,7 +18,7 @@ from charon.utils.files import write_file
 from charon.utils.archive import extract_zip_all
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
-from charon.config import AWS_DEFAULT_BUCKET, get_template
+from charon.config import get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE)
 from typing import Dict, List, Tuple
@@ -224,7 +224,7 @@ def handle_maven_uploading(
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(dry_run=dry_run)
-    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    bucket = bucket_name
     (_, failed_files) = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
     )
@@ -315,7 +315,7 @@ def handle_maven_del(
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
     s3_client = S3Client(dry_run=dry_run)
-    bucket = bucket_name if bucket_name else AWS_DEFAULT_BUCKET
+    bucket = bucket_name
     (_, failed_files) = s3_client.delete_files(
         valid_mvn_paths,
         bucket_name=bucket,
