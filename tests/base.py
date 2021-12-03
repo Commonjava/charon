@@ -20,6 +20,9 @@ import shutil
 from charon.utils.files import write_file
 from charon.config import CONFIG_FILE
 
+SHORT_TEST_PREFIX = "ga"
+LONG_TEST_PREFIX = "earlyaccess/all"
+
 
 class BaseTest(unittest.TestCase):
     def setUp(self):

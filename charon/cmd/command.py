@@ -104,7 +104,7 @@ def upload(
     version: str,
     target: str,
     root_path="maven-repository",
-    ignore_patterns=None,
+    ignore_patterns: List[str] = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -128,6 +128,7 @@ def upload(
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
+    prefix_ = conf.get_bucket_prefix(target)
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_uploading(archive_path, product_key,
@@ -144,6 +145,7 @@ def upload(
                                ignore_patterns_list,
                                root=root_path,
                                bucket_name=aws_bucket,
+                               prefix=prefix_,
                                dry_run=dryrun)
 
 
@@ -221,7 +223,7 @@ def delete(
     version: str,
     target: str,
     root_path="maven-repository",
-    ignore_patterns=None,
+    ignore_patterns: List[str] = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -245,6 +247,7 @@ def delete(
     archive_path = __get_local_repo(repo)
     npm_archive_type = detect_npm_archive(archive_path)
     product_key = f"{product}-{version}"
+    prefix_ = conf.get_bucket_prefix(target)
     if npm_archive_type != NpmArchiveType.NOT_NPM:
         logger.info("This is a npm archive")
         handle_npm_del(archive_path, product_key,
@@ -261,6 +264,7 @@ def delete(
                          ignore_patterns_list,
                          root=root_path,
                          bucket_name=aws_bucket,
+                         prefix=prefix_,
                          dry_run=dryrun)
 
 

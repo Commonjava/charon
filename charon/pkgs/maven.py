@@ -16,6 +16,7 @@ limitations under the License.
 import charon.pkgs.indexing as indexing
 from charon.utils.files import write_file
 from charon.utils.archive import extract_zip_all
+from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import get_template
@@ -181,6 +182,7 @@ def handle_maven_uploading(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
+    prefix=None,
     dir_=None,
     do_index=True,
     dry_run=False
@@ -221,18 +223,24 @@ def handle_maven_uploading(
         _handle_error(err_msgs)
         # Question: should we exit here?
 
+    prefix_ = remove_prefix(prefix, "/")
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(dry_run=dry_run)
     bucket = bucket_name
-    (_, failed_files) = s3_client.upload_files(
-        file_paths=valid_mvn_paths, bucket_name=bucket, product=prod_key, root=top_level
+    _, failed_files = s3_client.upload_files(
+        file_paths=valid_mvn_paths, bucket_name=bucket,
+        product=prod_key, root=top_level, key_prefix=prefix_
     )
     logger.info("Files uploading done\n")
 
     # 5. Use uploaded poms to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all artifacts")
-    meta_files = _generate_metadatas(s3_client, bucket, valid_poms, top_level)
+    meta_files = _generate_metadatas(
+        s3=s3_client, bucket=bucket,
+        poms=valid_poms, root=top_level,
+        prefix=prefix_
+    )
     logger.info("maven-metadata.xml files generation done\n")
 
     failed_metas = meta_files.get(META_FILE_FAILED, [])
@@ -243,7 +251,8 @@ def handle_maven_uploading(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=prod_key,
-            root=top_level
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
@@ -252,14 +261,18 @@ def handle_maven_uploading(
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
         logger.info("Start generating index files to s3")
-        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(
+            top_level, valid_dirs, s3_client, bucket, prefix_
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
         (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
-            product=None, root=top_level
+            product=None,
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -275,6 +288,7 @@ def handle_maven_del(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
+    prefix=None,
     dir_=None,
     do_index=True,
     dry_run=False
@@ -312,6 +326,7 @@ def handle_maven_del(
             logger.debug("G: %s, A: %s", g, a)
             ga_paths.append(os.path.join("/".join(g.split(".")), a))
 
+    prefix_ = remove_prefix(prefix, "/")
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
     s3_client = S3Client(dry_run=dry_run)
@@ -320,13 +335,19 @@ def handle_maven_del(
         valid_mvn_paths,
         bucket_name=bucket,
         product=prod_key,
-        root=top_level
+        root=top_level,
+        key_prefix=prefix_
     )
     logger.info("Files deletion done\n")
 
     # 5. Use changed GA to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all changed GAs")
-    meta_files = _generate_metadatas(s3_client, bucket, valid_poms, top_level)
+    meta_files = _generate_metadatas(
+        s3=s3_client, bucket=bucket,
+        poms=valid_poms, root=top_level,
+        prefix=prefix_
+    )
+
     logger.info("maven-metadata.xml files generation done\n")
 
     # 6. Upload all maven-metadata.xml. We need to delete metadata files
@@ -336,7 +357,11 @@ def handle_maven_del(
     for _, files in meta_files.items():
         all_meta_files.extend(files)
     s3_client.delete_files(
-        file_paths=all_meta_files, bucket_name=bucket, product=prod_key, root=top_level
+        file_paths=all_meta_files,
+        bucket_name=bucket,
+        product=prod_key,
+        root=top_level,
+        key_prefix=prefix_
     )
     failed_metas = meta_files.get(META_FILE_FAILED, [])
     if META_FILE_GEN_KEY in meta_files:
@@ -344,14 +369,17 @@ def handle_maven_del(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
-            root=top_level
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
     logger.info("maven-metadata.xml updating done\n")
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
-        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(
+            top_level, valid_dirs, s3_client, bucket, prefix_
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
@@ -359,7 +387,8 @@ def handle_maven_del(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,
-            root=top_level
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
@@ -445,7 +474,9 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
 
 
 def _generate_metadatas(
-    s3: S3Client, bucket: str, poms: List[str], root: str
+    s3: S3Client, bucket: str,
+    poms: List[str], root: str,
+    prefix: str = None
 ) -> Dict[str, List[str]]:
     """Collect GAVs and generating maven-metadata.xml.
        As all valid poms has been stored in s3 bucket,
@@ -467,9 +498,12 @@ def _generate_metadatas(
     for path, _ in gas_dict.items():
         # avoid some wrong prefix, like searching a/b
         # but got a/b-1
+        ga_prefix = path
+        if prefix:
+            ga_prefix = os.path.join(prefix, path)
         if not path.endswith("/"):
-            path = path + "/"
-        (existed_poms, success) = s3.get_files(bucket, path, ".pom")
+            ga_prefix = ga_prefix + "/"
+        (existed_poms, success) = s3.get_files(bucket, ga_prefix, ".pom")
         if len(existed_poms) == 0:
             if success:
                 logger.debug(
@@ -488,7 +522,13 @@ def _generate_metadatas(
             logger.debug(
                 "Got poms in s3 bucket %s for GA path %s: %s", bucket, path, poms
             )
-            all_poms.extend(existed_poms)
+            un_prefixed_poms = existed_poms
+            if prefix:
+                if not prefix.endswith("/"):
+                    un_prefixed_poms = [__remove_prefix(pom, prefix) for pom in existed_poms]
+                else:
+                    un_prefixed_poms = [__remove_prefix(pom, prefix + "/") for pom in existed_poms]
+            all_poms.extend(un_prefixed_poms)
     gav_dict = parse_gavs(all_poms)
     if len(gav_dict) > 0:
         meta_files_generation = []
@@ -522,6 +562,11 @@ def _validate_maven(paths: List[str]) -> Tuple[List[str], str]:
 def _handle_error(err_msgs: List[str]):
     # Reminder: will implement later
     pass
+
+
+def __remove_prefix(s: str, prefix: str) -> str:
+    if s.startswith(prefix):
+        return s[len(prefix):]
 
 
 class VersionCompareKey:

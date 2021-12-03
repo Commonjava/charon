@@ -16,7 +16,7 @@ limitations under the License.
 from charon.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from charon.utils.archive import extract_zip_all
 from charon.utils.files import write_file, read_sha1
-from tests.base import BaseTest
+from tests.base import BaseTest, SHORT_TEST_PREFIX
 from moto import mock_s3
 import boto3
 import os
@@ -181,6 +181,34 @@ class S3ClientTest(BaseTest):
         # have been removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
+        self.assertEqual(0, len(list(bucket.objects.all())))
+
+        shutil.rmtree(temp_root)
+
+    def test_upload_and_delete_with_prefix(self):
+        (temp_root, root, all_files) = self.__prepare_files()
+        test_files = list(filter(lambda f: f.startswith(root), all_files))
+
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+
+        self.s3_client.upload_files(
+            test_files,
+            bucket_name=MY_BUCKET,
+            product="apache-commons",
+            root=root,
+            key_prefix=SHORT_TEST_PREFIX)
+        objects = list(bucket.objects.all())
+        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY - 4, len(objects))
+        for obj in objects:
+            self.assertTrue(obj.key.startswith(SHORT_TEST_PREFIX))
+
+        self.s3_client.delete_files(
+            file_paths=test_files,
+            bucket_name=MY_BUCKET,
+            product="apache-commons",
+            root=root,
+            key_prefix=SHORT_TEST_PREFIX)
+        objects = list(bucket.objects.all())
         self.assertEqual(0, len(list(bucket.objects.all())))
 
         shutil.rmtree(temp_root)

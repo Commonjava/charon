@@ -15,7 +15,8 @@ limitations under the License.
 """
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.storage import CHECKSUM_META_KEY
-from tests.base import BaseTest
+from charon.utils.strings import remove_prefix
+from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
 from moto import mock_s3
 import boto3
 import os
@@ -162,6 +163,66 @@ class MavenFileIndexTest(BaseTest):
         )
         self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
+    def test_upload_index_with_short_prefix(self):
+        self.__test_upload_index_with_prefix(SHORT_TEST_PREFIX)
+
+    def test_upload_index_with_long_prefix(self):
+        self.__test_upload_index_with_prefix(LONG_TEST_PREFIX)
+
+    def test_upload_index_with_root_prefix(self):
+        self.__test_upload_index_with_prefix("/")
+
+    def __test_upload_index_with_prefix(self, prefix: str):
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        product = "commons-client-4.5.6"
+        handle_maven_uploading(
+            test_zip, product,
+            bucket_name=TEST_BUCKET,
+            dir_=self.tempdir,
+            prefix=prefix
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(21, len(actual_files))
+
+        prefix_ = remove_prefix(prefix, "/")
+        PREFIXED_LOGGING_INDEXES = [
+            os.path.join(prefix_, i) for i in COMMONS_LOGGING_INDEXES
+        ]
+        for f in PREFIXED_LOGGING_INDEXES:
+            self.assertIn(f, actual_files)
+
+        PREFIXED_456_INDEXES = [
+            os.path.join(prefix_, i) for i in COMMONS_CLIENT_456_INDEXES
+        ]
+        for f in PREFIXED_456_INDEXES:
+            self.assertIn(f, actual_files)
+
+        for obj in objs:
+            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+
+        indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_CLIENT_INDEX))
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"4.5.6/index.html\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertIn(
+            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
+            index_content
+        )
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+
+        indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_ROOT_INDEX))
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"org/index.html\" title=\"org/\">org/</a>", index_content)
+        self.assertIn(
+            "<a href=\"commons-logging/index.html\" "
+            "title=\"commons-logging/\">commons-logging/</a>",
+            index_content
+        )
+        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+
     def test_deletion_index(self):
         self.__prepare_content()
 
@@ -218,12 +279,85 @@ class MavenFileIndexTest(BaseTest):
         objs = list(test_bucket.objects.all())
         self.assertEqual(0, len(objs))
 
-    def __prepare_content(self):
+    def test_deletion_index_with_short_prefix(self):
+        self.__test_deletion_index_with_prefix(SHORT_TEST_PREFIX)
+
+    def test_deletion_index_with_long_prefix(self):
+        self.__test_deletion_index_with_prefix(LONG_TEST_PREFIX)
+
+    def test_deletion_index_with_root_prefix(self):
+        self.__test_deletion_index_with_prefix("/")
+
+    def __test_deletion_index_with_prefix(self, prefix: str):
+        self.__prepare_content(prefix)
+
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        product_456 = "commons-client-4.5.6"
+        handle_maven_del(
+            test_zip, product_456,
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(21, len(actual_files))
+
+        prefix_ = remove_prefix(prefix, "/")
+        PREFIXED_459_INDEXES = [os.path.join(prefix_, i) for i in COMMONS_CLIENT_459_INDEXES]
+        for assert_file in PREFIXED_459_INDEXES:
+            self.assertIn(assert_file, actual_files)
+
+        PREFIXED_LOGGING_INDEXES = [os.path.join(prefix_, i) for i in COMMONS_LOGGING_INDEXES]
+        for assert_file in PREFIXED_LOGGING_INDEXES:
+            self.assertIn(assert_file, actual_files)
+
+        self.assertNotIn(os.path.join(prefix_, COMMONS_CLIENT_456_INDEX), actual_files)
+
+        for obj in objs:
+            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+
+        indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_CLIENT_INDEX))
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"4.5.9/index.html\" title=\"4.5.9/\">4.5.9/</a>", index_content)
+        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertIn(
+            "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
+            index_content)
+        self.assertNotIn("<a href=\"4.5.6/index.html\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+
+        indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_ROOT_INDEX))
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("<a href=\"org/index.html\" title=\"org/\">org/</a>", index_content)
+        self.assertIn(
+            "<a href=\"commons-logging/index.html\" "
+            "title=\"commons-logging/\">commons-logging/</a>",
+            index_content
+        )
+        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+
+        product_459 = "commons-client-4.5.9"
+        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        handle_maven_del(
+            test_zip, product_459,
+            bucket_name=TEST_BUCKET,
+            prefix=prefix,
+            dir_=self.tempdir
+        )
+
+        objs = list(test_bucket.objects.all())
+        self.assertEqual(0, len(objs))
+
+    def __prepare_content(self, prefix=None):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
             bucket_name=TEST_BUCKET,
+            prefix=prefix,
             dir_=self.tempdir
         )
 
@@ -232,5 +366,6 @@ class MavenFileIndexTest(BaseTest):
         handle_maven_uploading(
             test_zip, product_459,
             bucket_name=TEST_BUCKET,
+            prefix=prefix,
             dir_=self.tempdir
         )
