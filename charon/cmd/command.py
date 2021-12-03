@@ -124,9 +124,15 @@ def upload(
         conf = get_config()
         if not conf:
             sys.exit(1)
+
+        aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
+        if not aws_profile:
+            logger.warning("No AWS profile specified!")
+
         aws_bucket = conf.get_aws_bucket(target)
         if not aws_bucket:
             sys.exit(1)
+
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
@@ -135,6 +141,7 @@ def upload(
             logger.info("This is a npm archive")
             handle_npm_uploading(archive_path, product_key,
                                  bucket_name=aws_bucket,
+                                 aws_profile=aws_profile,
                                  dry_run=dryrun)
         else:
             ignore_patterns_list = None
@@ -147,11 +154,13 @@ def upload(
                                    ignore_patterns_list,
                                    root=root_path,
                                    bucket_name=aws_bucket,
+                                   aws_profile=aws_profile,
                                    prefix=prefix_,
                                    dry_run=dryrun)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
+
 
 @argument(
     "repo",
@@ -246,9 +255,15 @@ def delete(
         conf = get_config()
         if not conf:
             sys.exit(1)
+
+        aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
+        if not aws_profile:
+            logger.warning("No AWS profile specified!")
+
         aws_bucket = conf.get_aws_bucket(target)
         if not aws_bucket:
             sys.exit(1)
+
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
@@ -257,6 +272,7 @@ def delete(
             logger.info("This is a npm archive")
             handle_npm_del(archive_path, product_key,
                            bucket_name=aws_bucket,
+                           aws_profile=aws_profile,
                            dry_run=dryrun)
         else:
             ignore_patterns_list = None
@@ -269,6 +285,7 @@ def delete(
                              ignore_patterns_list,
                              root=root_path,
                              bucket_name=aws_bucket,
+                             aws_profile=aws_profile,
                              prefix=prefix_,
                              dry_run=dryrun)
     except Exception:

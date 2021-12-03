@@ -34,12 +34,16 @@ class CharonConfig(object):
     """
     def __init__(self, data: Dict):
         self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
+        self.__aws_profile: str = data.get("aws_profile", None)
         self.__targets: Dict = data.get("targets", None)
         if not self.__targets or not isinstance(self.__targets, Dict):
             raise TypeError("Charon configuration is not correct: targets is invalid.")
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
+
+    def get_aws_profile(self) -> str:
+        return self.__aws_profile
 
     def get_aws_bucket(self, target: str) -> str:
         target_: Dict = self.__targets.get(target, None)

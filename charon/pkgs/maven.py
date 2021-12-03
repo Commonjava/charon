@@ -182,6 +182,7 @@ def handle_maven_uploading(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
+    aws_profile=None,
     prefix=None,
     dir_=None,
     do_index=True,
@@ -226,7 +227,7 @@ def handle_maven_uploading(
     prefix_ = remove_prefix(prefix, "/")
     # 4. Do uploading
     logger.info("Start uploading files to s3")
-    s3_client = S3Client(dry_run=dry_run)
+    s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     _, failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket,
@@ -288,6 +289,7 @@ def handle_maven_del(
     ignore_patterns=None,
     root="maven-repository",
     bucket_name=None,
+    aws_profile=None,
     prefix=None,
     dir_=None,
     do_index=True,
@@ -329,7 +331,7 @@ def handle_maven_del(
     prefix_ = remove_prefix(prefix, "/")
     # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
-    s3_client = S3Client(dry_run=dry_run)
+    s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     (_, failed_files) = s3_client.delete_files(
         valid_mvn_paths,

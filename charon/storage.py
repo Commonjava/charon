@@ -40,13 +40,12 @@ class S3Client(object):
     some convenient methods to be used in the charon.
     """
 
-    def __init__(self, extra_conf=None, dry_run=False) -> None:
-        self.client = self.__init_aws_client(extra_conf)
+    def __init__(self, aws_profile=None, extra_conf=None, dry_run=False) -> None:
+        self.client = self.__init_aws_client(aws_profile, extra_conf)
         self.bucket = None
         self.dry_run = dry_run
 
-    def __init_aws_client(self, extra_conf=None, enable_acc=False):
-        aws_profile = os.getenv("AWS_PROFILE", None)
+    def __init_aws_client(self, aws_profile=None, extra_conf=None, enable_acc=False):
         if aws_profile:
             logger.debug("Using aws profile: %s", aws_profile)
             s3_session = session.Session(profile_name=aws_profile)
