@@ -62,8 +62,9 @@ class NPMPackageMetadata(object):
 
 def handle_npm_uploading(
         tarball_path: str, product: str,
-        bucket_name=None, dir_=None,
-        do_index=True, dry_run=False
+        bucket_name=None, prefix=None,
+        dir_=None, do_index=True,
+        dry_run=False
 ):
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
@@ -76,7 +77,7 @@ def handle_npm_uploading(
           tmp dir if None.
     """
     target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-        tarball_path, prefix=product, dir__=dir_
+        tarball_path, prod=product, dir__=dir_
     )
     if not os.path.isdir(target_dir):
         logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
@@ -87,11 +88,12 @@ def handle_npm_uploading(
     logger.info("Start uploading files to s3")
     client = S3Client(dry_run=dry_run)
     bucket = bucket_name
-    uploaded_files = []
-    _uploaded_files, failed_files = client.upload_files(
-        file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
+    _, failed_files = client.upload_files(
+        file_paths=valid_paths,
+        bucket_name=bucket,
+        product=product,
+        root=target_dir
     )
-    uploaded_files.extend(_uploaded_files)
     logger.info("Files uploading done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
@@ -102,28 +104,29 @@ def handle_npm_uploading(
 
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        _uploaded_files, _failed_metas = client.upload_metadatas(
+        _, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=product,
             root=target_dir
         )
         failed_metas.extend(_failed_metas)
-        uploaded_files.extend(_uploaded_files)
         logger.info("package.json uploading done")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
         logger.info("Start generating index files to s3")
-        created_indexes = indexing.generate_indexes(target_dir, valid_dirs, client, bucket)
+        created_indexes = indexing.generate_indexes(
+            target_dir, valid_dirs, client, bucket, prefix
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
         (_, _failed_metas) = client.upload_metadatas(
             meta_file_paths=created_indexes,
-            bucket_name=bucket,
-            product=None, root=target_dir
+            bucket_name=bucket, product=None,
+            root=target_dir, key_prefix=prefix
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -135,8 +138,9 @@ def handle_npm_uploading(
 
 def handle_npm_del(
         tarball_path: str, product: str,
-        bucket_name=None, dir_=None,
-        do_index=True, dry_run=False
+        bucket_name=None, prefix=None,
+        dir_=None, do_index=True,
+        dry_run=False
 ):
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
@@ -147,7 +151,7 @@ def handle_npm_del(
           tmp dir if None.
     """
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
-        tarball_path, prefix=product, dir__=dir_
+        tarball_path, prod=product, dir__=dir_
     )
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
@@ -156,12 +160,15 @@ def handle_npm_del(
     client = S3Client(dry_run=dry_run)
     bucket = bucket_name
     deleted_files, _ = client.delete_files(
-        file_paths=valid_paths, bucket_name=bucket, product=product, root=target_dir
+        file_paths=valid_paths, bucket_name=bucket,
+        product=product, root=target_dir
     )
     logger.info("Files deletion done\n")
 
     logger.info("Start generating package.json for package: %s", package_name_path)
-    meta_files = _gen_npm_package_metadata_for_del(client, bucket, target_dir, package_name_path)
+    meta_files = _gen_npm_package_metadata_for_del(
+        client, bucket, target_dir, package_name_path
+    )
     logger.info("package.json generation done\n")
 
     logger.info("Start uploading package.json to s3")
@@ -169,7 +176,8 @@ def handle_npm_del(
     for _, file in meta_files.items():
         all_meta_files.append(file)
     deleted_metas, failed_files = client.delete_files(
-        file_paths=all_meta_files, bucket_name=bucket, product=product, root=target_dir
+        file_paths=all_meta_files, bucket_name=bucket,
+        product=product, root=target_dir
     )
     deleted_files += deleted_metas
     failed_metas = []
@@ -190,7 +198,9 @@ def handle_npm_del(
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
-        created_indexes = indexing.generate_indexes(target_dir, valid_dirs, client, bucket)
+        created_indexes = indexing.generate_indexes(
+            target_dir, valid_dirs, client, bucket, prefix
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
@@ -198,7 +208,8 @@ def handle_npm_del(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,
-            root=target_dir
+            root=target_dir,
+            key_prefix=prefix
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
@@ -289,9 +300,9 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[
+def _scan_metadata_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[
         str, list, NPMPackageMetadata]:
-    tmp_root = mkdtemp(prefix=f"npm-charon-{prefix}-", dir=dir__)
+    tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
         _, valid_paths = extract_npm_tarball(path, tmp_root, True)
         if len(valid_paths) > 1:
@@ -303,14 +314,15 @@ def _scan_metadata_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple
         sys.exit(1)
 
 
-def _scan_paths_from_archive(path: str, prefix="", dir__=None) -> Tuple[str, str, list]:
-    tmp_root = mkdtemp(prefix=f"npm-charon-{prefix}-", dir=dir__)
+def _scan_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, str, list]:
+    tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, False)
     return tmp_root, package_name_path, valid_paths
 
 
 def _merge_package_metadata(
-        package_metadata: NPMPackageMetadata, client: S3Client, bucket: str,
+        package_metadata: NPMPackageMetadata,
+        client: S3Client, bucket: str,
         key: str
 ):
     content = client.read_file_content(bucket, key)

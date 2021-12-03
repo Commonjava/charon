@@ -21,6 +21,8 @@ import os
 import logging
 from typing import List, Set
 
+from charon.utils.strings import remove_prefix
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +52,11 @@ class IndexedHTML(object):
 
 
 def generate_indexes(
-    top_level: str, changed_dirs: List[str], s3_client: S3Client, bucket: str
+    top_level: str,
+    changed_dirs: List[str],
+    s3_client: S3Client,
+    bucket: str,
+    prefix: str
 ) -> List[str]:
     if top_level[-1] != '/':
         top_level += '/'
@@ -70,13 +76,13 @@ def generate_indexes(
     s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
     for folder_ in s3_folders:
         index_html = __generate_index_html(
-            s3_client, bucket, folder_, top_level
+            s3_client, bucket, folder_, top_level, prefix
         )
         if index_html:
             generated_htmls.append(index_html)
 
     root_index = __generate_index_html(
-        s3_client, bucket, "/", top_level
+        s3_client, bucket, "/", top_level, prefix
     )
     if root_index:
         generated_htmls.append(root_index)
@@ -88,11 +94,16 @@ def __generate_index_html(
     s3_client: S3Client,
     bucket: str,
     folder_: str,
-    top_level: str
+    top_level: str,
+    prefix: str = None
 ) -> str:
+    if folder_ != "/":
+        search_folder = os.path.join(prefix, folder_) if prefix else folder_
+    else:
+        search_folder = prefix if prefix else "/"
     contents = s3_client.list_folder_content(
         bucket_name=bucket,
-        folder=folder_
+        folder=search_folder
     )
     index = None
     if len(contents) == 1 and contents[0].endswith("index.html"):
@@ -106,10 +117,22 @@ def __generate_index_html(
             file_paths=[removed_index],
             bucket_name=bucket,
             product=None,
-            root=top_level
+            root=top_level,
+            key_prefix=prefix
         )
     elif len(contents) >= 1:
-        index = __to_html(contents, folder_, top_level)
+        real_contents = []
+        if prefix and prefix.strip() != "":
+            for c in contents:
+                if c.startswith(prefix):
+                    real_c = remove_prefix(c, prefix)
+                    real_c = remove_prefix(real_c, "/")
+                    real_contents.append(real_c)
+                else:
+                    real_contents.append(c)
+        else:
+            real_contents = contents
+        index = __to_html(real_contents, folder_, top_level)
 
     return index
 
@@ -119,6 +142,7 @@ def __to_html(contents: List[str], folder: str, top_level: str) -> str:
     if folder != "/":
         items.append("../")
         for c in contents:
+            # index.html does not need to be included in html content.
             if not c.endswith("index.html"):
                 items.append(c[len(folder):])
     else:

@@ -261,14 +261,18 @@ def handle_maven_uploading(
     # index is similar to metadata, it will be overwritten everytime
     if do_index:
         logger.info("Start generating index files to s3")
-        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(
+            top_level, valid_dirs, s3_client, bucket, prefix_
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
         (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
-            product=None, root=top_level
+            product=None,
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -373,7 +377,9 @@ def handle_maven_del(
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
-        created_indexes = indexing.generate_indexes(top_level, valid_dirs, s3_client, bucket)
+        created_indexes = indexing.generate_indexes(
+            top_level, valid_dirs, s3_client, bucket, prefix_
+        )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
@@ -381,7 +387,8 @@ def handle_maven_del(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,
-            root=top_level
+            root=top_level,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
