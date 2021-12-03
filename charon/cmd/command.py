@@ -153,6 +153,7 @@ def upload(
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
 
+
 @argument(
     "repo",
     type=str,
