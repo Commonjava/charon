@@ -66,6 +66,22 @@ targets:
         self.assertEqual("ga", conf.get_bucket_prefix("ga"))
         self.assertIsNone(conf.get_aws_bucket("ga"))
 
+    def test_config_missing_prefix(self):
+        content_missing_targets = """
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
+
+targets:
+    ga:
+        bucket: charon-test
+        """
+        self.__change_config_content(content_missing_targets)
+        conf = config.get_config()
+        self.assertIsNotNone(conf)
+        self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
+        self.assertEqual("", conf.get_bucket_prefix("ga"))
+
     def __change_config_content(self, content: str):
         self.__base.change_home()
         config_base = self.__base.get_config_base()

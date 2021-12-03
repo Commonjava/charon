@@ -58,8 +58,12 @@ class CharonConfig(object):
             return None
         prefix = target_.get("prefix", None)
         if not prefix:
-            logger.error("The prefix %s is not found for target %s "
-                         "in charon configuration.", prefix, target)
+            logger.warning("The prefix is not found for target %s "
+                           "in charon configuration, so no prefix will "
+                           "be used", target)
+            prefix = ""
+        if prefix.startswith("/"):
+            prefix = prefix[1:]
         return prefix
 
 
