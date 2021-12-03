@@ -22,6 +22,7 @@ from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from click import command, option, argument, group
 from json import loads
 
+import traceback
 import logging
 import os
 import sys
@@ -113,41 +114,44 @@ def upload(
     Service. The REPO points to a product released tarball which
     is hosted in a remote url or a local path.
     """
-    if dryrun:
-        logger.info("Running in dry-run mode,"
-                    "no files will be uploaded.")
-    __decide_mode(is_quiet=quiet, is_debug=debug)
-    if not __validate_prod_key(product, version):
-        return
-    conf = get_config()
-    if not conf:
-        sys.exit(1)
-    aws_bucket = conf.get_aws_bucket(target)
-    if not aws_bucket:
-        sys.exit(1)
-    archive_path = __get_local_repo(repo)
-    npm_archive_type = detect_npm_archive(archive_path)
-    product_key = f"{product}-{version}"
-    prefix_ = conf.get_bucket_prefix(target)
-    if npm_archive_type != NpmArchiveType.NOT_NPM:
-        logger.info("This is a npm archive")
-        handle_npm_uploading(archive_path, product_key,
-                             bucket_name=aws_bucket,
-                             dry_run=dryrun)
-    else:
-        ignore_patterns_list = None
-        if ignore_patterns:
-            ignore_patterns_list = ignore_patterns
+    try:
+        if dryrun:
+            logger.info("Running in dry-run mode,"
+                        "no files will be uploaded.")
+        __decide_mode(is_quiet=quiet, is_debug=debug)
+        if not __validate_prod_key(product, version):
+            return
+        conf = get_config()
+        if not conf:
+            sys.exit(1)
+        aws_bucket = conf.get_aws_bucket(target)
+        if not aws_bucket:
+            sys.exit(1)
+        archive_path = __get_local_repo(repo)
+        npm_archive_type = detect_npm_archive(archive_path)
+        product_key = f"{product}-{version}"
+        prefix_ = conf.get_bucket_prefix(target)
+        if npm_archive_type != NpmArchiveType.NOT_NPM:
+            logger.info("This is a npm archive")
+            handle_npm_uploading(archive_path, product_key,
+                                 bucket_name=aws_bucket,
+                                 dry_run=dryrun)
         else:
-            ignore_patterns_list = __get_ignore_patterns(conf)
-        logger.info("This is a maven archive")
-        handle_maven_uploading(archive_path, product_key,
-                               ignore_patterns_list,
-                               root=root_path,
-                               bucket_name=aws_bucket,
-                               prefix=prefix_,
-                               dry_run=dryrun)
-
+            ignore_patterns_list = None
+            if ignore_patterns:
+                ignore_patterns_list = ignore_patterns
+            else:
+                ignore_patterns_list = __get_ignore_patterns(conf)
+            logger.info("This is a maven archive")
+            handle_maven_uploading(archive_path, product_key,
+                                   ignore_patterns_list,
+                                   root=root_path,
+                                   bucket_name=aws_bucket,
+                                   prefix=prefix_,
+                                   dry_run=dryrun)
+    except Exception:
+        print(traceback.format_exc())
+        sys.exit(2)  # distinguish between exception and bad config or bad state
 
 @argument(
     "repo",
@@ -232,40 +236,44 @@ def delete(
     Ronda Service. The REPO points to a product released
     tarball which is hosted in a remote url or a local path.
     """
-    if dryrun:
-        logger.info("Running in dry-run mode,"
-                    "no files will be deleted.")
-    __decide_mode(is_quiet=quiet, is_debug=debug)
-    if not __validate_prod_key(product, version):
-        return
-    conf = get_config()
-    if not conf:
-        sys.exit(1)
-    aws_bucket = conf.get_aws_bucket(target)
-    if not aws_bucket:
-        sys.exit(1)
-    archive_path = __get_local_repo(repo)
-    npm_archive_type = detect_npm_archive(archive_path)
-    product_key = f"{product}-{version}"
-    prefix_ = conf.get_bucket_prefix(target)
-    if npm_archive_type != NpmArchiveType.NOT_NPM:
-        logger.info("This is a npm archive")
-        handle_npm_del(archive_path, product_key,
-                       bucket_name=aws_bucket,
-                       dry_run=dryrun)
-    else:
-        ignore_patterns_list = None
-        if ignore_patterns:
-            ignore_patterns_list = ignore_patterns
+    try:
+        if dryrun:
+            logger.info("Running in dry-run mode,"
+                        "no files will be deleted.")
+        __decide_mode(is_quiet=quiet, is_debug=debug)
+        if not __validate_prod_key(product, version):
+            return
+        conf = get_config()
+        if not conf:
+            sys.exit(1)
+        aws_bucket = conf.get_aws_bucket(target)
+        if not aws_bucket:
+            sys.exit(1)
+        archive_path = __get_local_repo(repo)
+        npm_archive_type = detect_npm_archive(archive_path)
+        product_key = f"{product}-{version}"
+        prefix_ = conf.get_bucket_prefix(target)
+        if npm_archive_type != NpmArchiveType.NOT_NPM:
+            logger.info("This is a npm archive")
+            handle_npm_del(archive_path, product_key,
+                           bucket_name=aws_bucket,
+                           dry_run=dryrun)
         else:
-            ignore_patterns_list = __get_ignore_patterns(conf)
-        logger.info("This is a maven archive")
-        handle_maven_del(archive_path, product_key,
-                         ignore_patterns_list,
-                         root=root_path,
-                         bucket_name=aws_bucket,
-                         prefix=prefix_,
-                         dry_run=dryrun)
+            ignore_patterns_list = None
+            if ignore_patterns:
+                ignore_patterns_list = ignore_patterns
+            else:
+                ignore_patterns_list = __get_ignore_patterns(conf)
+            logger.info("This is a maven archive")
+            handle_maven_del(archive_path, product_key,
+                             ignore_patterns_list,
+                             root=root_path,
+                             bucket_name=aws_bucket,
+                             prefix=prefix_,
+                             dry_run=dryrun)
+    except Exception:
+        print(traceback.format_exc())
+        sys.exit(2)  # distinguish between exception and bad config or bad state
 
 
 def __get_ignore_patterns(conf: CharonConfig) -> List[str]:
