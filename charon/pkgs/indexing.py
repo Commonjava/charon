@@ -56,7 +56,7 @@ def generate_indexes(
     changed_dirs: List[str],
     s3_client: S3Client,
     bucket: str,
-    prefix: str
+    prefix: str = None
 ) -> List[str]:
     if top_level[-1] != '/':
         top_level += '/'
