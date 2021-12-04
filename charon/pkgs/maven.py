@@ -549,6 +549,8 @@ def _generate_metadatas(
 
 
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
+    if "maven-metadata.xml" in filename:
+        return True
     if ignore_patterns:
         for dirs in ignore_patterns:
             if re.search(dirs, filename):
@@ -556,9 +558,9 @@ def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
     return False
 
 
-def _validate_maven(paths: List[str]) -> Tuple[List[str], str]:
+def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
     # Reminder: need to implement later
-    return (list(), True)
+    return (list, True)
 
 
 def _handle_error(err_msgs: List[str]):
