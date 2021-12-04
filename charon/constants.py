@@ -117,15 +117,13 @@ body {
   </header>
   <hr/>
   <main>
-    <pre id="contents">
-    {% for item in index.items %}
-      {% if item.endswith("/") %}
-        <a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a>
-      {% else %}
-        <a href="{{ item }}" title="{{ item }}">{{ item }}</a>
-      {% endif %}
-    {% endfor%}
-    </pre>
+    <ul style="list-style: none outside;" id="contents">
+    {% for item in index.items %}{% if item.endswith("/") %}
+        <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
+    {% else %}
+        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
+    {% endif %}{% endfor%}
+    </ul>
   </main>
   <hr/>
 </body>
