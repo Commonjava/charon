@@ -550,7 +550,7 @@ def _generate_metadatas(
 
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
     if "maven-metadata.xml" in filename:
-        logger.warning(f"Ignoring Maven metadata file from input: {filename}")
+        logger.warning("Ignoring Maven metadata file from input: %s" % filename)
         return True
     if ignore_patterns:
         for dirs in ignore_patterns:
