@@ -108,12 +108,17 @@ class S3Client(object):
 
         uploaded_files = []
 
-        def path_upload_handler(full_file_path: str, path: str) -> bool:
+        def path_upload_handler(full_file_path: str, path: str, index: int, total: int) -> bool:
             if not os.path.isfile(full_file_path):
                 logger.warning('Warning: file %s does not exist during uploading. Product: %s',
                                full_file_path, product)
                 return False
-            logger.info('Uploading %s to bucket %s', full_file_path, bucket_name)
+
+            logger.info(
+                '(%d/%d) Uploading %s to bucket %s',
+                index, total, full_file_path, bucket_name
+            )
+
             path_key = os.path.join(key_prefix, path) if key_prefix else path
             fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
@@ -201,12 +206,17 @@ class S3Client(object):
 
         uploaded_files = []
 
-        def path_upload_handler(full_file_path: str, path: str):
+        def path_upload_handler(full_file_path: str, path: str, index: int, total: int):
             if not os.path.isfile(full_file_path):
                 logger.warning('Warning: file %s does not exist during uploading. Product: %s',
                                full_file_path, product)
                 return False
-            logger.info('Updating metadata %s to bucket %s', path, bucket_name)
+
+            logger.info(
+                '(%d/%d) Updating metadata %s to bucket %s',
+                index, total, path, bucket_name
+            )
+
             path_key = os.path.join(key_prefix, path) if key_prefix else path
             file_object = bucket.Object(path_key)
             existed = self.file_exists(file_object)
@@ -282,8 +292,8 @@ class S3Client(object):
 
         deleted_files = []
 
-        def path_delete_handler(full_file_path: str, path: str):
-            logger.info('Deleting %s from bucket %s', path, bucket_name)
+        def path_delete_handler(full_file_path: str, path: str, index: int, total: int):
+            logger.info('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
             path_key = os.path.join(key_prefix, path) if key_prefix else path
             fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
@@ -449,10 +459,12 @@ class S3Client(object):
         if not root.endswith("/"):
             slash_root = slash_root + "/"
         failed_paths = []
+        index = 1
         for full_path in file_paths:
             path = full_path
             if path.startswith(slash_root):
                 path = path[len(slash_root):]
-            if not fn(full_path, path):
+            if not fn(full_path, path, index, len(file_paths)):
                 failed_paths.append(path)
+            index += 1
         return failed_paths
