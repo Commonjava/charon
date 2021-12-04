@@ -28,6 +28,7 @@ from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
+from charon.utils.strings import remove_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ def handle_npm_uploading(
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
+    prefix_ = remove_prefix(prefix, "/")
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
@@ -93,13 +95,14 @@ def handle_npm_uploading(
         file_paths=valid_paths,
         bucket_name=bucket,
         product=product,
-        root=target_dir
+        root=target_dir,
+        key_prefix=prefix_
     )
     logger.info("Files uploading done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
     meta_files = _gen_npm_package_metadata_for_upload(
-        client, bucket, target_dir, package_metadata
+        client, bucket, target_dir, package_metadata, prefix_
     )
     logger.info("package.json generation done\n")
 
@@ -109,7 +112,8 @@ def handle_npm_uploading(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=product,
-            root=target_dir
+            root=target_dir,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("package.json uploading done")
@@ -119,7 +123,7 @@ def handle_npm_uploading(
     if do_index:
         logger.info("Start generating index files to s3")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix
+            target_dir, valid_dirs, client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -127,7 +131,7 @@ def handle_npm_uploading(
         (_, _failed_metas) = client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket, product=None,
-            root=target_dir, key_prefix=prefix
+            root=target_dir, key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -157,18 +161,20 @@ def handle_npm_del(
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
+    prefix_ = remove_prefix(prefix, "/")
     logger.info("Start deleting files from s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
-    deleted_files, _ = client.delete_files(
+    _, failed_files = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket,
-        product=product, root=target_dir
+        product=product, root=target_dir,
+        key_prefix=prefix_
     )
     logger.info("Files deletion done\n")
 
     logger.info("Start generating package.json for package: %s", package_name_path)
     meta_files = _gen_npm_package_metadata_for_del(
-        client, bucket, target_dir, package_name_path
+        client, bucket, target_dir, package_name_path, prefix_
     )
     logger.info("package.json generation done\n")
 
@@ -176,31 +182,26 @@ def handle_npm_del(
     all_meta_files = []
     for _, file in meta_files.items():
         all_meta_files.append(file)
-    deleted_metas, failed_files = client.delete_files(
+    client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket,
-        product=product, root=target_dir
+        product=product, root=target_dir, key_prefix=prefix_
     )
-    deleted_files += deleted_metas
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        _uploaded_files, _failed_metas = client.upload_metadatas(
+        _, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=None,
-            root=target_dir
+            root=target_dir,
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
-        for m_file in _uploaded_files:
-            if m_file.replace(target_dir, '') in deleted_files:
-                deleted_files.remove(m_file.replace(target_dir, ''))
-            elif m_file.replace(target_dir + '/', '') in deleted_files:
-                deleted_files.remove(m_file.replace(target_dir + '/', ''))
     logger.info("package.json uploading done")
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix
+            target_dir, valid_dirs, client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -210,7 +211,7 @@ def handle_npm_del(
             bucket_name=bucket,
             product=None,
             root=target_dir,
-            key_prefix=prefix
+            key_prefix=prefix_
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
@@ -229,7 +230,9 @@ def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMe
 
 
 def _gen_npm_package_metadata_for_upload(
-        client: S3Client, bucket: str, target_dir: str, source_package: NPMPackageMetadata
+        client: S3Client, bucket: str,
+        target_dir: str, source_package: NPMPackageMetadata,
+        prefix: str = None
 ) -> dict:
     """Collect NPM versions package.json and generate the package package.json.
        For uploading mode, package.json will merge the original in S3 with the local source.
@@ -240,6 +243,8 @@ def _gen_npm_package_metadata_for_upload(
     """
     meta_files = {}
     package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
+    if prefix and prefix != "/":
+        package_metadata_key = os.path.join(prefix, package_metadata_key)
     (package_json_files, success) = client.get_files(bucket_name=bucket,
                                                      prefix=package_metadata_key)
     if not success:
@@ -256,7 +261,9 @@ def _gen_npm_package_metadata_for_upload(
 
 
 def _gen_npm_package_metadata_for_del(
-        client: S3Client, bucket: str, target_dir: str, package_path_prefix: str
+        client: S3Client, bucket: str,
+        target_dir: str, package_path_prefix: str,
+        prefix: str = None
 ) -> dict:
     """Collect NPM versions package.json and generate the package package.json.
        For del mode, all the version package.json contents to be merged will be read from S3.
@@ -267,14 +274,19 @@ def _gen_npm_package_metadata_for_del(
     """
     meta_files = {}
     package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
+    prefix_meta_key = package_metadata_key
+    path_prefix = package_path_prefix
+    if prefix and prefix != "/":
+        prefix_meta_key = os.path.join(prefix, package_metadata_key)
+        path_prefix = os.path.join(prefix, package_path_prefix)
     (existed_version_metas, success) = client.get_files(
-        bucket_name=bucket, prefix=package_path_prefix, suffix=PACKAGE_JSON
+        bucket_name=bucket, prefix=path_prefix, suffix=PACKAGE_JSON
     )
     if not success:
         logger.warning("Error to get remote metadata files "
-                       "for %s when deletion", package_path_prefix)
+                       "for %s when deletion", path_prefix)
     # ensure the metas only contain version package.json
-    existed_version_metas.remove(package_metadata_key)
+    existed_version_metas.remove(prefix_meta_key)
     # Still have versions in S3 and need to maintain the package metadata
     if len(existed_version_metas) > 0:
         logger.debug("Read all version package.json content from S3")
