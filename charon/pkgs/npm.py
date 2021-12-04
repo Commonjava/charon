@@ -63,6 +63,7 @@ class NPMPackageMetadata(object):
 def handle_npm_uploading(
         tarball_path: str, product: str,
         bucket_name=None, prefix=None,
+        aws_profile=None,
         dir_=None, do_index=True,
         dry_run=False
 ):
@@ -86,7 +87,7 @@ def handle_npm_uploading(
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
     logger.info("Start uploading files to s3")
-    client = S3Client(dry_run=dry_run)
+    client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     _, failed_files = client.upload_files(
         file_paths=valid_paths,
@@ -138,9 +139,9 @@ def handle_npm_uploading(
 
 def handle_npm_del(
         tarball_path: str, product: str,
-        bucket_name=None, prefix=None,
-        dir_=None, do_index=True,
-        dry_run=False
+        bucket_name=None, aws_profile=None,
+        prefix=None, dir_=None,
+        do_index=True, dry_run=False
 ):
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
@@ -157,7 +158,7 @@ def handle_npm_del(
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
     logger.info("Start deleting files from s3")
-    client = S3Client(dry_run=dry_run)
+    client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     deleted_files, _ = client.delete_files(
         file_paths=valid_paths, bucket_name=bucket,
