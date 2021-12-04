@@ -207,12 +207,8 @@ class MavenUploadTest(BaseTest):
         actual_files = [obj.key for obj in objs]
 
         ignored_files = [
-            "org/apache/httpcomponents/httpclient/maven-metadata.xml",
-            "org/apache/httpcomponents/httpclient/maven-metadata.xml.sha1",
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
-            "commons-logging/commons-logging/maven-metadata.xml",
-            "commons-logging/commons-logging/maven-metadata.xml.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1"
