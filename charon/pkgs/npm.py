@@ -143,8 +143,8 @@ def handle_npm_uploading(
 
 def handle_npm_del(
         tarball_path: str, product: str,
-        bucket_name=None, aws_profile=None,
-        prefix=None, dir_=None,
+        bucket_name=None, prefix=None,
+        aws_profile=None, dir_=None,
         do_index=True, dry_run=False
 ):
     """ Handle the npm product release tarball deletion process.

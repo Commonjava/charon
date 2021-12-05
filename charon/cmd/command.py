@@ -141,6 +141,7 @@ def upload(
             logger.info("This is a npm archive")
             handle_npm_uploading(archive_path, product_key,
                                  bucket_name=aws_bucket,
+                                 prefix=prefix_,
                                  aws_profile=aws_profile,
                                  dry_run=dryrun)
         else:
@@ -272,6 +273,7 @@ def delete(
             logger.info("This is a npm archive")
             handle_npm_del(archive_path, product_key,
                            bucket_name=aws_bucket,
+                           prefix=prefix_,
                            aws_profile=aws_profile,
                            dry_run=dryrun)
         else:
