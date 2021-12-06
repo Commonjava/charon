@@ -19,7 +19,8 @@ from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
 from botocore.config import Config
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Optional
+import hashlib
 import os
 import logging
 import mimetypes
@@ -140,7 +141,7 @@ class S3Client(object):
                                 full_file_path,
                                 ExtraArgs={'ContentType': content_type}
                             )
-                    logger.info('Uploaded %s to bucket %s', full_file_path, bucket_name)
+                    logger.info('Uploaded %s to bucket %s', path, bucket_name)
                     uploaded_files.append(path_key)
                 except (ClientError, HTTPClientError) as e:
                     logger.error("ERROR: file %s not uploaded to bucket"
@@ -183,7 +184,8 @@ class S3Client(object):
 
     def upload_metadatas(
         self, meta_file_paths: List[str], bucket_name: str,
-        product: str, root="/", key_prefix: str = None
+        product: Optional[str], root="/", key_prefix: str = None,
+        digests: bool = True
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
@@ -195,6 +197,12 @@ class S3Client(object):
 
         uploaded_files = []
 
+        def get_file_digest(path: str, hashtype: str) -> str:
+            digest = hashlib.new(hashtype)
+            with open(path, 'rb') as f:
+                digest.update(f.read())
+                return digest.hexdigest()
+
         def path_upload_handler(full_file_path: str, path: str):
             if not os.path.isfile(full_file_path):
                 logger.warning('Warning: file %s does not exist during uploading. Product: %s',
@@ -202,16 +210,21 @@ class S3Client(object):
                 return False
             logger.info('Updating metadata %s to bucket %s', path, bucket_name)
             path_key = os.path.join(key_prefix, path) if key_prefix else path
-            fileObject = bucket.Object(path_key)
-            existed = self.file_exists(fileObject)
+            file_object = bucket.Object(path_key)
+            existed = self.file_exists(file_object)
             f_meta = {}
             need_overwritten = True
-            sha1 = read_sha1(full_file_path)
+
+            sha1 = get_file_digest(full_file_path, 'sha1')
+            if digests:
+                md5 = get_file_digest(full_file_path, 'md5')
+                sha256 = get_file_digest(full_file_path, 'sha256')
+
             (content_type, _) = mimetypes.guess_type(full_file_path)
             if not content_type:
                 content_type = DEFAULT_MIME_TYPE
             if existed:
-                f_meta = fileObject.metadata
+                f_meta = file_object.metadata
                 need_overwritten = (
                     CHECKSUM_META_KEY not in f_meta or sha1 != f_meta[CHECKSUM_META_KEY]
                 )
@@ -228,13 +241,30 @@ class S3Client(object):
             try:
                 if not self.dry_run:
                     if need_overwritten:
-                        fileObject.put(
+                        file_object.put(
                             Body=open(full_file_path, "rb"),
                             Metadata=f_meta,
                             ContentType=content_type
                         )
+
+                        if digests:
+                            bucket.Object(full_file_path + ".sha1").put(
+                                Body=sha1,
+                                Metadata={},
+                                ContentType="text/plain"
+                            )
+                            bucket.Object(full_file_path + ".md5").put(
+                                Body=md5,
+                                Metadata={},
+                                ContentType="text/plain"
+                            )
+                            bucket.Object(full_file_path + ".sha256").put(
+                                Body=sha256,
+                                Metadata={},
+                                ContentType="text/plain"
+                            )
                     else:
-                        self.__update_file_metadata(fileObject, bucket_name, path_key, f_meta)
+                        self.__update_file_metadata(file_object, bucket_name, path_key, f_meta)
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
                 uploaded_files.append(path_key)
             except (ClientError, HTTPClientError) as e:
@@ -250,7 +280,7 @@ class S3Client(object):
 
     def delete_files(
         self, file_paths: List[str], bucket_name: str,
-        product: str, root="/", key_prefix: str = None
+        product: Optional[str], root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
@@ -272,13 +302,19 @@ class S3Client(object):
             fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
             if existed:
+                # NOTE: If we're NOT using the product key to track collisions (in the case of metadata), then
+                # This prods array will remain empty, and we will just delete the file, below. Otherwise, the product
+                # reference counts will be used (from object metadata).
                 prods = []
-                try:
-                    prods = fileObject.metadata[PRODUCT_META_KEY].split(",")
-                except KeyError:
-                    pass
-                if product and product in prods:
-                    prods.remove(product)
+                if product:
+                    try:
+                        prods = fileObject.metadata[PRODUCT_META_KEY].split(",")
+                    except KeyError:
+                        pass
+
+                    if product in prods:
+                        prods.remove(product)
+
                 if len(prods) > 0:
                     try:
                         logger.info(
@@ -306,7 +342,14 @@ class S3Client(object):
                 elif len(prods) == 0:
                     try:
                         if not self.dry_run:
-                            bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
+                            bucket.delete_objects(Delete={
+                                "Objects": [
+                                    {"Key": path_key},
+                                    {"Key": path_key + ".sha1"},
+                                    {"Key": path_key + ".md5"},
+                                    {"Key": path_key + ".sha256"}
+                                ]
+                            })
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
                         return True

@@ -131,7 +131,8 @@ def handle_npm_uploading(
         (_, _failed_metas) = client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket, product=None,
-            root=target_dir, key_prefix=prefix_
+            root=target_dir, key_prefix=prefix_,
+            digests=False
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")

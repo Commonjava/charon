@@ -21,12 +21,15 @@ from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
-                              META_FILE_FAILED, MAVEN_METADATA_TEMPLATE)
-from typing import Dict, List, Tuple
+                              META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
+                              ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME)
+from typing import Dict, List, Tuple, Optional
 from jinja2 import Template
 from datetime import datetime
 from zipfile import ZipFile, BadZipFile
 from tempfile import mkdtemp
+from defusedxml import ElementTree
+
 import os
 import sys
 import logging
@@ -36,17 +39,19 @@ import re
 logger = logging.getLogger(__name__)
 
 
-def __get_mvn_template() -> str:
-    """Gets the jinja2 template file content for maven-metadata.xml generation"""
+def __get_mvn_template(kind: str, default: str) -> str:
+    """Gets the jinja2 template file content for metadata generation"""
     try:
-        return get_template("maven-metadata.xml.j2")
+        return get_template(kind)
     except FileNotFoundError:
-        logger.info("maven-metadata.xml template file not defined,"
-                    " will use default template.")
-        return MAVEN_METADATA_TEMPLATE
+        logger.info("%s template file not defined,"
+                    " will use default template.", kind)
+        return default
 
 
-META_TEMPLATE = __get_mvn_template()
+META_TEMPLATE = __get_mvn_template("maven-metadata.xml.j2", MAVEN_METADATA_TEMPLATE)
+ARCH_TEMPLATE = __get_mvn_template("archetype-catalog.xml.j2", ARCHETYPE_CATALOG_TEMPLATE)
+STANDARD_GENERATED_IGNORES = ["maven-metadata.xml", "archetype-catalog.xml"]
 
 
 class MavenMetadata(object):
@@ -82,6 +87,48 @@ class MavenMetadata(object):
 
     def __str__(self) -> str:
         return f"{self.group_id}:{self.artifact_id}\n{self.versions}\n\n"
+
+
+class ArchetypeRef(object):
+    """This ArchetypeRef will represent an entry in archetype-catalog.xml content which will be
+    used in jinja2 or other places
+    """
+
+    def __init__(self, group_id: str, artifact_id: str, version: str, description: str):
+        self.group_id = group_id
+        self.artifact_id = artifact_id
+        self.version = version
+        self.description = description
+
+    def __hash__(self):
+        return hash(self.group_id + self.artifact_id + self.version)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, ArchetypeRef):
+            return self.group_id == other.group_id \
+                   and self.artifact_id == other.artifact_id \
+                   and self.version == other.version
+
+        return False
+
+    def __str__(self) -> str:
+        return f"{self.group_id}:{self.artifact_id}\n{self.version}\n{self.description}\n\n"
+
+
+class MavenArchetypeCatalog(object):
+    """This MavenArchetypeCatalog represents an archetype-catalog.xml which will be
+    used in jinja2 to regenerate the file with merged contents
+    """
+
+    def __init__(self, archetypes: List[ArchetypeRef]):
+        self.archetypes = sorted(set(archetypes), key=ArchetypeCompareKey)
+
+    def generate_meta_file_content(self) -> str:
+        template = Template(ARCHETYPE_CATALOG_TEMPLATE)
+        return template.render(meta=self)
+
+    def __str__(self) -> str:
+        return f"(Archetype Catalog with {len(self.archetypes)} entries).\n\n"
 
 
 def scan_for_poms(full_path: str) -> List[str]:
@@ -251,12 +298,35 @@ def handle_maven_uploading(
         (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
-            product=prod_key,
+            product=None,
             root=top_level,
             key_prefix=prefix_
         )
         failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
+
+    # 7. Determine refreshment of archetype-catalog.xml
+    if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
+        logger.info("Start generating archetype-catalog.xml")
+        upload_archetype_file = _generate_upload_archetype_catalog(
+            s3=s3_client, bucket=bucket,
+            root=top_level,
+            prefix=prefix_
+        )
+        logger.info("archetype-catalog.xml files generation done\n")
+
+        # 8. Upload archetype-catalog.xml if it has changed
+        if upload_archetype_file:
+            logger.info("Start updating archetype-catalog.xml to s3")
+            (_, _failed_metas) = s3_client.upload_metadatas(
+                meta_file_paths=[os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)],
+                bucket_name=bucket,
+                product=None,
+                root=top_level,
+                key_prefix=prefix_
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("archetype-catalog.xml updating done\n")
 
     # this step generates index.html for each dir and add them to file list
     # index is similar to metadata, it will be overwritten everytime
@@ -273,7 +343,8 @@ def handle_maven_uploading(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix_
+            key_prefix=prefix_,
+            digests=False
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -361,7 +432,7 @@ def handle_maven_del(
     s3_client.delete_files(
         file_paths=all_meta_files,
         bucket_name=bucket,
-        product=prod_key,
+        product=None,
         root=top_level,
         key_prefix=prefix_
     )
@@ -376,6 +447,38 @@ def handle_maven_del(
         )
         failed_metas.extend(_failed_metas)
     logger.info("maven-metadata.xml updating done\n")
+
+    # 7. Determine refreshment of archetype-catalog.xml
+    if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
+        logger.info("Start generating archetype-catalog.xml")
+        archetype_action = _generate_rollback_archetype_catalog(
+            s3=s3_client, bucket=bucket,
+            root=top_level,
+            prefix=prefix_
+        )
+        logger.info("archetype-catalog.xml files generation done\n")
+
+        # 8. Upload or Delete archetype-catalog.xml if it has changed
+        if archetype_action < 0:
+            logger.info("Start updating archetype-catalog.xml to s3")
+            (_, _failed_metas) = s3_client.delete_files(
+                file_paths=[os.path.join(root, ARCHETYPE_CATALOG_FILENAME)],
+                bucket_name=bucket,
+                product=None,
+                root=top_level,
+                key_prefix=prefix_
+            )
+            failed_metas.extend(_failed_metas)
+        elif archetype_action > 0:
+            (_, _failed_metas) = s3_client.upload_metadatas(
+                meta_file_paths=[os.path.join(root, ARCHETYPE_CATALOG_FILENAME)],
+                bucket_name=bucket,
+                product=None,
+                root=top_level,
+                key_prefix=prefix_
+            )
+            failed_metas.extend(_failed_metas)
+        logger.info("archetype-catalog.xml updating done\n")
 
     if do_index:
         logger.info("Start generating index files for all changed entries")
@@ -437,16 +540,19 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
 
         for name in names:
             path = os.path.join(root_dir, name)
-            if _is_ignored(name, ignore_patterns):
-                ignored_paths.append(name)
-                continue
             if top_level in root_dir:
+                # Let's wait to do the regex / pom examination until we know we're inside a valid root directory.
+                if _is_ignored(name, ignore_patterns):
+                    ignored_paths.append(name)
+                    continue
+
                 valid_mvn_paths.append(path)
+
+                if name.strip().endswith(".pom"):
+                    logger.debug("Found pom %s", name)
+                    valid_poms.append(path)
             else:
                 non_mvn_paths.append(path)
-            if name.strip().endswith(".pom"):
-                logger.debug("Found pom %s", name)
-                valid_poms.append(path)
 
     if len(non_mvn_paths) > 0:
         non_mvn_items = [n.replace(files_root, "") for n in non_mvn_paths]
@@ -473,6 +579,175 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
         )
 
     return (top_level, valid_mvn_paths, valid_poms, valid_dirs)
+
+
+def _generate_rollback_archetype_catalog(
+    s3: S3Client, bucket: str,
+    root: str, prefix: str = None
+) -> int:
+    """Determine whether the local archive contains /archetype-catalog.xml in the repo contents.
+       If so, determine whether the archetype-catalog.xml is already available in the bucket. Merge (or unmerge) these
+       catalogs and return an integer, indicating whether the bucket file should be replaced (+1), deleted (-1), or,
+       in the case where no action is required, it will return NO-OP (0).
+
+       NOTE: There are three return values:
+         - +1 - UPLOAD the local catalog with its rolled back changes
+         - -1 - DELETE the (now empty) bucket catalog
+         - 0  - take no action
+    """
+    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
+    if prefix:
+        remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
+    else:
+        remote = ARCHETYPE_CATALOG_FILENAME
+
+    do_write = False
+
+    # If there is no local catalog, this is a NO-OP
+    if os.path.exists(local):
+        if not s3.file_exists_in_bucket(bucket, remote):
+            # If there is no catalog in the bucket...this is a NO-OP
+            return 0
+        else:
+            # If there IS a catalog in the bucket, we need to merge or un-merge it.
+            with open(local) as f:
+                local_archetypes = _parse_archetypes(f.read())
+
+            if len(local_archetypes) < 1:
+                # If there are no local archetypes in the catalog, there's nothing to do.
+                logger.warning(
+                    "No archetypes found in local archetype-catalog.xml, even though the file exists! Skipping."
+                )
+                return 0
+
+            else:
+                # Read the archetypes from the bucket so we can do a merge / un-merge
+                remote_xml = s3.read_file_content(bucket, remote)
+                remote_archetypes = _parse_archetypes(remote_xml)
+
+                if len(remote_archetypes) < 1:
+                    # Nothing in the bucket. Clear out this empty file.
+                    return -1
+
+                else:
+                    # If we're deleting, un-merge the local archetypes from the remote ones.
+                    #
+                    # NOTE: The ONLY reason we can get away with this kind of naive un-merge is that products only
+                    # bother to publish archetypes for their own direct users. If they publish an archetype, it's only
+                    # for use with their product. Therefore, if we rollback that product, the archetypes they reference
+                    # shouldn't be useful anymore.
+                    for la in local_archetypes:
+                        if la not in remote_archetypes:
+                            remote_archetypes.remove(la)
+
+                    if len(remote_archetypes) < 1:
+                        # If there are no remote archetypes left after removing ours DELETE the bucket catalog.
+                        return -1
+                    else:
+                        # Re-render the result of our archetype un-merge to the local file, in preparation for upload.
+                        with open(local, 'w') as f:
+                            content = MavenArchetypeCatalog(remote_archetypes).generate_meta_file_content()
+                            try:
+                                write_file(local, content)
+                            except FileNotFoundError as e:
+                                logger.error(
+                                    "Error: Can not create file %s because of some missing folders",
+                                    local,
+                                )
+                                raise e
+
+                        return 1
+
+    return 0
+
+
+def _generate_upload_archetype_catalog(
+        s3: S3Client, bucket: str,
+        root: str, prefix: str = None
+) -> bool:
+    """Determine whether the local archive contains /archetype-catalog.xml in the repo contents.
+       If so, determine whether the archetype-catalog.xml is already available in the bucket. Merge (or unmerge) these
+       catalogs and return a boolean indicating whether the local file should be uploaded.
+    """
+    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
+    if prefix:
+        remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
+    else:
+        remote = ARCHETYPE_CATALOG_FILENAME
+
+    # If there is no local catalog, this is a NO-OP
+    if os.path.exists(local):
+        if not s3.file_exists_in_bucket(bucket, remote):
+            # If there is no catalog in the bucket, just upload what we have locally
+            return True
+        else:
+            # If there IS a catalog in the bucket, we need to merge or un-merge it.
+            with open(local) as f:
+                local_archetypes = _parse_archetypes(f.read())
+
+            if len(local_archetypes) < 1:
+                logger.warning(
+                    "No archetypes found in local archetype-catalog.xml, even though the file exists! Skipping."
+                )
+
+            else:
+                # Read the archetypes from the bucket so we can do a merge / un-merge
+                remote_xml = s3.read_file_content(bucket, remote)
+                remote_archetypes = _parse_archetypes(remote_xml)
+
+                if len(remote_archetypes) < 1:
+                    # Nothing in the bucket. Just push what we have locally.
+                    return True
+                else:
+                    original_remote_size = len(remote_archetypes)
+                    for la in local_archetypes:
+                        # The cautious approach in this operation contradicts assumptions we make for the rollback case.
+                        # That's because we should NEVER encounter a collision on archetype GAV...they should
+                        # belong with specific product releases.
+                        #
+                        # Still, we will WARN, not ERROR if we encounter this.
+                        if la not in remote_archetypes:
+                            remote_archetypes.append(la)
+                        else:
+                            logger.warning(
+                                "\n\n\nDUPLICATE ARCHETYPE: %s. "
+                                "This makes rollback of the current release UNSAFE!\n\n\n",
+                                la
+                            )
+
+                    if len(remote_archetypes) != original_remote_size:
+                        # If the number of archetypes in the version of the file from the bucket has changed, we need
+                        # to regenerate the file and re-upload it.
+                        #
+                        # Re-render the result of our archetype merge / un-merge to the local file, in preparation for
+                        # upload.
+                        with open(local, 'w') as f:
+                            content = MavenArchetypeCatalog(remote_archetypes).generate_meta_file_content()
+                            try:
+                                write_file(local, content)
+                            except FileNotFoundError as e:
+                                logger.error(
+                                    "Error: Can not create file %s because of some missing folders",
+                                    local,
+                                )
+                                raise e
+
+                        return True
+
+    return False
+
+
+def _parse_archetypes(source) -> List[ArchetypeRef]:
+    tree = ElementTree.fromstring(source.strip(), forbid_dtd=True, forbid_entities=True, forbid_external=True)
+    archetypes = []
+    for a in tree.findall("./archetypes/archetype"):
+        gid = a.find('groupId').text
+        aid = a.find('artifactId').text
+        ver = a.find('version').text
+        desc = a.find('description').text
+        archetypes.append(ArchetypeRef(gid, aid, ver, desc))
+
+    return archetypes
 
 
 def _generate_metadatas(
@@ -549,9 +824,11 @@ def _generate_metadatas(
 
 
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
-    if "maven-metadata.xml" in filename:
-        logger.warning("Ignoring Maven metadata file from input: %s", filename)
-        return True
+    for ignored_name in STANDARD_GENERATED_IGNORES:
+        if ignored_name in filename:
+            logger.warning("Ignoring standard generated Maven path: %s", filename)
+            return True
+
     if ignore_patterns:
         for dirs in ignore_patterns:
             if re.search(dirs, filename):
@@ -628,3 +905,23 @@ class VersionCompareKey:
             else:
                 continue
         return 0
+
+
+class ArchetypeCompareKey(VersionCompareKey):
+    'Used as key function for GAV sorting'
+    def __init__(self, gav):
+        super().__init__(gav.version)
+        self.gav = gav
+
+    def __compare(self, other) -> int:
+        x = self.gav.group_id + ":" + self.gav.artifact_id
+        y = other.gav.group_id + ":" + other.gav.artifact_id
+
+        if x == y:
+            return 0
+        elif x < y:
+            return -1
+        else:
+            return 1
+
+
