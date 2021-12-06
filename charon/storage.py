@@ -173,8 +173,14 @@ class S3Client(object):
                         product,
                     )
                     prods.append(product)
-                    self.__update_file_metadata(fileObject, bucket_name, path_key,
-                                                {PRODUCT_META_KEY: ",".join(prods)})
+                    try:
+                        self.__update_file_metadata(fileObject, bucket_name, path_key,
+                                                    {PRODUCT_META_KEY: ",".join(prods)})
+                    except (ClientError, HTTPClientError) as e:
+                        logger.error("ERROR: file %s not uploaded to bucket"
+                                     " %s due to error: %s ", full_file_path,
+                                     bucket_name, e)
+                        return False
             return True
 
         return (uploaded_files, self.__do_path_cut_and(
@@ -234,7 +240,14 @@ class S3Client(object):
                             ContentType=content_type
                         )
                     else:
-                        self.__update_file_metadata(fileObject, bucket_name, path_key, f_meta)
+                        # Should we update the s3 object metadata for metadata files?
+                        try:
+                            self.__update_file_metadata(fileObject, bucket_name, path_key, f_meta)
+                        except (ClientError, HTTPClientError) as e:
+                            logger.error("ERROR: metadata %s not updated to bucket"
+                                         " %s due to error: %s ", full_file_path,
+                                         bucket_name, e)
+                            return False
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
                 uploaded_files.append(path_key)
             except (ClientError, HTTPClientError) as e:
