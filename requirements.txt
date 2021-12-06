@@ -5,3 +5,4 @@ botocore
 click
 requests
 ruamel.yaml
+defusedxml

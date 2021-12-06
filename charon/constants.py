@@ -13,6 +13,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+ARCHETYPE_CATALOG_FILENAME = "archetype-catalog.xml"
+ARCHETYPE_CATALOG_TEMPLATE = '''
+<archetype-catalog>
+  <archetypes>
+  {% for arch in archetypes %}
+    <archetype>
+      <groupId>{{ arch.group_id }}</groupId>
+      <artifactId>{{ arch.artifact_id }}</artifactId>
+      <version>{{ arch.version }}</version>
+      <description>{{ arch.description }}</description>
+    </archetype>{% endfor %}
+  </archetypes>
+</archetype-catalog>
+'''
 # Logging format used
 CHARON_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
 DESCRIPTION = "charon is a tool to synchronize several types of artifacts "

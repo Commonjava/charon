@@ -4,7 +4,8 @@ from charon.utils.strings import remove_prefix
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
 from tests.commons import (
     TEST_MVN_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_METAS,
-    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS
+    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS, ARCHETYPE_CATALOG,
+    ARCHETYPE_CATALOG_FILES
 )
 from moto import mock_s3
 import boto3
@@ -48,7 +49,11 @@ class MavenDeleteTest(BaseTest):
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
+
         for f in COMMONS_CLIENT_METAS:
+            self.assertIn(f, actual_files)
+
+        for f in ARCHETYPE_CATALOG_FILES:
             self.assertIn(f, actual_files)
 
         for f in COMMONS_LOGGING_FILES:
@@ -73,6 +78,14 @@ class MavenDeleteTest(BaseTest):
         self.assertIn("<latest>4.5.9</latest>", meta_content_client)
         self.assertIn("<release>4.5.9</release>", meta_content_client)
         self.assertIn("<version>4.5.9</version>", meta_content_client)
+
+        meta_obj_cat = test_bucket.Object(ARCHETYPE_CATALOG)
+        meta_content_cat = str(meta_obj_cat.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "<groupId>org.apache.httpcomponents</groupId>", meta_content_cat
+        )
+        self.assertIn("<artifactId>httpclient</artifactId>", meta_content_cat)
+        self.assertNotIn("<version>4.5.6</version>", meta_content_cat)
 
         meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_METAS[0])
         self.assertNotIn(PRODUCT_META_KEY, meta_obj_logging.metadata)
