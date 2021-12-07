@@ -19,7 +19,7 @@ from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
 from botocore.config import Config
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 import os
 import logging
 import mimetypes
@@ -183,7 +183,7 @@ class S3Client(object):
 
     def upload_metadatas(
         self, meta_file_paths: List[str], bucket_name: str,
-        product: str, root="/", key_prefix: str = None
+        product: Optional[str], root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:

@@ -13,8 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
-from charon.utils.files import write_file
+from charon.utils.files import overwrite_file, digest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
@@ -159,21 +160,42 @@ def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]
     return gavs
 
 
-def gen_meta_file(group_id, artifact_id: str, versions: list, root="/") -> str:
+def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=True) -> List[str]:
     content = MavenMetadata(
         group_id, artifact_id, versions
     ).generate_meta_file_content()
     g_path = "/".join(group_id.split("."))
+    meta_files = []
     final_meta_path = os.path.join(root, g_path, artifact_id, "maven-metadata.xml")
     try:
-        write_file(final_meta_path, content)
+        overwrite_file(final_meta_path, content)
+        meta_files.append(final_meta_path)
     except FileNotFoundError as e:
-        logger.error(
-            "Error: Can not create file %s because of some missing folders",
-            final_meta_path,
-        )
         raise e
-    return final_meta_path
+    if digest:
+        md5_path = final_meta_path + ".md5"
+        sha1_path = final_meta_path + ".sha1"
+        sha256_path = final_meta_path + ".sha256"
+        if __gen_digest_file(md5_path, final_meta_path, HashType.MD5):
+            meta_files.append(md5_path)
+        if __gen_digest_file(sha1_path, final_meta_path, HashType.SHA1):
+            meta_files.append(sha1_path)
+        if __gen_digest_file(sha256_path, final_meta_path, HashType.SHA256):
+            meta_files.append(sha256_path)
+    return meta_files
+
+
+def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -> bool:
+    try:
+        overwrite_file(hash_file_path, digest(meta_file_path, hashtype))
+    except FileNotFoundError:
+        logger.warning(
+            "Error: Can not create digest file %s for %s "
+            "because of some missing folders",
+            hash_file_path, meta_file_path
+        )
+        return False
+    return True
 
 
 def handle_maven_uploading(
@@ -251,7 +273,7 @@ def handle_maven_uploading(
         (_, _failed_metas) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
-            product=prod_key,
+            product=None,
             root=top_level,
             key_prefix=prefix_
         )
@@ -361,7 +383,7 @@ def handle_maven_del(
     s3_client.delete_files(
         file_paths=all_meta_files,
         bucket_name=bucket,
-        product=prod_key,
+        product=None,
         root=top_level,
         key_prefix=prefix_
     )
@@ -485,21 +507,22 @@ def _generate_metadatas(
        what we should do here is:
        * Scan and get the GA for the poms
        * Search all poms in s3 based on the GA
-       * Use searched poms to generate maven-metadata to refresh
+       * Use searched poms and scanned poms to generate
+         maven-metadata to refresh
     """
-    gas_dict: Dict[str, bool] = {}
+    ga_dict: Dict[str, bool] = {}
     logger.debug("Valid poms: %s", poms)
     valid_gavs_dict = parse_gavs(poms, root)
     for g, avs in valid_gavs_dict.items():
         for a in avs.keys():
             logger.debug("G: %s, A: %s", g, a)
             g_path = "/".join(g.split("."))
-            gas_dict[os.path.join(g_path, a)] = True
+            ga_dict[os.path.join(g_path, a)] = True
     all_poms = []
     meta_files = {}
-    for path, _ in gas_dict.items():
-        # avoid some wrong prefix, like searching a/b
-        # but got a/b-1
+    for path, _ in ga_dict.items():
+        # avoid some wrong prefix, like searching org/apache
+        # but got org/apache-commons
         ga_prefix = path
         if prefix:
             ga_prefix = os.path.join(prefix, path)
@@ -513,12 +536,14 @@ def _generate_metadatas(
                 )
                 meta_files_deletion = meta_files.get(META_FILE_DEL_KEY, [])
                 meta_files_deletion.append(os.path.join(path, "maven-metadata.xml"))
+                meta_files_deletion.extend(__hash_decorate_metadata(path, "maven-metadata.xml"))
                 meta_files[META_FILE_DEL_KEY] = meta_files_deletion
             else:
                 logger.warning("An error happened when scanning remote "
                                "artifacts under GA path %s", path)
                 meta_failed_path = meta_files.get(META_FILE_FAILED, [])
                 meta_failed_path.append(os.path.join(path, "maven-metadata.xml"))
+                meta_failed_path.extend(__hash_decorate_metadata(path, "maven-metadata.xml"))
                 meta_files[META_FILE_FAILED] = meta_failed_path
         else:
             logger.debug(
@@ -537,15 +562,21 @@ def _generate_metadatas(
         for g, avs in gav_dict.items():
             for a, vers in avs.items():
                 try:
-                    meta_file = gen_meta_file(g, a, vers, root)
+                    metas = gen_meta_file(g, a, vers, root)
                 except FileNotFoundError:
                     logger.error("Failed to create metadata file for GA"
                                  " %s, please check if aligned Maven GA"
                                  " is correct in your tarball.", f'{g}:{a}')
-                logger.debug("Generated metadata file %s for %s:%s", meta_file, g, a)
-                meta_files_generation.append(meta_file)
+                logger.debug("Generated metadata file %s for %s:%s", meta_files, g, a)
+                meta_files_generation.extend(metas)
         meta_files[META_FILE_GEN_KEY] = meta_files_generation
     return meta_files
+
+
+def __hash_decorate_metadata(path: str, metadata: str) -> List[str]:
+    return [
+        os.path.join(path, metadata + hash) for hash in [".md5", ".sha1", ".sha256"]
+    ]
 
 
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:

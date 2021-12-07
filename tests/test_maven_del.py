@@ -2,49 +2,13 @@ from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from charon.utils.strings import remove_prefix
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
+from tests.commons import (
+    TEST_MVN_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_METAS,
+    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS
+)
 from moto import mock_s3
 import boto3
 import os
-
-TEST_BUCKET = "test_bucket"
-
-COMMONS_CLIENT_456_FILES = [
-    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar",
-    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom"
-]
-
-COMMONS_CLIENT_459_FILES = [
-    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar",
-    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.sha1",
-    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom"
-]
-
-COMMONS_CLIENT_META = "org/apache/httpcomponents/httpclient/maven-metadata.xml"
-
-COMMONS_LOGGING_FILES = [
-    "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar",
-    "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.sha1",
-    "commons-logging/commons-logging/1.2/commons-logging-1.2.jar",
-    "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
-    "commons-logging/commons-logging/1.2/commons-logging-1.2.pom",
-    "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1",
-]
-
-COMMONS_LOGGING_META = "commons-logging/commons-logging/maven-metadata.xml"
-
-NON_MVN_FILES = [
-    "commons-client-4.5.6/example-settings.xml",
-    "commons-client-4.5.6/licenses/gnu",
-    "commons-client-4.5.6/licenses/licenses.txt",
-    "commons-client-4.5.6/README.md",
-    "commons-client-4.5.9/example-settings.xml",
-    "commons-client-4.5.9/licenses/gnu",
-    "commons-client-4.5.9/licenses/licenses.txt",
-    "commons-client-4.5.9/README.md"
-]
 
 
 @mock_s3
@@ -53,10 +17,10 @@ class MavenDeleteTest(BaseTest):
         super().setUp()
         # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_MVN_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         try:
             bucket.objects.all().delete()
             bucket.delete()
@@ -74,30 +38,30 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(12, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(18, len(actual_files))
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
-        self.assertIn(COMMONS_CLIENT_META, actual_files)
+        for f in COMMONS_CLIENT_METAS:
+            self.assertIn(f, actual_files)
 
         for f in COMMONS_LOGGING_FILES:
             self.assertIn(f, actual_files)
-        self.assertIn(COMMONS_LOGGING_META, actual_files)
+        for f in COMMONS_LOGGING_METAS:
+            self.assertIn(f, actual_files)
 
         for obj in objs:
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         product_459 = "commons-client-4.5.9"
-        meta_obj_client = test_bucket.Object(COMMONS_CLIENT_META)
-        self.assertEqual(product_459, meta_obj_client.metadata[PRODUCT_META_KEY])
+        meta_obj_client = test_bucket.Object(COMMONS_CLIENT_METAS[0])
         meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
         self.assertIn(
             "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
@@ -110,8 +74,8 @@ class MavenDeleteTest(BaseTest):
         self.assertIn("<release>4.5.9</release>", meta_content_client)
         self.assertIn("<version>4.5.9</version>", meta_content_client)
 
-        meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_META)
-        self.assertEqual(product_459, meta_obj_logging.metadata[PRODUCT_META_KEY])
+        meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_METAS[0])
+        self.assertNotIn(PRODUCT_META_KEY, meta_obj_logging.metadata)
         meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
         self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
         self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
@@ -122,7 +86,8 @@ class MavenDeleteTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            do_index=False
         )
 
         objs = list(test_bucket.objects.all())
@@ -139,16 +104,15 @@ class MavenDeleteTest(BaseTest):
         handle_maven_del(
             test_zip, product_456,
             ignore_patterns=[".*.sha1"],
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(14, len(objs))
-
         actual_files = [obj.key for obj in objs]
+        self.assertEqual(20, len(actual_files))
 
         httpclient_ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
@@ -201,46 +165,50 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(12, len(actual_files))
+        self.assertEqual(18, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [
             os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES]
         for f in PREFIXED_COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
-        PREFIXED_COMMONS_CLIENT_META = os.path.join(prefix_, COMMONS_CLIENT_META)
-        self.assertIn(PREFIXED_COMMONS_CLIENT_META, actual_files)
+        PREFIXED_COMMONS_CLIENT_METAS = [
+            os.path.join(prefix_, f) for f in COMMONS_CLIENT_METAS]
+        for f in PREFIXED_COMMONS_CLIENT_METAS:
+            self.assertIn(f, actual_files)
 
         PREFIXED_COMMONS_LOGGING_FILES = [
             os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES]
         for f in PREFIXED_COMMONS_LOGGING_FILES:
             self.assertIn(f, actual_files)
-        PREFIXED_COMMONS_LOGGING_META = os.path.join(prefix_, COMMONS_LOGGING_META)
-        self.assertIn(PREFIXED_COMMONS_LOGGING_META, actual_files)
+        PREFIXED_COMMONS_LOGGING_METAS = [
+            os.path.join(prefix_, f) for f in COMMONS_LOGGING_METAS]
+        for f in PREFIXED_COMMONS_LOGGING_METAS:
+            self.assertIn(f, actual_files)
 
         for obj in objs:
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         product_459 = "commons-client-4.5.9"
-        meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_META)
-        self.assertEqual(product_459, meta_obj_client.metadata[PRODUCT_META_KEY])
+        meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_METAS[0])
+        self.assertNotIn(PRODUCT_META_KEY, meta_obj_client.metadata)
 
-        meta_obj_logging = test_bucket.Object(PREFIXED_COMMONS_LOGGING_META)
-        self.assertEqual(product_459, meta_obj_logging.metadata[PRODUCT_META_KEY])
+        meta_obj_logging = test_bucket.Object(PREFIXED_COMMONS_LOGGING_METAS[0])
+        self.assertNotIn(PRODUCT_META_KEY, meta_obj_logging.metadata)
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False
@@ -254,7 +222,7 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False
@@ -264,7 +232,7 @@ class MavenDeleteTest(BaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False

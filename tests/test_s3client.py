@@ -15,7 +15,7 @@ limitations under the License.
 """
 from charon.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
 from charon.utils.archive import extract_zip_all
-from charon.utils.files import write_file, read_sha1
+from charon.utils.files import overwrite_file, read_sha1
 from tests.base import BaseTest, SHORT_TEST_PREFIX
 from moto import mock_s3
 import boto3
@@ -222,7 +222,7 @@ class S3ClientTest(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
 
         content1 = "This is foo bar 1.0 1"
-        write_file(file, content1)
+        overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_files(
             [file], bucket_name=MY_BUCKET, product="foo-bar-1.0", root=temp_root
@@ -239,7 +239,7 @@ class S3ClientTest(BaseTest):
         os.remove(file)
 
         content2 = "This is foo bar 1.0 2"
-        write_file(file, content2)
+        overwrite_file(file, content2)
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_files(
@@ -275,7 +275,7 @@ class S3ClientTest(BaseTest):
                 </versions>
             </versioning>
         </metadata>"""
-        write_file(file, content1)
+        overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_metadatas(
             [file], bucket_name=MY_BUCKET, product="foo-bar-1.0", root=temp_root
@@ -325,7 +325,7 @@ class S3ClientTest(BaseTest):
             </versioning>
         </metadata>
         """
-        write_file(file, content2)
+        overwrite_file(file, content2)
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_metadatas(

@@ -27,7 +27,7 @@ class HashType(Enum):
     SHA256 = 2
 
 
-def write_file(file_path: str, content: str):
+def overwrite_file(file_path: str, content: str):
     if not os.path.isfile(file_path):
         with open(file_path, mode="a", encoding="utf-8"):
             pass
@@ -64,6 +64,8 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
         hash_obj = hashlib.sha1()
     elif hash_type == HashType.SHA256:
         hash_obj = hashlib.sha256()
+    elif hash_type == HashType.MD5:
+        hash_obj = hashlib.md5()
     else:
         raise Exception("Error: Unknown hash type for digesting.")
 

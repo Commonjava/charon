@@ -20,8 +20,6 @@ from moto import mock_s3
 import boto3
 import os
 
-TEST_BUCKET = "test_bucket"
-
 TEST_BUCKET = "npm_bucket"
 
 CODE_FRAME_7_14_5_INDEXES = [
