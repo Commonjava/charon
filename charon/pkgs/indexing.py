@@ -159,7 +159,7 @@ def __to_html(contents: List[str], folder: str, top_level: str) -> str:
 
 
 def __sort_index_items(items):
-    sorted_items = sorted(items)
+    sorted_items = sorted(items, key=IndexedItemsCompareKey)
     # make sure metadata is the last element
     if 'maven-metadata.xml' in sorted_items:
         sorted_items.remove('maven-metadata.xml')
@@ -202,3 +202,44 @@ class FolderLenCompareKey:
         xitems = self.obj.split("/")
         yitems = other.obj.split("/")
         return len(yitems) - len(xitems)
+
+
+class IndexedItemsCompareKey:
+    """Used as key function for indexed items sorting in index.html,
+       will make all folder listed before files.
+    """
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __lt__(self, other):
+        return self.__compare(other) < 0
+
+    def __gt__(self, other):
+        return self.__compare(other) > 0
+
+    def __le__(self, other):
+        return self.__compare(other) <= 0
+
+    def __ge__(self, other):
+        return self.__compare(other) >= 0
+
+    def __eq__(self, other):
+        return self.__compare(other) == 0
+
+    def __hash__(self) -> int:
+        return self.obj.__hash__()
+
+    def __compare(self, other) -> int:
+        origin = self.obj
+        target = other.obj
+        if origin.endswith("/") and not target.endswith("/"):
+            return -1
+        if target.endswith("/") and not origin.endswith("/"):
+            return 1
+        if origin > target:
+            return 1
+        elif origin < target:
+            return -1
+        else:
+            return 0
