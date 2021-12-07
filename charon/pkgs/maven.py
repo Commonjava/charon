@@ -126,7 +126,7 @@ class MavenArchetypeCatalog(object):
 
     def generate_meta_file_content(self) -> str:
         template = Template(ARCHETYPE_CATALOG_TEMPLATE)
-        return template.render(meta=self)
+        return template.render(archetypes=self.archetypes)
 
     def __str__(self) -> str:
         return f"(Archetype Catalog with {len(self.archetypes)} entries).\n\n"
@@ -488,8 +488,8 @@ def handle_maven_del(
         logger.info("archetype-catalog.xml files generation done\n")
 
         # 8. Upload or Delete archetype-catalog.xml if it has changed
-        archetype_files = [os.path.join(root, ARCHETYPE_CATALOG_FILENAME)]
-        archetype_files.extend(__hash_decorate_metadata(root, ARCHETYPE_CATALOG_FILENAME))
+        archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
+        archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
         if archetype_action < 0:
             logger.info("Start updating archetype-catalog.xml to s3")
             (_, _failed_metas) = s3_client.delete_files(
@@ -676,7 +676,7 @@ def _generate_rollback_archetype_catalog(
                     # Therefore, if we rollback that product, the archetypes
                     # they reference shouldn't be useful anymore.
                     for la in local_archetypes:
-                        if la not in remote_archetypes:
+                        if la in remote_archetypes:
                             remote_archetypes.remove(la)
 
                     if len(remote_archetypes) < 1:

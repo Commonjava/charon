@@ -39,7 +39,8 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
@@ -50,15 +51,12 @@ class MavenDeleteTest(BaseTest):
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
 
-        for f in COMMONS_CLIENT_METAS:
-            self.assertIn(f, actual_files)
+        file_set = [
+            *COMMONS_CLIENT_METAS, *ARCHETYPE_CATALOG_FILES,
+            *COMMONS_LOGGING_FILES, *COMMONS_LOGGING_METAS
+        ]
 
-        for f in ARCHETYPE_CATALOG_FILES:
-            self.assertIn(f, actual_files)
-
-        for f in COMMONS_LOGGING_FILES:
-            self.assertIn(f, actual_files)
-        for f in COMMONS_LOGGING_METAS:
+        for f in file_set:
             self.assertIn(f, actual_files)
 
         for obj in objs:
