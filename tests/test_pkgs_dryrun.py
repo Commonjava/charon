@@ -1,11 +1,10 @@
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from tests.base import BaseTest
+from tests.commons import TEST_MVN_BUCKET
 from moto import mock_s3
 import boto3
 import os
-
-TEST_BUCKET = "test_bucket"
 
 
 @mock_s3
@@ -14,10 +13,10 @@ class PkgsDryRunTest(BaseTest):
         super().setUp()
         # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_MVN_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         try:
             bucket.objects.all().delete()
             bucket.delete()
@@ -33,12 +32,12 @@ class PkgsDryRunTest(BaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             dry_run=True
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         self.assertEqual(0, len(objs))
 
@@ -49,26 +48,26 @@ class PkgsDryRunTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             dry_run=True
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(26, len(objs))
+        self.assertEqual(32, len(objs))
 
     def test_npm_upload_dry_run(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             dry_run=True
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         self.assertEqual(0, len(objs))
 
@@ -79,12 +78,12 @@ class PkgsDryRunTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             dry_run=True
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         self.assertEqual(11, len(objs))
 
@@ -93,25 +92,25 @@ class PkgsDryRunTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )
 
     def __prepare_npm_content(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_tgz, product_7_14_5, bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_tgz, product_7_15_8, bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )

@@ -14,44 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
-from charon.storage import CHECKSUM_META_KEY
+from charon.pkgs.pkg_utils import is_metadata
+from charon.storage import CHECKSUM_META_KEY, PRODUCT_META_KEY
 from charon.utils.strings import remove_prefix
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
+from tests.commons import (
+    TEST_MVN_BUCKET, COMMONS_CLIENT_456_INDEXES, COMMONS_CLIENT_459_INDEXES,
+    COMMONS_LOGGING_INDEXES, COMMONS_CLIENT_INDEX, COMMONS_CLIENT_456_INDEX,
+    COMMONS_LOGGING_INDEX, COMMONS_ROOT_INDEX
+)
 from moto import mock_s3
 import boto3
 import os
-
-TEST_BUCKET = "test_bucket"
-
-COMMONS_CLIENT_456_INDEXES = [
-    "index.html",
-    "org/index.html",
-    "org/apache/index.html",
-    "org/apache/httpcomponents/index.html",
-    "org/apache/httpcomponents/httpclient/index.html",
-    "org/apache/httpcomponents/httpclient/4.5.6/index.html",
-]
-
-COMMONS_CLIENT_459_INDEXES = [
-    "index.html",
-    "org/index.html",
-    "org/apache/index.html",
-    "org/apache/httpcomponents/index.html",
-    "org/apache/httpcomponents/httpclient/index.html",
-    "org/apache/httpcomponents/httpclient/4.5.9/index.html",
-]
-
-
-COMMONS_LOGGING_INDEXES = [
-    "commons-logging/index.html",
-    "commons-logging/commons-logging/index.html",
-    "commons-logging/commons-logging/1.2/index.html",
-]
-
-COMMONS_CLIENT_INDEX = "org/apache/httpcomponents/httpclient/index.html"
-COMMONS_CLIENT_456_INDEX = "org/apache/httpcomponents/httpclient/4.5.6/index.html"
-COMMONS_LOGGING_INDEX = "commons-logging/commons-logging/index.html"
-COMMONS_ROOT_INDEX = "index.html"
 
 
 @mock_s3
@@ -60,10 +34,10 @@ class MavenFileIndexTest(BaseTest):
         super().setUp()
         # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_MVN_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         try:
             bucket.objects.all().delete()
             bucket.delete()
@@ -79,14 +53,14 @@ class MavenFileIndexTest(BaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(21, len(actual_files))
+        self.assertEqual(27, len(actual_files))
 
         for f in COMMONS_LOGGING_INDEXES:
             self.assertIn(f, actual_files)
@@ -95,8 +69,13 @@ class MavenFileIndexTest(BaseTest):
             self.assertIn(f, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            file_obj = obj.Object()
+            if not is_metadata(file_obj.key):
+                self.assertEqual(product, file_obj.metadata[PRODUCT_META_KEY])
+            else:
+                self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
+            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
+            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -121,20 +100,20 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_456, bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(26, len(objs))
+        self.assertEqual(32, len(objs))
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -177,15 +156,15 @@ class MavenFileIndexTest(BaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir,
             prefix=prefix
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(21, len(actual_files))
+        self.assertEqual(27, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_LOGGING_INDEXES = [
@@ -201,8 +180,13 @@ class MavenFileIndexTest(BaseTest):
             self.assertIn(f, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            file_obj = obj.Object()
+            if not is_metadata(file_obj.key):
+                self.assertEqual(product, file_obj.metadata[PRODUCT_META_KEY])
+            else:
+                self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
+            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
+            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_CLIENT_INDEX))
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -230,14 +214,14 @@ class MavenFileIndexTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(21, len(actual_files))
+        self.assertEqual(27, len(actual_files))
 
         for assert_file in COMMONS_CLIENT_459_INDEXES:
             self.assertIn(assert_file, actual_files)
@@ -248,8 +232,9 @@ class MavenFileIndexTest(BaseTest):
         self.assertNotIn(COMMONS_CLIENT_456_INDEX, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            file_obj = obj.Object()
+            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
+            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -273,7 +258,7 @@ class MavenFileIndexTest(BaseTest):
         product_459 = "commons-client-4.5.9"
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
-            test_zip, product_459, bucket_name=TEST_BUCKET, dir_=self.tempdir
+            test_zip, product_459, bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir
         )
 
         objs = list(test_bucket.objects.all())
@@ -295,15 +280,15 @@ class MavenFileIndexTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(21, len(actual_files))
+        self.assertEqual(27, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_459_INDEXES = [os.path.join(prefix_, i) for i in COMMONS_CLIENT_459_INDEXES]
@@ -317,8 +302,13 @@ class MavenFileIndexTest(BaseTest):
         self.assertNotIn(os.path.join(prefix_, COMMONS_CLIENT_456_INDEX), actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            file_obj = obj.Object()
+            if not is_metadata(file_obj.key):
+                self.assertIn(PRODUCT_META_KEY, file_obj.metadata)
+            else:
+                self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
+            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
+            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_CLIENT_INDEX))
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -343,7 +333,7 @@ class MavenFileIndexTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )
@@ -356,7 +346,7 @@ class MavenFileIndexTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )
@@ -365,7 +355,7 @@ class MavenFileIndexTest(BaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_MVN_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )

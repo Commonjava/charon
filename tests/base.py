@@ -17,7 +17,7 @@ import unittest
 import tempfile
 import os
 import shutil
-from charon.utils.files import write_file
+from charon.utils.files import overwrite_file
 from charon.config import CONFIG_FILE
 
 SHORT_TEST_PREFIX = "ga"
@@ -63,7 +63,7 @@ targets:
 
     def prepare_config(self, config_base, file_content):
         config_path = os.path.join(config_base, CONFIG_FILE)
-        write_file(config_path, file_content)
+        overwrite_file(config_path, file_content)
         if not os.path.isfile(config_path):
             self.fail("Configuration initilization failed!")
 

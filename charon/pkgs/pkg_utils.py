@@ -5,6 +5,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def is_metadata(file: str) -> bool:
+    return is_mvn_metadata(file) or \
+           is_npm_metadata(file) or \
+           file.endswith("index.html")
+
+
+def is_mvn_metadata(file: str) -> bool:
+    return "maven-metadata.xml" in file or \
+           "archetype-catalog.xml" in file
+
+
+def is_npm_metadata(file: str) -> bool:
+    return "package.json" in file
+
+
 def upload_post_process(failed_files: List[str], failed_metas: List[str], product_key):
     __post_process(failed_files, failed_metas, product_key, "uploaded to")
 
