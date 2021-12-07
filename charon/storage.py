@@ -453,18 +453,19 @@ class S3Client(object):
 
     def __do_path_cut_and(
         self, file_paths: List[str],
-        fn: Callable[[str, str], bool], root="/"
+        fn: Callable[[str, str, int, int], bool], root="/"
     ) -> List[str]:
         slash_root = root
         if not root.endswith("/"):
             slash_root = slash_root + "/"
         failed_paths = []
         index = 1
+        file_paths_count = len(file_paths)
         for full_path in file_paths:
             path = full_path
             if path.startswith(slash_root):
                 path = path[len(slash_root):]
-            if not fn(full_path, path, index, len(file_paths)):
+            if not fn(full_path, path, index, file_paths_count):
                 failed_paths.append(path)
             index += 1
         return failed_paths
