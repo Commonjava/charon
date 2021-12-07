@@ -38,13 +38,14 @@ class MavenUploadTest(BaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(19, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         filesets = [
             COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
@@ -116,7 +117,7 @@ class MavenUploadTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(22, len(actual_files))
+        self.assertEqual(26, len(actual_files))
 
         filesets = [
             COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
@@ -175,7 +176,7 @@ class MavenUploadTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(13, len(actual_files))
+        self.assertEqual(17, len(actual_files))
 
         ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
@@ -211,7 +212,7 @@ class MavenUploadTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(18, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [

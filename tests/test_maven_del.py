@@ -45,7 +45,7 @@ class MavenDeleteTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(18, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
@@ -125,7 +125,7 @@ class MavenDeleteTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(20, len(actual_files))
+        self.assertEqual(24, len(actual_files))
 
         httpclient_ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
@@ -186,7 +186,7 @@ class MavenDeleteTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(18, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [

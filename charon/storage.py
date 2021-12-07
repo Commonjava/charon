@@ -288,9 +288,10 @@ class S3Client(object):
             fileObject = bucket.Object(path_key)
             existed = self.file_exists(fileObject)
             if existed:
-                # NOTE: If we're NOT using the product key to track collisions (in the case of metadata), then
-                # This prods array will remain empty, and we will just delete the file, below. Otherwise, the product
-                # reference counts will be used (from object metadata).
+                # NOTE: If we're NOT using the product key to track collisions
+                # (in the case of metadata), then this prods array will remain
+                # empty, and we will just delete the file, below. Otherwise,
+                # the product reference counts will be used (from object metadata).
                 prods = []
                 if product:
                     try:
