@@ -1,0 +1,11 @@
+<archetype-catalog>
+  <archetypes>
+  {% for arch in archetypes %}
+    <archetype>
+      <groupId>{{ arch.group_id }}</groupId>
+      <artifactId>{{ arch.artifact_id }}</artifactId>
+      <version>{{ arch.version }}</version>
+      <description>{{ arch.description }}</description>
+    </archetype>{% endfor %}
+  </archetypes>
+</archetype-catalog>

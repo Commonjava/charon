@@ -37,6 +37,14 @@ COMMONS_LOGGING_METAS = [
     "commons-logging/commons-logging/maven-metadata.xml.sha256"
 ]
 
+ARCHETYPE_CATALOG = "archetype-catalog.xml"
+ARCHETYPE_CATALOG_FILES = [
+    ARCHETYPE_CATALOG,
+    "archetype-catalog.xml.sha1",
+    "archetype-catalog.xml.md5",
+    "archetype-catalog.xml.sha256"
+]
+
 NON_MVN_FILES = [
     "commons-client-4.5.6/example-settings.xml",
     "commons-client-4.5.6/licenses/gnu",

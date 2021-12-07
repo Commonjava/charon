@@ -4,7 +4,8 @@ from charon.utils.strings import remove_prefix
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
 from tests.commons import (
     TEST_MVN_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_METAS,
-    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS
+    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS, ARCHETYPE_CATALOG,
+    ARCHETYPE_CATALOG_FILES
 )
 from moto import mock_s3
 import boto3
@@ -38,22 +39,24 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            do_index=False
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(18, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
-        for f in COMMONS_CLIENT_METAS:
-            self.assertIn(f, actual_files)
 
-        for f in COMMONS_LOGGING_FILES:
-            self.assertIn(f, actual_files)
-        for f in COMMONS_LOGGING_METAS:
+        file_set = [
+            *COMMONS_CLIENT_METAS, *ARCHETYPE_CATALOG_FILES,
+            *COMMONS_LOGGING_FILES, *COMMONS_LOGGING_METAS
+        ]
+
+        for f in file_set:
             self.assertIn(f, actual_files)
 
         for obj in objs:
@@ -73,6 +76,14 @@ class MavenDeleteTest(BaseTest):
         self.assertIn("<latest>4.5.9</latest>", meta_content_client)
         self.assertIn("<release>4.5.9</release>", meta_content_client)
         self.assertIn("<version>4.5.9</version>", meta_content_client)
+
+        meta_obj_cat = test_bucket.Object(ARCHETYPE_CATALOG)
+        meta_content_cat = str(meta_obj_cat.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "<groupId>org.apache.httpcomponents</groupId>", meta_content_cat
+        )
+        self.assertIn("<artifactId>httpclient</artifactId>", meta_content_cat)
+        self.assertNotIn("<version>4.5.6</version>", meta_content_cat)
 
         meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_METAS[0])
         self.assertNotIn(PRODUCT_META_KEY, meta_obj_logging.metadata)
@@ -112,7 +123,7 @@ class MavenDeleteTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(20, len(actual_files))
+        self.assertEqual(24, len(actual_files))
 
         httpclient_ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
@@ -173,7 +184,7 @@ class MavenDeleteTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(18, len(actual_files))
+        self.assertEqual(22, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [

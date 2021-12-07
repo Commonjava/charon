@@ -60,7 +60,7 @@ class MavenFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(27, len(actual_files))
+        self.assertEqual(31, len(actual_files))
 
         for f in COMMONS_LOGGING_INDEXES:
             self.assertIn(f, actual_files)
@@ -113,7 +113,7 @@ class MavenFileIndexTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(32, len(objs))
+        self.assertEqual(36, len(objs))
 
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -164,7 +164,7 @@ class MavenFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(27, len(actual_files))
+        self.assertEqual(31, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_LOGGING_INDEXES = [
@@ -221,7 +221,7 @@ class MavenFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(27, len(actual_files))
+        self.assertEqual(31, len(actual_files))
 
         for assert_file in COMMONS_CLIENT_459_INDEXES:
             self.assertIn(assert_file, actual_files)
@@ -288,7 +288,7 @@ class MavenFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(27, len(actual_files))
+        self.assertEqual(31, len(actual_files))
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_459_INDEXES = [os.path.join(prefix_, i) for i in COMMONS_CLIENT_459_INDEXES]
