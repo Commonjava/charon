@@ -80,42 +80,20 @@ def generate_indexes(
             path = path + "/"
         s3_folders.add(path)
 
-    if package_type == PACKAGE_TYPE_MAVEN:
-        generated_htmls = []
-        s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
-        for folder_ in s3_folders:
-            index_html = __generate_index_html(
-                PACKAGE_TYPE_MAVEN, s3_client, bucket, folder_, top_level, prefix
-            )
-            if index_html:
-                generated_htmls.append(index_html)
-
-        root_index = __generate_index_html(
-            PACKAGE_TYPE_MAVEN, s3_client, bucket, "/", top_level, prefix
+    generated_htmls = []
+    s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
+    for folder_ in s3_folders:
+        index_html = __generate_index_html(
+            package_type, s3_client, bucket, folder_, top_level, prefix
         )
-        if root_index:
-            generated_htmls.append(root_index)
-    elif package_type == PACKAGE_TYPE_NPM:
-        generated_htmls = []
+        if index_html:
+            generated_htmls.append(index_html)
 
-        _s3_folders = set()
-        for f in s3_folders:
-            if not f.startswith("@"):
-                _s3_folders.add(f)
-
-        s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
-        for folder_ in s3_folders:
-            index_html = __generate_index_html(
-                PACKAGE_TYPE_NPM, s3_client, bucket, folder_, top_level, prefix
-            )
-            if index_html:
-                generated_htmls.append(index_html)
-
-        root_index = __generate_index_html(
-            PACKAGE_TYPE_NPM, s3_client, bucket, "/", top_level, prefix
-        )
-        if root_index:
-            generated_htmls.append(root_index)
+    root_index = __generate_index_html(
+        package_type, s3_client, bucket, "/", top_level, prefix
+    )
+    if root_index:
+        generated_htmls.append(root_index)
 
     return generated_htmls
 
