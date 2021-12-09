@@ -644,7 +644,15 @@ def _generate_rollback_archetype_catalog(
         else:
             # If there IS a catalog in the bucket, we need to merge or un-merge it.
             with open(local, "rb") as f:
-                local_archetypes = _parse_archetypes(f.read())
+                try:
+                    local_archetypes = _parse_archetypes(f.read())
+                except ElementTree.ParseError:
+                    logging.warning(
+                        "Failed to parse archetype-catalog.xml from local archive with root: %s. "
+                        "SKIPPING invalid archetype processing.",
+                        root
+                    )
+                    return 0
 
             if len(local_archetypes) < 1:
                 # If there are no local archetypes in the catalog,
@@ -658,7 +666,15 @@ def _generate_rollback_archetype_catalog(
             else:
                 # Read the archetypes from the bucket so we can do a merge / un-merge
                 remote_xml = s3.read_file_content(bucket, remote)
-                remote_archetypes = _parse_archetypes(remote_xml)
+                try:
+                    remote_archetypes = _parse_archetypes(remote_xml)
+                except ElementTree.ParseError:
+                    logging.warning(
+                        "Failed to parse archetype-catalog.xml from bucket: %s. "
+                        "CLEANING invalid remote archetype-catalog.xml",
+                        bucket
+                    )
+                    return -1
 
                 if len(remote_archetypes) < 1:
                     # Nothing in the bucket. Clear out this empty file.
@@ -729,7 +745,15 @@ def _generate_upload_archetype_catalog(
         else:
             # If there IS a catalog in the bucket, we need to merge or un-merge it.
             with open(local, "rb") as f:
-                local_archetypes = _parse_archetypes(f.read())
+                try:
+                    local_archetypes = _parse_archetypes(f.read())
+                except ElementTree.ParseError:
+                    logging.warning(
+                        "Failed to parse archetype-catalog.xml from local archive with root: %s. "
+                        "SKIPPING invalid archetype processing.",
+                        root
+                    )
+                    return False
 
             if len(local_archetypes) < 1:
                 logger.warning(
@@ -740,7 +764,15 @@ def _generate_upload_archetype_catalog(
             else:
                 # Read the archetypes from the bucket so we can do a merge / un-merge
                 remote_xml = s3.read_file_content(bucket, remote)
-                remote_archetypes = _parse_archetypes(remote_xml)
+                try:
+                    remote_archetypes = _parse_archetypes(remote_xml)
+                except ElementTree.ParseError:
+                    logging.warning(
+                        "Failed to parse archetype-catalog.xml from bucket: %s. "
+                        "OVERWRITING bucket archetype-catalog.xml with the valid, local copy.",
+                        bucket
+                    )
+                    return True
 
                 if len(remote_archetypes) < 1:
                     __gen_all_digest_files(local)
@@ -795,6 +827,7 @@ def _parse_archetypes(source) -> List[ArchetypeRef]:
         source.strip(), forbid_dtd=True,
         forbid_entities=True, forbid_external=True
     )
+
     archetypes = []
     for a in tree.findall("./archetypes/archetype"):
         gid = a.find('groupId').text
