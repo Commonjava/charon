@@ -24,7 +24,7 @@ from typing import Set, Tuple
 from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
-from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY
+from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
@@ -33,7 +33,6 @@ from charon.utils.strings import remove_prefix
 logger = logging.getLogger(__name__)
 
 PACKAGE_JSON = "package.json"
-
 
 class NPMPackageMetadata(object):
     """ This NPMPackageMetadata will represent the npm package(not version) package.json.
@@ -123,7 +122,7 @@ def handle_npm_uploading(
     if do_index:
         logger.info("Start generating index files to s3")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix_
+            PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -201,7 +200,7 @@ def handle_npm_del(
     if do_index:
         logger.info("Start generating index files for all changed entries")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix_
+            PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -459,11 +458,6 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
             dir_ = dir_[len(prefix):]
         if dir_.startswith("/"):
             dir_ = dir_[1:]
-        temp = ""
-        for d in dir_.split("/"):
-            temp = os.path.join(temp, d)
-            if f.startswith(prefix):
-                valid_dirs.add(os.path.join(prefix, temp))
-            else:
-                valid_dirs.add(temp)
+        if dir_.startswith("@"):
+            valid_dirs.add(dir_.split("/")[0])
     return valid_dirs
