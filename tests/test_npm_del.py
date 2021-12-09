@@ -21,20 +21,7 @@ from moto import mock_s3
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
-
-TEST_BUCKET = "npm_bucket"
-
-CODE_FRAME_7_14_5_FILES = [
-    "@babel/code-frame/7.14.5/package.json",
-    "@babel/code-frame/-/code-frame-7.14.5.tgz",
-]
-
-CODE_FRAME_7_15_8_FILES = [
-    "@babel/code-frame/7.15.8/package.json",
-    "@babel/code-frame/-/code-frame-7.15.8.tgz",
-]
-
-CODE_FRAME_META = "@babel/code-frame/package.json"
+from tests.commons import TEST_NPM_BUCKET, CODE_FRAME_7_14_5_FILES, CODE_FRAME_META
 
 
 @mock_s3
@@ -42,10 +29,10 @@ class NPMDeleteTest(BaseTest):
     def setUp(self):
         super().setUp()
         self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_NPM_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         try:
             bucket.objects.all().delete()
             bucket.delete()
@@ -75,11 +62,11 @@ class NPMDeleteTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         self.assertEqual(3, len(actual_files))
@@ -118,7 +105,7 @@ class NPMDeleteTest(BaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
         objs = list(test_bucket.objects.all())
@@ -129,7 +116,7 @@ class NPMDeleteTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
 
@@ -137,6 +124,6 @@ class NPMDeleteTest(BaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
