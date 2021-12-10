@@ -453,6 +453,7 @@ class S3Client(object):
             file_object.copy_from(
                 CopySource={"Bucket": bucket_name, "Key": file_object.key},
                 Metadata=file_object.metadata,
+                ContentType=file_object.content_type,
                 MetadataDirective="REPLACE",
             )
 
