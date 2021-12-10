@@ -67,7 +67,7 @@ def handle_npm_uploading(
         aws_profile=None,
         dir_=None, do_index=True,
         dry_run=False
-):
+) -> str:
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
         on the native npm structure, package metadata will follow the base.
@@ -77,6 +77,8 @@ def handle_npm_uploading(
         * bucket_name is the s3 bucket name to store the artifacts
         * dir_ is base dir for extracting the tarball, will use system
           tmp dir if None.
+
+        Returns the directory used for archive processing.
     """
     target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
         tarball_path, prod=product, dir__=dir_
@@ -139,6 +141,7 @@ def handle_npm_uploading(
         logger.info("Bypass indexing\n")
 
     upload_post_process(failed_files, failed_metas, product)
+    return target_dir
 
 
 def handle_npm_del(
@@ -146,7 +149,7 @@ def handle_npm_del(
         bucket_name=None, prefix=None,
         aws_profile=None, dir_=None,
         do_index=True, dry_run=False
-):
+) -> str:
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
@@ -154,6 +157,8 @@ def handle_npm_del(
         * bucket_name is the s3 bucket name to store the artifacts
         * dir is base dir for extracting the tarball, will use system
           tmp dir if None.
+
+        Returns the directory used for archive processing
     """
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
         tarball_path, prod=product, dir__=dir_
@@ -219,6 +224,7 @@ def handle_npm_del(
         logger.info("Bypassing indexing\n")
 
     rollback_post_process(failed_files, failed_metas, product)
+    return target_dir
 
 
 def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:

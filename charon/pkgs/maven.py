@@ -262,7 +262,7 @@ def handle_maven_uploading(
     dir_=None,
     do_index=True,
     dry_run=False
-):
+) -> str:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
         * prod_key is used to identify which product this repo
@@ -275,6 +275,8 @@ def handle_maven_uploading(
         * bucket_name is the s3 bucket name to store the artifacts
         * dir_ is base dir for extracting the tarball, will use system
           tmp dir if None.
+
+        Returns the directory used for archive processing.
     """
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
@@ -382,6 +384,8 @@ def handle_maven_uploading(
 
     upload_post_process(failed_files, failed_metas, prod_key)
 
+    return tmp_root
+
 
 def handle_maven_del(
     repo: str,
@@ -394,7 +398,7 @@ def handle_maven_del(
     dir_=None,
     do_index=True,
     dry_run=False
-):
+) -> str:
     """ Handle the maven product release tarball deletion process.
         * repo is the location of the tarball in filesystem
         * prod_key is used to identify which product this repo
@@ -407,6 +411,8 @@ def handle_maven_del(
         * bucket_name is the s3 bucket name to store the artifacts
         * dir is base dir for extracting the tarball, will use system
           tmp dir if None.
+
+        Returns the directory used for archive processing.
     """
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
@@ -532,6 +538,8 @@ def handle_maven_del(
         logger.info("Bypassing indexing")
 
     rollback_post_process(failed_files, failed_metas, prod_key)
+
+    return tmp_root
 
 
 def _extract_tarball(repo: str, prefix="", dir__=None) -> str:

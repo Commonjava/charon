@@ -21,6 +21,7 @@ from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from click import command, option, argument, group
 from json import loads
+from shutil import rmtree
 
 import traceback
 import logging
@@ -84,6 +85,14 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--work_dir",
+    "-w",
+    help="""
+    The temporary working directory into which archives should
+    be extracted, when needed.
+    """,
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -106,6 +115,7 @@ def upload(
     target: str,
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
+    work_dir: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -114,6 +124,7 @@ def upload(
     Service. The REPO points to a product released tarball which
     is hosted in a remote url or a local path.
     """
+    tmp_dir = work_dir
     try:
         if dryrun:
             logger.info("Running in dry-run mode,"
@@ -139,11 +150,15 @@ def upload(
         prefix_ = conf.get_bucket_prefix(target)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            handle_npm_uploading(archive_path, product_key,
-                                 bucket_name=aws_bucket,
-                                 prefix=prefix_,
-                                 aws_profile=aws_profile,
-                                 dry_run=dryrun)
+            tmp_dir = handle_npm_uploading(
+                archive_path,
+                product_key,
+                bucket_name=aws_bucket,
+                prefix=prefix_,
+                aws_profile=aws_profile,
+                dir_=work_dir,
+                dry_run=dryrun
+            )
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -151,16 +166,23 @@ def upload(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            handle_maven_uploading(archive_path, product_key,
-                                   ignore_patterns_list,
-                                   root=root_path,
-                                   bucket_name=aws_bucket,
-                                   aws_profile=aws_profile,
-                                   prefix=prefix_,
-                                   dry_run=dryrun)
+            tmp_dir = handle_maven_uploading(
+                archive_path,
+                product_key,
+                ignore_patterns_list,
+                root=root_path,
+                bucket_name=aws_bucket,
+                aws_profile=aws_profile,
+                prefix=prefix_,
+                dir_=work_dir,
+                dry_run=dryrun
+            )
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
+    finally:
+        if not debug:
+            __safe_delete(tmp_dir)
 
 
 @argument(
@@ -216,6 +238,14 @@ def upload(
     """,
 )
 @option(
+    "--work_dir",
+    "-w",
+    help="""
+    The temporary working directory into which archives should
+    be extracted, when needed.
+    """,
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -238,6 +268,7 @@ def delete(
     target: str,
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
+    work_dir: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -246,6 +277,7 @@ def delete(
     Ronda Service. The REPO points to a product released
     tarball which is hosted in a remote url or a local path.
     """
+    tmp_dir = work_dir
     try:
         if dryrun:
             logger.info("Running in dry-run mode,"
@@ -271,11 +303,15 @@ def delete(
         prefix_ = conf.get_bucket_prefix(target)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            handle_npm_del(archive_path, product_key,
-                           bucket_name=aws_bucket,
-                           prefix=prefix_,
-                           aws_profile=aws_profile,
-                           dry_run=dryrun)
+            tmp_dir = handle_npm_del(
+                archive_path,
+                product_key,
+                bucket_name=aws_bucket,
+                prefix=prefix_,
+                aws_profile=aws_profile,
+                dir_=work_dir,
+                dry_run=dryrun
+            )
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -283,16 +319,32 @@ def delete(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            handle_maven_del(archive_path, product_key,
-                             ignore_patterns_list,
-                             root=root_path,
-                             bucket_name=aws_bucket,
-                             aws_profile=aws_profile,
-                             prefix=prefix_,
-                             dry_run=dryrun)
+            tmp_dir = handle_maven_del(
+                archive_path,
+                product_key,
+                ignore_patterns_list,
+                root=root_path,
+                bucket_name=aws_bucket,
+                aws_profile=aws_profile,
+                prefix=prefix_,
+                dir_=work_dir,
+                dry_run=dryrun
+            )
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
+    finally:
+        if not debug:
+            __safe_delete(tmp_dir)
+
+
+def __safe_delete(tmp_dir: str):
+    if tmp_dir and os.path.exists(tmp_dir):
+        logger.info("Cleaning up work directory: %s", tmp_dir)
+        try:
+            rmtree(tmp_dir)
+        except Exception as e:
+            logger.error("Failed to clear work directory. %s", e)
 
 
 def __get_ignore_patterns(conf: CharonConfig) -> List[str]:
