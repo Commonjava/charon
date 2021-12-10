@@ -164,11 +164,9 @@ body {
   <hr/>
   <main>
     <ul style="list-style: none outside;" id="contents">
-    {% for item in index.items %}{% if item.endswith("/") %}{% if item.startswith("@") or item.startswith("..") %}
+    {% for item in index.items %}{% if item.startswith("@") or item.startswith("..") %}
         <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
     {% else %}
-        <li><a href="{{ item }}package.json" title="{{ item }}">{{ item }}</a></li>
-    {% endif %}{% else %}
         <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
     {% endif %}{% endfor%}
     </ul>
