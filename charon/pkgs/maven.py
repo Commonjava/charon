@@ -575,7 +575,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
                 # Let's wait to do the regex / pom examination until we
                 # know we're inside a valid root directory.
                 if _is_ignored(name, ignore_patterns):
-                    ignored_paths.append(name)
+                    ignored_paths.append(path)
                     continue
 
                 valid_mvn_paths.append(path)
@@ -929,7 +929,7 @@ def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
 
     if ignore_patterns:
         for dirs in ignore_patterns:
-            if re.search(dirs, filename):
+            if re.match(dirs, filename):
                 return True
     return False
 
