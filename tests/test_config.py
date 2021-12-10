@@ -13,9 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from typing import List
 import unittest
 import os
 import charon.config as config
+import re
 from tests.base import BaseTest
 
 
@@ -82,8 +84,41 @@ targets:
         self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
         self.assertEqual("", conf.get_bucket_prefix("ga"))
 
+    def test_ignore_patterns(self):
+        # pylint: disable=anomalous-backslash-in-string
+        content_missing_targets = """
+ignore_patterns:
+    - '\.nexus.*' # noqa: W605
+    - '\.index.*' # noqa: W605
+    - '\.meta.*' # noqa: W605
+    - '\..+'  # path with a filename that starts with a dot # noqa: W605
+    - 'index\.html.*' # noqa: W605
+
+targets:
+    ga:
+        bucket: charon-test
+        """
+        self.__change_config_content(content_missing_targets)
+        conf = config.get_config()
+        self.assertIsNotNone(conf)
+        self.assertEqual(5, len(conf.get_ignore_patterns()))
+        self.assertTrue(self.__is_ignored(".index.html", conf.get_ignore_patterns()))
+        self.assertTrue(self.__is_ignored(".abcxyz.jar", conf.get_ignore_patterns()))
+        self.assertTrue(self.__is_ignored("index.html", conf.get_ignore_patterns()))
+        self.assertTrue(self.__is_ignored(".nexuxabc", conf.get_ignore_patterns()))
+        self.assertFalse(self.__is_ignored("abcxyz.jar", conf.get_ignore_patterns()))
+        self.assertFalse(self.__is_ignored("abcxyz.pom", conf.get_ignore_patterns()))
+        self.assertFalse(self.__is_ignored("abcxyz.jar.md5", conf.get_ignore_patterns()))
+
     def __change_config_content(self, content: str):
         self.__base.change_home()
         config_base = self.__base.get_config_base()
         os.mkdir(config_base)
         self.__base.prepare_config(config_base, content)
+
+    def __is_ignored(self, filename: str, ignore_patterns:  List[str]) -> bool:
+        if ignore_patterns:
+            for dirs in ignore_patterns:
+                if re.match(dirs, filename):
+                    return True
+        return False
