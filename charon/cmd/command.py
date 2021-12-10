@@ -175,7 +175,8 @@ def upload(
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
     finally:
-        __safe_delete(tmp_dir)
+        if not debug:
+            __safe_delete(tmp_dir)
 
 
 @argument(
@@ -321,7 +322,8 @@ def delete(
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
     finally:
-        __safe_delete(tmp_dir)
+        if not debug:
+            __safe_delete(tmp_dir)
 
 
 def __safe_delete(tmp_dir: str):
