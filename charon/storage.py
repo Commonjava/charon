@@ -43,8 +43,10 @@ class S3Client(object):
     """
 
     def __init__(self, aws_profile=None, extra_conf=None, dry_run=False) -> None:
-        self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
-        self.__bucket: s3.Bucket = None
+        self.__client: s3.ServiceResource = self.__init_aws_client(
+            aws_profile, extra_conf
+        )
+        self.__bucket: Optional[s3.Bucket] = None
         self.__dry_run = dry_run
 
     def __init_aws_client(
@@ -58,14 +60,12 @@ class S3Client(object):
         endpoint_url = self.__get_endpoint(extra_conf)
         config = None
         if self.__enable_acceleration(extra_conf):
-            logger.info("S3 acceleration config enabled, "
-                        "will enable s3 use_accelerate_endpoint config")
+            logger.info(
+                "S3 acceleration config enabled, "
+                "will enable s3 use_accelerate_endpoint config"
+            )
             config = Config(s3={"use_accelerate_endpoint": True})
-        return s3_session.resource(
-            's3',
-            endpoint_url=endpoint_url,
-            config=config
-        )
+        return s3_session.resource("s3", endpoint_url=endpoint_url, config=config)
 
     def __get_endpoint(self, extra_conf) -> str:
         endpoint_url = os.getenv(ENDPOINT_ENV)
@@ -88,10 +88,14 @@ class S3Client(object):
         return False
 
     def upload_files(
-        self, file_paths: List[str], bucket_name: str,
-        product: str, root="/", key_prefix: str = None
+        self,
+        file_paths: List[str],
+        bucket_name: str,
+        product: str,
+        root="/",
+        key_prefix: str = None,
     ) -> Tuple[List[str], List[str]]:
-        """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
+        """Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
         org/apache/.....
@@ -112,15 +116,23 @@ class S3Client(object):
 
         uploaded_files = []
 
-        def path_upload_handler(full_file_path: str, path: str, index: int, total: int) -> bool:
+        def path_upload_handler(
+            full_file_path: str, path: str, index: int, total: int
+        ) -> bool:
             if not os.path.isfile(full_file_path):
-                logger.warning('Warning: file %s does not exist during uploading. Product: %s',
-                               full_file_path, product)
+                logger.warning(
+                    "Warning: file %s does not exist during uploading. Product: %s",
+                    full_file_path,
+                    product,
+                )
                 return False
 
             logger.info(
-                '(%d/%d) Uploading %s to bucket %s',
-                index, total, full_file_path, bucket_name
+                "(%d/%d) Uploading %s to bucket %s",
+                index,
+                total,
+                full_file_path,
+                bucket_name,
             )
 
             path_key = os.path.join(key_prefix, path) if key_prefix else path
@@ -142,19 +154,21 @@ class S3Client(object):
                             file_object.put(
                                 Body=open(full_file_path, "rb"),
                                 Metadata=f_meta,
-                                ContentType=content_type
+                                ContentType=content_type,
                             )
                         else:
                             file_object.upload_file(
-                                full_file_path,
-                                ExtraArgs={'ContentType': content_type}
+                                full_file_path, ExtraArgs={"ContentType": content_type}
                             )
-                    logger.info('Uploaded %s to bucket %s', path, bucket_name)
+                    logger.info("Uploaded %s to bucket %s", path, bucket_name)
                     uploaded_files.append(path_key)
                 except (ClientError, HTTPClientError) as e:
-                    logger.error("ERROR: file %s not uploaded to bucket"
-                                 " %s due to error: %s ", full_file_path,
-                                 bucket_name, e)
+                    logger.error(
+                        "ERROR: file %s not uploaded to bucket" " %s due to error: %s ",
+                        full_file_path,
+                        bucket_name,
+                        e,
+                    )
                     return False
             else:
                 logger.info(
@@ -166,8 +180,12 @@ class S3Client(object):
                     f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
                 )
                 if checksum != "" and checksum.strip() != sha1:
-                    logger.error('Error: checksum check failed. The file %s is different from the '
-                                 'one in S3. Product: %s', path_key, product)
+                    logger.error(
+                        "Error: checksum check failed. The file %s is different from the "
+                        "one in S3. Product: %s",
+                        path_key,
+                        product,
+                    )
                     return False
 
                 prods = []
@@ -183,24 +201,38 @@ class S3Client(object):
                     )
                     prods.append(product)
                     try:
-                        self.__update_file_metadata(file_object, bucket_name,
-                                                    {PRODUCT_META_KEY: ",".join(prods)})
+                        self.__update_file_metadata(
+                            file_object,
+                            bucket_name,
+                            {PRODUCT_META_KEY: ",".join(prods)},
+                        )
                     except (ClientError, HTTPClientError) as e:
-                        logger.error("ERROR: file %s not uploaded to bucket"
-                                     " %s due to error: %s ", full_file_path,
-                                     bucket_name, e)
+                        logger.error(
+                            "ERROR: file %s not uploaded to bucket"
+                            " %s due to error: %s ",
+                            full_file_path,
+                            bucket_name,
+                            e,
+                        )
                         return False
             return True
 
-        return (uploaded_files, self.__do_path_cut_and(
-            file_paths=file_paths, fn=path_upload_handler, root=root
-        ))
+        return (
+            uploaded_files,
+            self.__do_path_cut_and(
+                file_paths=file_paths, fn=path_upload_handler, root=root
+            ),
+        )
 
     def upload_metadatas(
-        self, meta_file_paths: List[str], bucket_name: str,
-        product: Optional[str], root="/", key_prefix: str = None
+        self,
+        meta_file_paths: List[str],
+        bucket_name: str,
+        product: Optional[str],
+        root="/",
+        key_prefix: str = None,
     ) -> Tuple[List[str], List[str]]:
-        """ Upload a list of metadata files to s3 bucket. This function is very similar to
+        """Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
             * The metadata files will always be overwritten for each uploading
             * The metadata files' checksum will also be overwritten each time
@@ -212,13 +244,19 @@ class S3Client(object):
 
         def path_upload_handler(full_file_path: str, path: str, index: int, total: int):
             if not os.path.isfile(full_file_path):
-                logger.warning('Warning: file %s does not exist during uploading. Product: %s',
-                               full_file_path, product)
+                logger.warning(
+                    "Warning: file %s does not exist during uploading. Product: %s",
+                    full_file_path,
+                    product,
+                )
                 return False
 
             logger.info(
-                '(%d/%d) Updating metadata %s to bucket %s',
-                index, total, path, bucket_name
+                "(%d/%d) Updating metadata %s to bucket %s",
+                index,
+                total,
+                path,
+                bucket_name,
             )
 
             path_key = os.path.join(key_prefix, path) if key_prefix else path
@@ -251,36 +289,52 @@ class S3Client(object):
                         file_object.put(
                             Body=open(full_file_path, "rb"),
                             Metadata=f_meta,
-                            ContentType=content_type
+                            ContentType=content_type,
                         )
 
                     else:
                         # Should we update the s3 object metadata for metadata files?
                         try:
-                            self.__update_file_metadata(file_object, bucket_name, f_meta)
+                            self.__update_file_metadata(
+                                file_object, bucket_name, f_meta
+                            )
                         except (ClientError, HTTPClientError) as e:
-                            logger.error("ERROR: metadata %s not updated to bucket"
-                                         " %s due to error: %s ", full_file_path,
-                                         bucket_name, e)
+                            logger.error(
+                                "ERROR: metadata %s not updated to bucket"
+                                " %s due to error: %s ",
+                                full_file_path,
+                                bucket_name,
+                                e,
+                            )
                             return False
-                logger.info('Updated metadata %s to bucket %s', path, bucket_name)
+                logger.info("Updated metadata %s to bucket %s", path, bucket_name)
                 uploaded_files.append(path_key)
             except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: file %s not uploaded to bucket"
-                             " %s due to error: %s ", full_file_path,
-                             bucket_name, e)
+                logger.error(
+                    "ERROR: file %s not uploaded to bucket" " %s due to error: %s ",
+                    full_file_path,
+                    bucket_name,
+                    e,
+                )
                 return False
             return True
 
-        return (uploaded_files, self.__do_path_cut_and(
-            file_paths=meta_file_paths, fn=path_upload_handler, root=root
-        ))
+        return (
+            uploaded_files,
+            self.__do_path_cut_and(
+                file_paths=meta_file_paths, fn=path_upload_handler, root=root
+            ),
+        )
 
     def delete_files(
-        self, file_paths: List[str], bucket_name: str,
-        product: Optional[str], root="/", key_prefix: str = None
+        self,
+        file_paths: List[str],
+        bucket_name: str,
+        product: Optional[str],
+        root="/",
+        key_prefix: str = None,
     ) -> Tuple[List[str], List[str]]:
-        """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
+        """Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
         org/apache/.....
@@ -295,7 +349,9 @@ class S3Client(object):
         deleted_files = []
 
         def path_delete_handler(full_file_path: str, path: str, index: int, total: int):
-            logger.info('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
+            logger.info(
+                "(%d/%d) Deleting %s from bucket %s", index, total, path, bucket_name
+            )
             path_key = os.path.join(key_prefix, path) if key_prefix else path
             file_object = bucket.Object(path_key)
             existed = self.__file_exists(file_object)
@@ -319,7 +375,8 @@ class S3Client(object):
                         logger.info(
                             "File %s has other products overlapping,"
                             " will remove %s from its metadata",
-                            path, product
+                            path,
+                            product,
                         )
                         self.__update_file_metadata(
                             file_object,
@@ -327,89 +384,105 @@ class S3Client(object):
                             {PRODUCT_META_KEY: ",".join(prods)},
                         )
                         logger.info(
-                            "Removed product %s from metadata of file %s",
-                            product, path
+                            "Removed product %s from metadata of file %s", product, path
                         )
                         return True
                     except (ClientError, HTTPClientError) as e:
                         logger.error(
                             "ERROR: Failed to update metadata of file"
-                            " %s due to error: %s ", path, e
+                            " %s due to error: %s ",
+                            path,
+                            e,
                         )
                         return False
                 elif len(prods) == 0:
                     try:
                         if not self.__dry_run:
-                            bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
+                            bucket.delete_objects(
+                                Delete={"Objects": [{"Key": path_key}]}
+                            )
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
                         return True
                     except (ClientError, HTTPClientError) as e:
-                        logger.error("ERROR: file %s failed to delete from bucket"
-                                     " %s due to error: %s ", full_file_path,
-                                     bucket_name, e)
+                        logger.error(
+                            "ERROR: file %s failed to delete from bucket"
+                            " %s due to error: %s ",
+                            full_file_path,
+                            bucket_name,
+                            e,
+                        )
                         return False
             else:
-                logger.info("File %s does not exist in s3 bucket %s, skip deletion.",
-                            path, bucket_name)
+                logger.info(
+                    "File %s does not exist in s3 bucket %s, skip deletion.",
+                    path,
+                    bucket_name,
+                )
                 return True
 
         failed_files = self.__do_path_cut_and(
-            file_paths=file_paths, fn=path_delete_handler, root=root)
+            file_paths=file_paths, fn=path_delete_handler, root=root
+        )
 
-        return (deleted_files, failed_files)
+        return deleted_files, failed_files
 
-    def get_files(self, bucket_name: str, prefix=None, suffix=None) -> Tuple[List[str], bool]:
+    def get_files(
+        self, bucket_name: str, prefix=None, suffix=None
+    ) -> Tuple[List[str], bool]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
         files wanted. If some error happend, will return an empty file list and false result
         """
         bucket = self.__get_bucket(bucket_name)
-        objs = []
         if prefix and prefix.strip() != "":
             try:
                 objs = list(bucket.objects.filter(Prefix=prefix))
             except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: Can not get files under %s in bucket"
-                             " %s due to error: %s ", prefix,
-                             bucket_name, e)
-                return ([], False)
+                logger.error(
+                    "ERROR: Can not get files under %s in bucket"
+                    " %s due to error: %s ",
+                    prefix,
+                    bucket_name,
+                    e,
+                )
+                return [], False
         else:
             objs = list(bucket.objects.all())
-        files = []
+
         if suffix and suffix.strip() != "":
             files = [i.key for i in objs if i.key.endswith(suffix)]
         else:
             files = [i.key for i in objs]
-        return (files, True)
+        return files, True
 
     def read_file_content(self, bucket_name: str, key: str) -> str:
         bucket = self.__get_bucket(bucket_name)
         file_object = bucket.Object(key)
-        return str(file_object.get()['Body'].read(), 'utf-8')
+        return str(file_object.get()["Body"].read(), "utf-8")
 
     def list_folder_content(self, bucket_name: str, folder: str) -> List[str]:
         """List the content in folder in an s3 bucket. Note it's not recursive,
-           which means the content only contains the items in that folder, but
-           not in its subfolders.
+        which means the content only contains the items in that folder, but
+        not in its subfolders.
         """
         bucket = self.__get_bucket(bucket_name)
         try:
             if not folder or folder.strip() == "/" or folder.strip() == "":
                 result = bucket.meta.client.list_objects(
-                    Bucket=bucket.name,
-                    Delimiter='/'
+                    Bucket=bucket.name, Delimiter="/"
                 )
             else:
-                prefix = folder if folder.endswith("/") else folder+"/"
+                prefix = folder if folder.endswith("/") else folder + "/"
                 result = bucket.meta.client.list_objects(
-                    Bucket=bucket.name,
-                    Prefix=prefix,
-                    Delimiter='/'
+                    Bucket=bucket.name, Prefix=prefix, Delimiter="/"
                 )
         except (ClientError, HTTPClientError) as e:
-            logger.error("ERROR: Can not get contents of %s from bucket"
-                         " %s due to error: %s ", folder,
-                         bucket_name, e)
+            logger.error(
+                "ERROR: Can not get contents of %s from bucket" " %s due to error: %s ",
+                folder,
+                bucket_name,
+                e,
+            )
             return []
 
         contents = []
@@ -421,9 +494,7 @@ class S3Client(object):
             contents.extend([f.get("Key") for f in files])
         return contents
 
-    def file_exists_in_bucket(
-        self, bucket_name: str, path: str
-    ) -> bool:
+    def file_exists_in_bucket(self, bucket_name: str, path: str) -> bool:
         bucket = self.__get_bucket(bucket_name)
         file_object = bucket.Object(path)
         return self.__file_exists(file_object)
@@ -458,8 +529,7 @@ class S3Client(object):
             )
 
     def __do_path_cut_and(
-        self, file_paths: List[str],
-        fn: Callable[[str, str, int, int], bool], root="/"
+        self, file_paths: List[str], fn: Callable[[str, str, int, int], bool], root="/"
     ) -> List[str]:
         slash_root = root
         if not root.endswith("/"):

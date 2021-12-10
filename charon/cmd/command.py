@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from typing import List
+from typing import List, Optional
 from charon.config import CharonConfig, get_config
 from charon.utils.logs import set_logging
 from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
@@ -97,14 +97,14 @@ logger = logging.getLogger(__name__)
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option(
     "--quiet",
     "-q",
     help="Quiet mode, will shrink most of the logs except warning and errors.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
@@ -118,7 +118,7 @@ def upload(
     work_dir: str = None,
     debug=False,
     quiet=False,
-    dryrun=False
+    dryrun=False,
 ):
     """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
@@ -127,8 +127,7 @@ def upload(
     tmp_dir = work_dir
     try:
         if dryrun:
-            logger.info("Running in dry-run mode,"
-                        "no files will be uploaded.")
+            logger.info("Running in dry-run mode," "no files will be uploaded.")
         __decide_mode(is_quiet=quiet, is_debug=debug)
         if not __validate_prod_key(product, version):
             return
@@ -157,10 +156,9 @@ def upload(
                 prefix=prefix_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
             )
         else:
-            ignore_patterns_list = None
             if ignore_patterns:
                 ignore_patterns_list = ignore_patterns
             else:
@@ -175,7 +173,7 @@ def upload(
                 aws_profile=aws_profile,
                 prefix=prefix_,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
             )
     except Exception:
         print(traceback.format_exc())
@@ -250,14 +248,14 @@ def upload(
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option(
     "--quiet",
     "-q",
     help="Quiet mode, will shrink most of the logs except warning and errors.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
@@ -271,7 +269,7 @@ def delete(
     work_dir: str = None,
     debug=False,
     quiet=False,
-    dryrun=False
+    dryrun=False,
 ):
     """Roll back all files in a released product REPO from
     Ronda Service. The REPO points to a product released
@@ -280,8 +278,7 @@ def delete(
     tmp_dir = work_dir
     try:
         if dryrun:
-            logger.info("Running in dry-run mode,"
-                        "no files will be deleted.")
+            logger.info("Running in dry-run mode," "no files will be deleted.")
         __decide_mode(is_quiet=quiet, is_debug=debug)
         if not __validate_prod_key(product, version):
             return
@@ -310,10 +307,9 @@ def delete(
                 prefix=prefix_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
             )
         else:
-            ignore_patterns_list = None
             if ignore_patterns:
                 ignore_patterns_list = ignore_patterns
             else:
@@ -328,7 +324,7 @@ def delete(
                 aws_profile=aws_profile,
                 prefix=prefix_,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
             )
     except Exception:
         print(traceback.format_exc())
@@ -347,15 +343,18 @@ def __safe_delete(tmp_dir: str):
             logger.error("Failed to clear work directory. %s", e)
 
 
-def __get_ignore_patterns(conf: CharonConfig) -> List[str]:
+def __get_ignore_patterns(conf: CharonConfig) -> Optional[List[str]]:
     ignore_patterns = os.getenv("CHARON_IGNORE_PATTERNS")
     if ignore_patterns:
         try:
             return loads(ignore_patterns)
         except (ValueError, TypeError):
-            logger.warning("Warning: ignore_patterns %s specified in "
-                           "system environment, but not a valid json "
-                           "style array. Will skip it.", ignore_patterns)
+            logger.warning(
+                "Warning: ignore_patterns %s specified in "
+                "system environment, but not a valid json "
+                "style array. Will skip it.",
+                ignore_patterns,
+            )
     if conf:
         return conf.get_ignore_patterns()
     return None
@@ -388,18 +387,16 @@ def __validate_prod_key(product: str, version: str) -> bool:
 
 def __decide_mode(is_quiet: bool, is_debug: bool):
     if is_quiet:
-        logger.info("Quiet mode enabled, "
-                    "will only give warning and error logs.")
+        logger.info("Quiet mode enabled, " "will only give warning and error logs.")
         set_logging(level=logging.WARNING)
     elif is_debug:
-        logger.info("Debug mode enabled, "
-                    "will give all debug logs for tracing.")
+        logger.info("Debug mode enabled, " "will give all debug logs for tracing.")
         set_logging(level=logging.DEBUG)
 
 
 @group()
 def cli():
     """Charon is a tool to synchronize several types of
-       artifacts repository data to Red Hat Ronda
-       service (maven.repository.redhat.com).
+    artifacts repository data to Red Hat Ronda
+    service (maven.repository.redhat.com).
     """

@@ -56,10 +56,9 @@ def read_sha1(file: str) -> str:
 
 
 def digest(file: str, hash_type=HashType.SHA1) -> str:
-    # BUF_SIZE is totally arbitrary, change for your app!
-    BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+    # buffer_size is totally arbitrary, change for your app!
+    buffer_size = 65536  # lets read stuff in 64kb chunks!
 
-    hash_obj = None
     if hash_type == HashType.SHA1:
         hash_obj = hashlib.sha1()
     elif hash_type == HashType.SHA256:
@@ -71,7 +70,7 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
 
     with open(file, "rb") as f:
         while True:
-            data = f.read(BUF_SIZE)
+            data = f.read(buffer_size)
             if not data:
                 break
             hash_obj.update(data)

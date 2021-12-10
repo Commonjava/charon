@@ -21,9 +21,14 @@ from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import get_template
-from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
-                              META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
-                              ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME)
+from charon.constants import (
+    META_FILE_GEN_KEY,
+    META_FILE_DEL_KEY,
+    META_FILE_FAILED,
+    MAVEN_METADATA_TEMPLATE,
+    ARCHETYPE_CATALOG_TEMPLATE,
+    ARCHETYPE_CATALOG_FILENAME,
+)
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -45,13 +50,14 @@ def __get_mvn_template(kind: str, default: str) -> str:
     try:
         return get_template(kind)
     except FileNotFoundError:
-        logger.info("%s template file not defined,"
-                    " will use default template.", kind)
+        logger.info("%s template file not defined," " will use default template.", kind)
         return default
 
 
 META_TEMPLATE = __get_mvn_template("maven-metadata.xml.j2", MAVEN_METADATA_TEMPLATE)
-ARCH_TEMPLATE = __get_mvn_template("archetype-catalog.xml.j2", ARCHETYPE_CATALOG_TEMPLATE)
+ARCH_TEMPLATE = __get_mvn_template(
+    "archetype-catalog.xml.j2", ARCHETYPE_CATALOG_TEMPLATE
+)
 STANDARD_GENERATED_IGNORES = ["maven-metadata.xml", "archetype-catalog.xml"]
 
 
@@ -106,9 +112,11 @@ class ArchetypeRef(object):
 
     def __eq__(self, other) -> bool:
         if isinstance(other, ArchetypeRef):
-            return self.group_id == other.group_id \
-                   and self.artifact_id == other.artifact_id \
-                   and self.version == other.version
+            return (
+                self.group_id == other.group_id
+                and self.artifact_id == other.artifact_id
+                and self.version == other.version
+            )
 
         return False
 
@@ -207,7 +215,9 @@ def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]
     return gavs
 
 
-def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=True) -> List[str]:
+def gen_meta_file(
+    group_id, artifact_id: str, versions: list, root="/", digest=True
+) -> List[str]:
     content = MavenMetadata(
         group_id, artifact_id, versions
     ).generate_meta_file_content()
@@ -245,7 +255,8 @@ def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -
         logger.warning(
             "Error: Can not create digest file %s for %s "
             "because of some missing folders",
-            hash_file_path, meta_file_path
+            hash_file_path,
+            meta_file_path,
         )
         return False
     return True
@@ -261,37 +272,38 @@ def handle_maven_uploading(
     prefix=None,
     dir_=None,
     do_index=True,
-    dry_run=False
+    dry_run=False,
 ) -> str:
-    """ Handle the maven product release tarball uploading process.
-        * repo is the location of the tarball in filesystem
-        * prod_key is used to identify which product this repo
-          tar belongs to
-        * ga is used to identify if this is a GA product release
-        * ignore_patterns is used to filter out paths which don't
-          need to upload in the tarball
-        * root is a prefix in the tarball to identify which path is
-          the beginning of the maven GAV path
-        * bucket_name is the s3 bucket name to store the artifacts
-        * dir_ is base dir for extracting the tarball, will use system
-          tmp dir if None.
+    """Handle the maven product release tarball uploading process.
+    * repo is the location of the tarball in filesystem
+    * prod_key is used to identify which product this repo
+      tar belongs to
+    * ga is used to identify if this is a GA product release
+    * ignore_patterns is used to filter out paths which don't
+      need to upload in the tarball
+    * root is a prefix in the tarball to identify which path is
+      the beginning of the maven GAV path
+    * bucket_name is the s3 bucket name to store the artifacts
+    * dir_ is base dir for extracting the tarball, will use system
+      tmp dir if None.
 
-        Returns the directory used for archive processing.
+    Returns the directory used for archive processing.
     """
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level,
-     valid_mvn_paths,
-     valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
+    (top_level, valid_mvn_paths, valid_poms, valid_dirs) = _scan_paths(
+        tmp_root, ignore_patterns, root
+    )
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
     if not os.path.isdir(top_level):
-        logger.error("Error: the extracted top-level path %s does not exist.", top_level)
+        logger.error(
+            "Error: the extracted top-level path %s does not exist.", top_level
+        )
         sys.exit(1)
 
     # 3. do validation for the files, like product version checking
@@ -307,17 +319,18 @@ def handle_maven_uploading(
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     _, failed_files = s3_client.upload_files(
-        file_paths=valid_mvn_paths, bucket_name=bucket,
-        product=prod_key, root=top_level, key_prefix=prefix_
+        file_paths=valid_mvn_paths,
+        bucket_name=bucket,
+        product=prod_key,
+        root=top_level,
+        key_prefix=prefix_,
     )
     logger.info("Files uploading done\n")
 
     # 5. Use uploaded poms to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all artifacts")
     meta_files = _generate_metadatas(
-        s3=s3_client, bucket=bucket,
-        poms=valid_poms, root=top_level,
-        prefix=prefix_
+        s3=s3_client, bucket=bucket, poms=valid_poms, root=top_level, prefix=prefix_
     )
     logger.info("maven-metadata.xml files generation done\n")
 
@@ -330,7 +343,7 @@ def handle_maven_uploading(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
@@ -339,23 +352,23 @@ def handle_maven_uploading(
     if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
         logger.info("Start generating archetype-catalog.xml")
         upload_archetype_file = _generate_upload_archetype_catalog(
-            s3=s3_client, bucket=bucket,
-            root=top_level,
-            prefix=prefix_
+            s3=s3_client, bucket=bucket, root=top_level, prefix=prefix_
         )
         logger.info("archetype-catalog.xml files generation done\n")
 
         # 8. Upload archetype-catalog.xml if it has changed
         if upload_archetype_file:
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
-            archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
+            archetype_files.extend(
+                __hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME)
+            )
             logger.info("Start updating archetype-catalog.xml to s3")
             (_, _failed_metas) = s3_client.upload_metadatas(
                 meta_file_paths=archetype_files,
                 bucket_name=bucket,
                 product=None,
                 root=top_level,
-                key_prefix=prefix_
+                key_prefix=prefix_,
             )
             failed_metas.extend(_failed_metas)
             logger.info("archetype-catalog.xml updating done\n")
@@ -375,7 +388,7 @@ def handle_maven_uploading(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -397,32 +410,31 @@ def handle_maven_del(
     prefix=None,
     dir_=None,
     do_index=True,
-    dry_run=False
+    dry_run=False,
 ) -> str:
-    """ Handle the maven product release tarball deletion process.
-        * repo is the location of the tarball in filesystem
-        * prod_key is used to identify which product this repo
-          tar belongs to
-        * ga is used to identify if this is a GA product release
-        * ignore_patterns is used to filter out paths which don't
-          need to upload in the tarball
-        * root is a prefix in the tarball to identify which path is
-          the beginning of the maven GAV path
-        * bucket_name is the s3 bucket name to store the artifacts
-        * dir is base dir for extracting the tarball, will use system
-          tmp dir if None.
+    """Handle the maven product release tarball deletion process.
+    * repo is the location of the tarball in filesystem
+    * prod_key is used to identify which product this repo
+      tar belongs to
+    * ga is used to identify if this is a GA product release
+    * ignore_patterns is used to filter out paths which don't
+      need to upload in the tarball
+    * root is a prefix in the tarball to identify which path is
+      the beginning of the maven GAV path
+    * bucket_name is the s3 bucket name to store the artifacts
+    * dir is base dir for extracting the tarball, will use system
+      tmp dir if None.
 
-        Returns the directory used for archive processing.
+    Returns the directory used for archive processing.
     """
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level,
-     valid_mvn_paths,
-     valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
+    (top_level, valid_mvn_paths, valid_poms, valid_dirs) = _scan_paths(
+        tmp_root, ignore_patterns, root
+    )
 
     # 3. Parse GA from valid_poms for later maven metadata refreshing
     logger.info("Start generating maven-metadata.xml files for all artifacts")
@@ -444,16 +456,14 @@ def handle_maven_del(
         bucket_name=bucket,
         product=prod_key,
         root=top_level,
-        key_prefix=prefix_
+        key_prefix=prefix_,
     )
     logger.info("Files deletion done\n")
 
     # 5. Use changed GA to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all changed GAs")
     meta_files = _generate_metadatas(
-        s3=s3_client, bucket=bucket,
-        poms=valid_poms, root=top_level,
-        prefix=prefix_
+        s3=s3_client, bucket=bucket, poms=valid_poms, root=top_level, prefix=prefix_
     )
 
     logger.info("maven-metadata.xml files generation done\n")
@@ -469,7 +479,7 @@ def handle_maven_del(
         bucket_name=bucket,
         product=None,
         root=top_level,
-        key_prefix=prefix_
+        key_prefix=prefix_,
     )
     failed_metas = meta_files.get(META_FILE_FAILED, [])
     if META_FILE_GEN_KEY in meta_files:
@@ -478,7 +488,7 @@ def handle_maven_del(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
     logger.info("maven-metadata.xml updating done\n")
@@ -487,15 +497,15 @@ def handle_maven_del(
     if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
         logger.info("Start generating archetype-catalog.xml")
         archetype_action = _generate_rollback_archetype_catalog(
-            s3=s3_client, bucket=bucket,
-            root=top_level,
-            prefix=prefix_
+            s3=s3_client, bucket=bucket, root=top_level, prefix=prefix_
         )
         logger.info("archetype-catalog.xml files generation done\n")
 
         # 8. Upload or Delete archetype-catalog.xml if it has changed
         archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
-        archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
+        archetype_files.extend(
+            __hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME)
+        )
         if archetype_action < 0:
             logger.info("Start updating archetype-catalog.xml to s3")
             (_, _failed_metas) = s3_client.delete_files(
@@ -503,7 +513,7 @@ def handle_maven_del(
                 bucket_name=bucket,
                 product=None,
                 root=top_level,
-                key_prefix=prefix_
+                key_prefix=prefix_,
             )
             failed_metas.extend(_failed_metas)
         elif archetype_action > 0:
@@ -512,7 +522,7 @@ def handle_maven_del(
                 bucket_name=bucket,
                 product=None,
                 root=top_level,
-                key_prefix=prefix_
+                key_prefix=prefix_,
             )
             failed_metas.extend(_failed_metas)
         logger.info("archetype-catalog.xml updating done\n")
@@ -530,7 +540,7 @@ def handle_maven_del(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
@@ -557,13 +567,20 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     sys.exit(1)
 
 
-def _scan_paths(files_root: str, ignore_patterns: List[str],
-                root: str) -> Tuple[str, List[str], List[str], List[str]]:
+def _scan_paths(
+    files_root: str, ignore_patterns: List[str], root: str
+) -> Tuple[str, List[str], List[str], List[str]]:
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", files_root)
     top_level = root
-    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms, valid_dirs = [], [], [], [], []
+    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms, valid_dirs = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
     changed_dirs = set()
     top_found = False
     for root_dir, dirs, names in os.walk(files_root):
@@ -573,7 +590,9 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
                 if directory == top_level:
                     top_level = os.path.join(root_dir, directory)
                     top_found = True
-                if os.path.join(root_dir, directory) == os.path.join(files_root, top_level):
+                if os.path.join(root_dir, directory) == os.path.join(
+                    files_root, top_level
+                ):
                     top_level = os.path.join(files_root, top_level)
                     top_found = True
 
@@ -596,14 +615,17 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
 
     if len(non_mvn_paths) > 0:
         non_mvn_items = [n.replace(files_root, "") for n in non_mvn_paths]
-        logger.info("These files are not in the specified "
-                    "root dir %s, so will be ignored: \n%s",
-                    root, non_mvn_items)
+        logger.info(
+            "These files are not in the specified "
+            "root dir %s, so will be ignored: \n%s",
+            root,
+            non_mvn_items,
+        )
     if not top_found or top_level.strip() == "" or top_level.strip() == "/":
         logger.warning(
             "Warning: the root path %s does not exist in tarball,"
             " will use empty trailing prefix for the uploading",
-            top_level
+            top_level,
         )
         top_level = files_root
     else:
@@ -615,28 +637,28 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
     if ignore_patterns and len(ignore_patterns) > 0:
         logger.info(
             "Ignored paths with ignore_patterns %s as below:\n%s\n",
-            ignore_patterns, "\n".join(ignored_paths)
+            ignore_patterns,
+            "\n".join(ignored_paths),
         )
 
-    return (top_level, valid_mvn_paths, valid_poms, valid_dirs)
+    return top_level, valid_mvn_paths, valid_poms, valid_dirs
 
 
 def _generate_rollback_archetype_catalog(
-    s3: S3Client, bucket: str,
-    root: str, prefix: str = None
+    s3: S3Client, bucket: str, root: str, prefix: str = None
 ) -> int:
     """Determine whether the local archive contains /archetype-catalog.xml
-       in the repo contents.
-       If so, determine whether the archetype-catalog.xml is already
-       available in the bucket. Merge (or unmerge) these catalogs and
-       return an integer, indicating whether the bucket file should be
-       replaced (+1), deleted (-1), or, in the case where no action is
-       required, it will return NO-OP (0).
+    in the repo contents.
+    If so, determine whether the archetype-catalog.xml is already
+    available in the bucket. Merge (or unmerge) these catalogs and
+    return an integer, indicating whether the bucket file should be
+    replaced (+1), deleted (-1), or, in the case where no action is
+    required, it will return NO-OP (0).
 
-       NOTE: There are three return values:
-         - +1 - UPLOAD the local catalog with its rolled back changes
-         - -1 - DELETE the (now empty) bucket catalog
-         - 0  - take no action
+    NOTE: There are three return values:
+      - +1 - UPLOAD the local catalog with its rolled back changes
+      - -1 - DELETE the (now empty) bucket catalog
+      - 0  - take no action
     """
     local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     if prefix:
@@ -658,7 +680,7 @@ def _generate_rollback_archetype_catalog(
                     logging.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
-                        root
+                        root,
                     )
                     return 0
 
@@ -680,7 +702,7 @@ def _generate_rollback_archetype_catalog(
                     logging.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "CLEANING invalid remote archetype-catalog.xml",
-                        bucket
+                        bucket,
                     )
                     return -1
 
@@ -711,17 +733,17 @@ def _generate_rollback_archetype_catalog(
                     else:
                         # Re-render the result of our archetype un-merge to the
                         # local file, in preparation for upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(
+                            remote_archetypes
+                        ).generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return 1
 
@@ -729,14 +751,13 @@ def _generate_rollback_archetype_catalog(
 
 
 def _generate_upload_archetype_catalog(
-        s3: S3Client, bucket: str,
-        root: str, prefix: str = None
+    s3: S3Client, bucket: str, root: str, prefix: str = None
 ) -> bool:
     """Determine whether the local archive contains /archetype-catalog.xml
-       in the repo contents.
-       If so, determine whether the archetype-catalog.xml is already
-       available in the bucket. Merge (or unmerge) these catalogs and
-       return a boolean indicating whether the local file should be uploaded.
+    in the repo contents.
+    If so, determine whether the archetype-catalog.xml is already
+    available in the bucket. Merge (or unmerge) these catalogs and
+    return a boolean indicating whether the local file should be uploaded.
     """
     local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     if prefix:
@@ -759,7 +780,7 @@ def _generate_upload_archetype_catalog(
                     logging.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
-                        root
+                        root,
                     )
                     return False
 
@@ -778,7 +799,7 @@ def _generate_upload_archetype_catalog(
                     logging.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "OVERWRITING bucket archetype-catalog.xml with the valid, local copy.",
-                        bucket
+                        bucket,
                     )
                     return True
 
@@ -802,7 +823,7 @@ def _generate_upload_archetype_catalog(
                             logger.warning(
                                 "\n\n\nDUPLICATE ARCHETYPE: %s. "
                                 "This makes rollback of the current release UNSAFE!\n\n\n",
-                                la
+                                la,
                             )
 
                     if len(remote_archetypes) != original_remote_size:
@@ -813,17 +834,17 @@ def _generate_upload_archetype_catalog(
                         # Re-render the result of our archetype merge /
                         # un-merge to the local file, in preparation for
                         # upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(
+                            remote_archetypes
+                        ).generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return True
 
@@ -832,33 +853,30 @@ def _generate_upload_archetype_catalog(
 
 def _parse_archetypes(source) -> List[ArchetypeRef]:
     tree = ElementTree.fromstring(
-        source.strip(), forbid_dtd=True,
-        forbid_entities=True, forbid_external=True
+        source.strip(), forbid_dtd=True, forbid_entities=True, forbid_external=True
     )
 
     archetypes = []
     for a in tree.findall("./archetypes/archetype"):
-        gid = a.find('groupId').text
-        aid = a.find('artifactId').text
-        ver = a.find('version').text
-        desc = a.find('description').text
+        gid = a.find("groupId").text
+        aid = a.find("artifactId").text
+        ver = a.find("version").text
+        desc = a.find("description").text
         archetypes.append(ArchetypeRef(gid, aid, ver, desc))
 
     return archetypes
 
 
 def _generate_metadatas(
-    s3: S3Client, bucket: str,
-    poms: List[str], root: str,
-    prefix: str = None
+    s3: S3Client, bucket: str, poms: List[str], root: str, prefix: str = None
 ) -> Dict[str, List[str]]:
     """Collect GAVs and generating maven-metadata.xml.
-       As all valid poms has been stored in s3 bucket,
-       what we should do here is:
-       * Scan and get the GA for the poms
-       * Search all poms in s3 based on the GA
-       * Use searched poms and scanned poms to generate
-         maven-metadata to refresh
+    As all valid poms has been stored in s3 bucket,
+    what we should do here is:
+    * Scan and get the GA for the poms
+    * Search all poms in s3 based on the GA
+    * Use searched poms and scanned poms to generate
+      maven-metadata to refresh
     """
     ga_dict: Dict[str, bool] = {}
     logger.debug("Valid poms: %s", poms)
@@ -886,14 +904,21 @@ def _generate_metadatas(
                 )
                 meta_files_deletion = meta_files.get(META_FILE_DEL_KEY, [])
                 meta_files_deletion.append(os.path.join(path, "maven-metadata.xml"))
-                meta_files_deletion.extend(__hash_decorate_metadata(path, "maven-metadata.xml"))
+                meta_files_deletion.extend(
+                    __hash_decorate_metadata(path, "maven-metadata.xml")
+                )
                 meta_files[META_FILE_DEL_KEY] = meta_files_deletion
             else:
-                logger.warning("An error happened when scanning remote "
-                               "artifacts under GA path %s", path)
+                logger.warning(
+                    "An error happened when scanning remote "
+                    "artifacts under GA path %s",
+                    path,
+                )
                 meta_failed_path = meta_files.get(META_FILE_FAILED, [])
                 meta_failed_path.append(os.path.join(path, "maven-metadata.xml"))
-                meta_failed_path.extend(__hash_decorate_metadata(path, "maven-metadata.xml"))
+                meta_failed_path.extend(
+                    __hash_decorate_metadata(path, "maven-metadata.xml")
+                )
                 meta_files[META_FILE_FAILED] = meta_failed_path
         else:
             logger.debug(
@@ -902,9 +927,13 @@ def _generate_metadatas(
             un_prefixed_poms = existed_poms
             if prefix:
                 if not prefix.endswith("/"):
-                    un_prefixed_poms = [__remove_prefix(pom, prefix) for pom in existed_poms]
+                    un_prefixed_poms = [
+                        __remove_prefix(pom, prefix) for pom in existed_poms
+                    ]
                 else:
-                    un_prefixed_poms = [__remove_prefix(pom, prefix + "/") for pom in existed_poms]
+                    un_prefixed_poms = [
+                        __remove_prefix(pom, prefix + "/") for pom in existed_poms
+                    ]
             all_poms.extend(un_prefixed_poms)
     gav_dict = parse_gavs(all_poms)
     if len(gav_dict) > 0:
@@ -914,9 +943,12 @@ def _generate_metadatas(
                 try:
                     metas = gen_meta_file(g, a, vers, root)
                 except FileNotFoundError:
-                    logger.error("Failed to create metadata file for GA"
-                                 " %s, please check if aligned Maven GA"
-                                 " is correct in your tarball.", f'{g}:{a}')
+                    logger.error(
+                        "Failed to create metadata file for GA"
+                        " %s, please check if aligned Maven GA"
+                        " is correct in your tarball.",
+                        f"{g}:{a}",
+                    )
                 logger.debug("Generated metadata file %s for %s:%s", meta_files, g, a)
                 meta_files_generation.extend(metas)
         meta_files[META_FILE_GEN_KEY] = meta_files_generation
@@ -925,7 +957,7 @@ def _generate_metadatas(
 
 def __hash_decorate_metadata(path: str, metadata: str) -> List[str]:
     return [
-        os.path.join(path, metadata + hash) for hash in [".md5", ".sha1", ".sha256"]
+        os.path.join(path, metadata + h) for h in [".md5", ".sha1", ".sha256"]
     ]
 
 
@@ -944,7 +976,7 @@ def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
 
 def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
     # Reminder: need to implement later
-    return (list, True)
+    return list, True
 
 
 def _handle_error(err_msgs: List[str]):
@@ -958,7 +990,8 @@ def __remove_prefix(s: str, prefix: str) -> str:
 
 
 class VersionCompareKey:
-    'Used as key function for version sorting'
+    """Used as key function for version sorting"""
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -1014,7 +1047,8 @@ class VersionCompareKey:
 
 
 class ArchetypeCompareKey(VersionCompareKey):
-    'Used as key function for GAV sorting'
+    """Used as key function for GAV sorting"""
+
     def __init__(self, gav):
         super().__init__(gav.version)
         self.gav = gav

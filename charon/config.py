@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 from ruamel.yaml import YAML
 from pathlib import Path
 import os
@@ -32,6 +32,7 @@ class CharonConfig(object):
     The configuration file will be named as charon.yaml, and will be stored
     in $HOME/.charon/ folder by default.
     """
+
     def __init__(self, data: Dict):
         self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
         self.__aws_profile: str = data.get("aws_profile", None)
@@ -45,38 +46,43 @@ class CharonConfig(object):
     def get_aws_profile(self) -> str:
         return self.__aws_profile
 
-    def get_aws_bucket(self, target: str) -> str:
+    def get_aws_bucket(self, target: str) -> Optional[str]:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
             logger.error("The target %s is not found in charon configuration.")
             return None
         bucket = target_.get("bucket", None)
         if not bucket:
-            logger.error("The bucket %s is not found for target %s "
-                         "in charon configuration.")
+            logger.error(
+                "The bucket %s is not found for target %s " "in charon configuration."
+            )
         return bucket
 
-    def get_bucket_prefix(self, target: str) -> str:
+    def get_bucket_prefix(self, target: str) -> Optional[str]:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
-            logger.error("The target %s is not found in charon "
-                         "configuration.", target)
+            logger.error(
+                "The target %s is not found in charon " "configuration.", target
+            )
             return None
         prefix = target_.get("prefix", None)
         if not prefix:
-            logger.warning("The prefix is not found for target %s "
-                           "in charon configuration, so no prefix will "
-                           "be used", target)
+            logger.warning(
+                "The prefix is not found for target %s "
+                "in charon configuration, so no prefix will "
+                "be used",
+                target,
+            )
             prefix = ""
         # removing first slash as it is not needed.
         prefix = remove_prefix(prefix, "/")
         return prefix
 
 
-def get_config() -> CharonConfig:
+def get_config() -> Optional[CharonConfig]:
     config_file = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
     try:
-        yaml = YAML(typ='safe')
+        yaml = YAML(typ="safe")
         data = yaml.load(stream=Path(config_file))
     except Exception as e:
         logger.error("Can not load charon config file due to error: %s", e)
@@ -89,9 +95,7 @@ def get_config() -> CharonConfig:
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME"), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME"), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()

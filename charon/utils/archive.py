@@ -42,11 +42,13 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
     zf.extractall(target_dir, members=filtered)
 
 
-def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tuple[str, list]:
-    """ Extract npm tarball will relocate the tgz file and metadata files.
-        * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
-        * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
-        Result returns the version meta file path and is for following package meta generating.
+def extract_npm_tarball(
+    path: str, target_dir: str, is_for_upload: bool
+) -> Tuple[str, list]:
+    """Extract npm tarball will relocate the tgz file and metadata files.
+    * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
+    * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
+    Result returns the version meta file path and is for following package meta generating.
     """
     valid_paths = []
     package_name_path = str()
@@ -62,13 +64,17 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
             version_metadata_parent_path = os.path.join(
                 target_dir, parse_paths[0], parse_paths[1]
             )
-            valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
+            valid_paths.append(
+                os.path.join(version_metadata_parent_path, "package.json")
+            )
             if is_for_upload:
                 os.makedirs(tarball_parent_path)
                 target = os.path.join(tarball_parent_path, os.path.basename(path))
                 shutil.copyfile(path, target)
                 os.makedirs(version_metadata_parent_path)
-                target = os.path.join(version_metadata_parent_path, os.path.basename(f.path))
+                target = os.path.join(
+                    version_metadata_parent_path, os.path.basename(f.path)
+                )
                 shutil.copyfile(f.path, target)
             break
     return package_name_path, valid_paths
@@ -83,12 +89,12 @@ def _get_tgz_name(path: str):
 
 def __parse_npm_package_version_paths(path: str) -> list:
     try:
-        with open(path, encoding='utf-8') as version_package:
+        with open(path, encoding="utf-8") as version_package:
             data = load(version_package)
-        package_version_paths = [data['name'], data['version']]
+        package_version_paths = [data["name"], data["version"]]
         return package_version_paths
     except JSONDecodeError:
-        logger.error('Error: Failed to parse json!')
+        logger.error("Error: Failed to parse json!")
 
 
 class NpmArchiveType(Enum):
@@ -141,17 +147,19 @@ def download_archive(url: str, base_dir=None) -> str:
     dir_ = base_dir
     if not dir_ or not os.path.isdir(dir_):
         dir_ = tempfile.mkdtemp()
-        logger.info("No base dir specified for holding archive."
-                    " Will use a temp dir %s to hold archive",
-                    dir_)
+        logger.info(
+            "No base dir specified for holding archive."
+            " Will use a temp dir %s to hold archive",
+            dir_,
+        )
     # Used solution here:
     # https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
-    local_filename = os.path.join(dir_, url.split('/')[-1])
+    local_filename = os.path.join(dir_, url.split("/")[-1])
     # NOTE the stream=True parameter below
     # NOTE(2) timeout=30 parameter to set a 30-second timeout, and prevent indefinite hang.
     with requests.get(url, stream=True, timeout=30, verify=True) as r:
         r.raise_for_status()
-        with open(local_filename, 'wb') as f:
+        with open(local_filename, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 # If you have chunk encoded response uncomment if
                 # and set chunk_size parameter to None.

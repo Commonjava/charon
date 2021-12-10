@@ -31,8 +31,7 @@ def __get_index_template() -> str:
     try:
         return get_template("index.html.j2")
     except FileNotFoundError:
-        logger.info("index template file not defined,"
-                    " will use default template.")
+        logger.info("index template file not defined," " will use default template.")
         return INDEX_HTML_TEMPLATE
 
 
@@ -56,16 +55,16 @@ def generate_indexes(
     changed_dirs: List[str],
     s3_client: S3Client,
     bucket: str,
-    prefix: str = None
+    prefix: str = None,
 ) -> List[str]:
-    if top_level[-1] != '/':
-        top_level += '/'
+    if top_level[-1] != "/":
+        top_level += "/"
 
     s3_folders = set()
 
     # chopp down every lines, left s3 client key format
     for path in changed_dirs:
-        path = path.replace(top_level, '')
+        path = path.replace(top_level, "")
         if path.startswith("/"):
             path = path[1:]
         if not path.endswith("/"):
@@ -81,9 +80,7 @@ def generate_indexes(
         if index_html:
             generated_htmls.append(index_html)
 
-    root_index = __generate_index_html(
-        s3_client, bucket, "/", top_level, prefix
-    )
+    root_index = __generate_index_html(s3_client, bucket, "/", top_level, prefix)
     if root_index:
         generated_htmls.append(root_index)
 
@@ -91,24 +88,18 @@ def generate_indexes(
 
 
 def __generate_index_html(
-    s3_client: S3Client,
-    bucket: str,
-    folder_: str,
-    top_level: str,
-    prefix: str = None
+    s3_client: S3Client, bucket: str, folder_: str, top_level: str, prefix: str = None
 ) -> str:
     if folder_ != "/":
         search_folder = os.path.join(prefix, folder_) if prefix else folder_
     else:
         search_folder = prefix if prefix else "/"
-    contents = s3_client.list_folder_content(
-        bucket_name=bucket,
-        folder=search_folder
-    )
+    contents = s3_client.list_folder_content(bucket_name=bucket, folder=search_folder)
     index = None
     if len(contents) == 1 and contents[0].endswith("index.html"):
-        logger.info("The folder %s only contains index.html, "
-                    "will remove it.", folder_)
+        logger.info(
+            "The folder %s only contains index.html, " "will remove it.", folder_
+        )
         if folder_ == "/":
             removed_index = os.path.join(top_level, "index.html")
         else:
@@ -118,7 +109,7 @@ def __generate_index_html(
             bucket_name=bucket,
             product=None,
             root=top_level,
-            key_prefix=prefix
+            key_prefix=prefix,
         )
     elif len(contents) >= 1:
         real_contents = []
@@ -148,12 +139,12 @@ def __to_html(contents: List[str], folder: str, top_level: str) -> str:
     else:
         items.extend(contents)
     items = __sort_index_items(items)
-    index = IndexedHTML(title=folder, header=folder, items=items)
+    index = IndexedHTML(title=folder, header=folder, items=set(items))
     html_path = os.path.join(top_level, folder, "index.html")
     if folder == "/":
         html_path = os.path.join(top_level, "index.html")
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
-    with open(html_path, 'w', encoding='utf-8') as html:
+    with open(html_path, "w", encoding="utf-8") as html:
         html.write(index.generate_index_file_content())
     return html_path
 
@@ -161,20 +152,20 @@ def __to_html(contents: List[str], folder: str, top_level: str) -> str:
 def __sort_index_items(items):
     sorted_items = sorted(items, key=IndexedItemsCompareKey)
     # make sure metadata is the last element
-    if 'maven-metadata.xml' in sorted_items:
-        sorted_items.remove('maven-metadata.xml')
-        sorted_items.append('maven-metadata.xml')
-    elif 'package.json' in sorted_items:
-        sorted_items.remove('package.json')
-        sorted_items.append('package.json')
+    if "maven-metadata.xml" in sorted_items:
+        sorted_items.remove("maven-metadata.xml")
+        sorted_items.append("maven-metadata.xml")
+    elif "package.json" in sorted_items:
+        sorted_items.remove("package.json")
+        sorted_items.append("package.json")
 
     return sorted_items
 
 
 class FolderLenCompareKey:
     """Used as key function for folder sorting, will give DESC order
-       based on the length of the parts splitted by slash of the folder
-       path
+    based on the length of the parts splitted by slash of the folder
+    path
     """
 
     def __init__(self, obj):
@@ -206,7 +197,7 @@ class FolderLenCompareKey:
 
 class IndexedItemsCompareKey:
     """Used as key function for indexed items sorting in index.html,
-       will make all folder listed before files.
+    will make all folder listed before files.
     """
 
     def __init__(self, obj):

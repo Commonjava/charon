@@ -19,7 +19,7 @@ import sys
 from json import load, loads, dump, JSONDecodeError
 import tarfile
 from tempfile import mkdtemp
-from typing import Set, Tuple
+from typing import Set, Tuple, List
 
 from semantic_version import compare
 
@@ -36,55 +36,59 @@ PACKAGE_JSON = "package.json"
 
 
 class NPMPackageMetadata(object):
-    """ This NPMPackageMetadata will represent the npm package(not version) package.json.
-    """
+    """This NPMPackageMetadata will represent the npm package(not version) package.json."""
 
     def __init__(self, metadata, is_version):
-        self.name = metadata.get('name', None)
-        self.description = metadata.get('description', None)
-        self.author = metadata.get('author', None)
-        self.license = metadata.get('license', None)
-        self.repository = metadata.get('repository', None)
-        self.bugs = metadata.get('bugs', None)
-        self.keywords = metadata.get('keywords', None)
-        self.maintainers = metadata.get('maintainers', None)
-        self.users = metadata.get('users', None)
-        self.homepage = metadata.get('homepage', None)
-        self.time = metadata.get('time', None)
-        self.readme = metadata.get('readme', None)
-        self.readmeFilename = metadata.get('readmeFilename', None)
+        self.name = metadata.get("name", None)
+        self.description = metadata.get("description", None)
+        self.author = metadata.get("author", None)
+        self.license = metadata.get("license", None)
+        self.repository = metadata.get("repository", None)
+        self.bugs = metadata.get("bugs", None)
+        self.keywords = metadata.get("keywords", None)
+        self.maintainers = metadata.get("maintainers", None)
+        self.users = metadata.get("users", None)
+        self.homepage = metadata.get("homepage", None)
+        self.time = metadata.get("time", None)
+        self.readme = metadata.get("readme", None)
+        self.readmeFilename = metadata.get("readmeFilename", None)
         if is_version:
-            self.dist_tags = {'latest': metadata.get('version')}
-            self.versions = {metadata.get('version'): metadata}
+            self.dist_tags = {"latest": metadata.get("version")}
+            self.versions = {metadata.get("version"): metadata}
         else:
-            self.dist_tags = metadata.get('dist_tags', None)
-            self.versions = metadata.get('versions', None)
+            self.dist_tags = metadata.get("dist_tags", None)
+            self.versions = metadata.get("versions", None)
 
 
 def handle_npm_uploading(
-        tarball_path: str, product: str,
-        bucket_name=None, prefix=None,
-        aws_profile=None,
-        dir_=None, do_index=True,
-        dry_run=False
+    tarball_path: str,
+    product: str,
+    bucket_name=None,
+    prefix=None,
+    aws_profile=None,
+    dir_=None,
+    do_index=True,
+    dry_run=False,
 ) -> str:
-    """ Handle the npm product release tarball uploading process.
-        For NPM uploading, tgz file and version metadata will be relocated based
-        on the native npm structure, package metadata will follow the base.
-        * tarball_path is the location of the tarball in filesystem
-        * product is used to identify which product this repo
-          tar belongs to
-        * bucket_name is the s3 bucket name to store the artifacts
-        * dir_ is base dir for extracting the tarball, will use system
-          tmp dir if None.
+    """Handle the npm product release tarball uploading process.
+    For NPM uploading, tgz file and version metadata will be relocated based
+    on the native npm structure, package metadata will follow the base.
+    * tarball_path is the location of the tarball in filesystem
+    * product is used to identify which product this repo
+      tar belongs to
+    * bucket_name is the s3 bucket name to store the artifacts
+    * dir_ is base dir for extracting the tarball, will use system
+      tmp dir if None.
 
-        Returns the directory used for archive processing.
+    Returns the directory used for archive processing.
     """
     target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
         tarball_path, prod=product, dir__=dir_
     )
     if not os.path.isdir(target_dir):
-        logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
+        logger.error(
+            "Error: the extracted target_dir path %s does not exist.", target_dir
+        )
         sys.exit(1)
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
@@ -98,7 +102,7 @@ def handle_npm_uploading(
         bucket_name=bucket,
         product=product,
         root=target_dir,
-        key_prefix=prefix_
+        key_prefix=prefix_,
     )
     logger.info("Files uploading done\n")
 
@@ -115,7 +119,7 @@ def handle_npm_uploading(
             bucket_name=bucket,
             product=product,
             root=target_dir,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
         logger.info("package.json uploading done")
@@ -125,15 +129,17 @@ def handle_npm_uploading(
     if do_index:
         logger.info("Start generating index files to s3")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix_
+            target_dir, list(valid_dirs), client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
         (_, _failed_metas) = client.upload_metadatas(
             meta_file_paths=created_indexes,
-            bucket_name=bucket, product=None,
-            root=target_dir, key_prefix=prefix_
+            bucket_name=bucket,
+            product=None,
+            root=target_dir,
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
@@ -145,20 +151,24 @@ def handle_npm_uploading(
 
 
 def handle_npm_del(
-        tarball_path: str, product: str,
-        bucket_name=None, prefix=None,
-        aws_profile=None, dir_=None,
-        do_index=True, dry_run=False
+    tarball_path: str,
+    product: str,
+    bucket_name=None,
+    prefix=None,
+    aws_profile=None,
+    dir_=None,
+    do_index=True,
+    dry_run=False,
 ) -> str:
-    """ Handle the npm product release tarball deletion process.
-        * tarball_path is the location of the tarball in filesystem
-        * product is used to identify which product this repo
-          tar belongs to
-        * bucket_name is the s3 bucket name to store the artifacts
-        * dir is base dir for extracting the tarball, will use system
-          tmp dir if None.
+    """Handle the npm product release tarball deletion process.
+    * tarball_path is the location of the tarball in filesystem
+    * product is used to identify which product this repo
+      tar belongs to
+    * bucket_name is the s3 bucket name to store the artifacts
+    * dir is base dir for extracting the tarball, will use system
+      tmp dir if None.
 
-        Returns the directory used for archive processing
+    Returns the directory used for archive processing
     """
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
         tarball_path, prod=product, dir__=dir_
@@ -171,9 +181,11 @@ def handle_npm_del(
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
     _, failed_files = client.delete_files(
-        file_paths=valid_paths, bucket_name=bucket,
-        product=product, root=target_dir,
-        key_prefix=prefix_
+        file_paths=valid_paths,
+        bucket_name=bucket,
+        product=product,
+        root=target_dir,
+        key_prefix=prefix_,
     )
     logger.info("Files deletion done\n")
 
@@ -188,8 +200,11 @@ def handle_npm_del(
     for _, file in meta_files.items():
         all_meta_files.append(file)
     client.delete_files(
-        file_paths=all_meta_files, bucket_name=bucket,
-        product=product, root=target_dir, key_prefix=prefix_
+        file_paths=all_meta_files,
+        bucket_name=bucket,
+        product=product,
+        root=target_dir,
+        key_prefix=prefix_,
     )
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
@@ -198,7 +213,7 @@ def handle_npm_del(
             bucket_name=bucket,
             product=None,
             root=target_dir,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_metas)
     logger.info("package.json uploading done")
@@ -206,7 +221,7 @@ def handle_npm_del(
     if do_index:
         logger.info("Start generating index files for all changed entries")
         created_indexes = indexing.generate_indexes(
-            target_dir, valid_dirs, client, bucket, prefix_
+            target_dir, list(valid_dirs), client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -216,7 +231,7 @@ def handle_npm_del(
             bucket_name=bucket,
             product=None,
             root=target_dir,
-            key_prefix=prefix_
+            key_prefix=prefix_,
         )
         failed_metas.extend(_failed_index_files)
         logger.info("Index files updating done.\n")
@@ -232,29 +247,34 @@ def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMe
         package_metadata = loads(content)
         return NPMPackageMetadata(package_metadata, is_version)
     except JSONDecodeError:
-        logger.error('Error: Failed to parse json!')
+        logger.error("Error: Failed to parse json!")
 
 
 def _gen_npm_package_metadata_for_upload(
-        client: S3Client, bucket: str,
-        target_dir: str, source_package: NPMPackageMetadata,
-        prefix: str = None
+    client: S3Client,
+    bucket: str,
+    target_dir: str,
+    source_package: NPMPackageMetadata,
+    prefix: str = None,
 ) -> dict:
     """Collect NPM versions package.json and generate the package package.json.
-       For uploading mode, package.json will merge the original in S3 with the local source.
-       What we should do here is:
-       * Scan the valid paths and source from the archive
-       * Read from local source(uploading)
-       * Use converted package.json to generate the package.json then update in S3
+    For uploading mode, package.json will merge the original in S3 with the local source.
+    What we should do here is:
+    * Scan the valid paths and source from the archive
+    * Read from local source(uploading)
+    * Use converted package.json to generate the package.json then update in S3
     """
     meta_files = {}
     package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
     if prefix and prefix != "/":
         package_metadata_key = os.path.join(prefix, package_metadata_key)
-    (package_json_files, success) = client.get_files(bucket_name=bucket,
-                                                     prefix=package_metadata_key)
+    (package_json_files, success) = client.get_files(
+        bucket_name=bucket, prefix=package_metadata_key
+    )
     if not success:
-        logger.warning("Error to get remote metadata files for %s", package_metadata_key)
+        logger.warning(
+            "Error to get remote metadata files for %s", package_metadata_key
+        )
     result = source_package
     if len(package_json_files) > 0:
         result = _merge_package_metadata(
@@ -267,16 +287,18 @@ def _gen_npm_package_metadata_for_upload(
 
 
 def _gen_npm_package_metadata_for_del(
-        client: S3Client, bucket: str,
-        target_dir: str, package_path_prefix: str,
-        prefix: str = None
+    client: S3Client,
+    bucket: str,
+    target_dir: str,
+    package_path_prefix: str,
+    prefix: str = None,
 ) -> dict:
     """Collect NPM versions package.json and generate the package package.json.
-       For del mode, all the version package.json contents to be merged will be read from S3.
-       What we should do here is:
-       * Scan the valid paths from the archive
-       * Search the target contents in s3(del)
-       * Use converted package.jsons to generate the package.json then update in S3
+    For del mode, all the version package.json contents to be merged will be read from S3.
+    What we should do here is:
+    * Scan the valid paths from the archive
+    * Search the target contents in s3(del)
+    * Use converted package.jsons to generate the package.json then update in S3
     """
     meta_files = {}
     package_metadata_key = os.path.join(package_path_prefix, PACKAGE_JSON)
@@ -289,8 +311,9 @@ def _gen_npm_package_metadata_for_del(
         bucket_name=bucket, prefix=path_prefix, suffix=PACKAGE_JSON
     )
     if not success:
-        logger.warning("Error to get remote metadata files "
-                       "for %s when deletion", path_prefix)
+        logger.warning(
+            "Error to get remote metadata files " "for %s when deletion", path_prefix
+        )
     # ensure the metas only contain version package.json
     existed_version_metas.remove(prefix_meta_key)
     # Still have versions in S3 and need to maintain the package metadata
@@ -304,11 +327,13 @@ def _gen_npm_package_metadata_for_del(
                 continue
             meta_contents.append(meta)
         if len(meta_contents) == 0:
-            return
+            return {}
         original = meta_contents[0]
         for source in meta_contents:
             source_version = list(source.versions.keys())[0]
-            is_latest = _is_latest_version(source_version, list(original.versions.keys()))
+            is_latest = _is_latest_version(
+                source_version, list(original.versions.keys())
+            )
             _do_merge(original, source, is_latest)
         logger.debug("Final merged package metadata is %s", str(original.__dict__))
         meta_file = _write_package_metadata_to_file(original, target_dir)
@@ -319,11 +344,13 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[
-        str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(
+    path: str, prod="", dir__=None
+) -> Tuple[str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
         _, valid_paths = extract_npm_tarball(path, tmp_root, True)
+        package = None
         if len(valid_paths) > 1:
             version = _scan_for_version(valid_paths[1])
             package = NPMPackageMetadata(version, True)
@@ -340,9 +367,7 @@ def _scan_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, str, 
 
 
 def _merge_package_metadata(
-        package_metadata: NPMPackageMetadata,
-        client: S3Client, bucket: str,
-        key: str
+    package_metadata: NPMPackageMetadata, client: S3Client, bucket: str, key: str
 ):
     content = client.read_file_content(bucket, key)
     original = read_package_metadata_from_content(content, False)
@@ -356,20 +381,22 @@ def _merge_package_metadata(
 
 def _scan_for_version(path: str):
     try:
-        with open(path, encoding='utf-8') as version_meta_file:
+        with open(path, encoding="utf-8") as version_meta_file:
             return load(version_meta_file)
     except JSONDecodeError:
-        logger.error('Error: Failed to parse json!')
+        logger.error("Error: Failed to parse json!")
 
 
-def _is_latest_version(source_version: str, versions: list()):
+def _is_latest_version(source_version: str, versions: list):
     for v in versions:
         if compare(source_version, v) <= 0:
             return False
     return True
 
 
-def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_latest: bool):
+def _do_merge(
+    original: NPMPackageMetadata, source: NPMPackageMetadata, is_latest: bool
+):
     changed = False
     if is_latest:
         if source.name:
@@ -422,10 +449,10 @@ def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_lates
             if d not in original.dist_tags.keys():
                 original.dist_tags[d] = source.dist_tags.get(d)
                 changed = True
-            elif d in original.dist_tags.keys() and compare(
-                    source.dist_tags.get(d),
-                    original.dist_tags.get(d)
-            ) > 0:
+            elif (
+                d in original.dist_tags.keys()
+                and compare(source.dist_tags.get(d), original.dist_tags.get(d)) > 0
+            ):
                 original.dist_tags[d] = source.dist_tags.get(d)
                 changed = True
     if source.versions:
@@ -435,16 +462,21 @@ def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_lates
     return changed
 
 
-def _write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='/') -> str:
+def _write_package_metadata_to_file(
+    package_metadata: NPMPackageMetadata, root="/"
+) -> str:
     logger.debug("NPM metadata will generate: %s", package_metadata)
-    final_package_metadata_path = os.path.join(root, package_metadata.name, PACKAGE_JSON)
+    final_package_metadata_path = os.path.join(
+        root, package_metadata.name, PACKAGE_JSON
+    )
     try:
-        with open(final_package_metadata_path, mode='w', encoding='utf-8') as f:
+        with open(final_package_metadata_path, mode="w", encoding="utf-8") as f:
             dump(_del_none(package_metadata.__dict__.copy()), f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
-            'Can not create file %s because of some missing folders', final_package_metadata_path
+            "Can not create file %s because of some missing folders",
+            final_package_metadata_path,
         )
 
 
@@ -457,7 +489,7 @@ def _del_none(d):
     return d
 
 
-def __get_path_tree(paths: str, prefix: str) -> Set[str]:
+def __get_path_tree(paths: List[str], prefix: str) -> Set[str]:
     valid_dirs = set()
     for f in paths:
         dir_ = os.path.dirname(f)

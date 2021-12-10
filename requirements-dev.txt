@@ -2,3 +2,5 @@
 -r tests/requirements.txt
 pyflakes
 pep8
+black
+
