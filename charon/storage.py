@@ -13,12 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
 
 from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
 from botocore.config import Config
+from boto3_type_annotations import s3
 from typing import Callable, Dict, List, Optional, Tuple
 import os
 import logging
@@ -41,11 +43,13 @@ class S3Client(object):
     """
 
     def __init__(self, aws_profile=None, extra_conf=None, dry_run=False) -> None:
-        self.client = self.__init_aws_client(aws_profile, extra_conf)
-        self.bucket = None
-        self.dry_run = dry_run
+        self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
+        self.__bucket: s3.Bucket = None
+        self.__dry_run = dry_run
 
-    def __init_aws_client(self, aws_profile=None, extra_conf=None, enable_acc=False):
+    def __init_aws_client(
+        self, aws_profile=None, extra_conf=None, enable_acc=False
+    ) -> s3.ServiceResource:
         if aws_profile:
             logger.debug("Using aws profile: %s", aws_profile)
             s3_session = session.Session(profile_name=aws_profile)
@@ -104,7 +108,7 @@ class S3Client(object):
             Note that if file name match
             * Return all failed to upload files due to any exceptions.
         """
-        bucket = self.get_bucket(bucket_name)
+        bucket = self.__get_bucket(bucket_name)
 
         uploaded_files = []
 
@@ -120,8 +124,8 @@ class S3Client(object):
             )
 
             path_key = os.path.join(key_prefix, path) if key_prefix else path
-            fileObject = bucket.Object(path_key)
-            existed = self.file_exists(fileObject)
+            file_object: s3.Object = bucket.Object(path_key)
+            existed = self.__file_exists(file_object)
             sha1 = read_sha1(full_file_path)
             (content_type, _) = mimetypes.guess_type(full_file_path)
             if not content_type:
@@ -133,15 +137,15 @@ class S3Client(object):
                 if product:
                     f_meta[PRODUCT_META_KEY] = product
                 try:
-                    if not self.dry_run:
+                    if not self.__dry_run:
                         if len(f_meta) > 0:
-                            fileObject.put(
+                            file_object.put(
                                 Body=open(full_file_path, "rb"),
                                 Metadata=f_meta,
                                 ContentType=content_type
                             )
                         else:
-                            fileObject.upload_file(
+                            file_object.upload_file(
                                 full_file_path,
                                 ExtraArgs={'ContentType': content_type}
                             )
@@ -157,7 +161,7 @@ class S3Client(object):
                     "File %s already exists, check if need to update product.",
                     full_file_path,
                 )
-                f_meta = fileObject.metadata
+                f_meta = file_object.metadata
                 checksum = (
                     f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
                 )
@@ -171,7 +175,7 @@ class S3Client(object):
                     prods = f_meta[PRODUCT_META_KEY].split(",")
                 except KeyError:
                     pass
-                if not self.dry_run and product not in prods:
+                if not self.__dry_run and product not in prods:
                     logger.info(
                         "File %s has new product, updating the product %s",
                         full_file_path,
@@ -179,7 +183,7 @@ class S3Client(object):
                     )
                     prods.append(product)
                     try:
-                        self.__update_file_metadata(fileObject, bucket_name, path_key,
+                        self.__update_file_metadata(file_object, bucket_name,
                                                     {PRODUCT_META_KEY: ",".join(prods)})
                     except (ClientError, HTTPClientError) as e:
                         logger.error("ERROR: file %s not uploaded to bucket"
@@ -202,7 +206,7 @@ class S3Client(object):
             * The metadata files' checksum will also be overwritten each time
             * Return all failed to upload metadata files due to exceptions
         """
-        bucket = self.get_bucket(bucket_name)
+        bucket = self.__get_bucket(bucket_name)
 
         uploaded_files = []
 
@@ -218,13 +222,11 @@ class S3Client(object):
             )
 
             path_key = os.path.join(key_prefix, path) if key_prefix else path
-            file_object = bucket.Object(path_key)
-            existed = self.file_exists(file_object)
+            file_object: s3.Object = bucket.Object(path_key)
+            existed = self.__file_exists(file_object)
             f_meta = {}
             need_overwritten = True
-
             sha1 = read_sha1(full_file_path)
-
             (content_type, _) = mimetypes.guess_type(full_file_path)
             if not content_type:
                 content_type = DEFAULT_MIME_TYPE
@@ -244,7 +246,7 @@ class S3Client(object):
                 prods.append(product)
                 f_meta[PRODUCT_META_KEY] = ",".join(prods)
             try:
-                if not self.dry_run:
+                if not self.__dry_run:
                     if need_overwritten:
                         file_object.put(
                             Body=open(full_file_path, "rb"),
@@ -255,7 +257,7 @@ class S3Client(object):
                     else:
                         # Should we update the s3 object metadata for metadata files?
                         try:
-                            self.__update_file_metadata(file_object, bucket_name, path_key, f_meta)
+                            self.__update_file_metadata(file_object, bucket_name, f_meta)
                         except (ClientError, HTTPClientError) as e:
                             logger.error("ERROR: metadata %s not updated to bucket"
                                          " %s due to error: %s ", full_file_path,
@@ -288,15 +290,15 @@ class S3Client(object):
             really be removed from the bucket. Only when the metadata is all cleared, the file
             will be finally removed from bucket.
         """
-        bucket = self.get_bucket(bucket_name)
+        bucket = self.__get_bucket(bucket_name)
 
         deleted_files = []
 
         def path_delete_handler(full_file_path: str, path: str, index: int, total: int):
             logger.info('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
             path_key = os.path.join(key_prefix, path) if key_prefix else path
-            fileObject = bucket.Object(path_key)
-            existed = self.file_exists(fileObject)
+            file_object = bucket.Object(path_key)
+            existed = self.__file_exists(file_object)
             if existed:
                 # NOTE: If we're NOT using the product key to track collisions
                 # (in the case of metadata), then this prods array will remain
@@ -305,7 +307,7 @@ class S3Client(object):
                 prods = []
                 if product:
                     try:
-                        prods = fileObject.metadata[PRODUCT_META_KEY].split(",")
+                        prods = file_object.metadata[PRODUCT_META_KEY].split(",")
                     except KeyError:
                         pass
 
@@ -320,9 +322,8 @@ class S3Client(object):
                             path, product
                         )
                         self.__update_file_metadata(
-                            fileObject,
+                            file_object,
                             bucket_name,
-                            path_key,
                             {PRODUCT_META_KEY: ",".join(prods)},
                         )
                         logger.info(
@@ -338,7 +339,7 @@ class S3Client(object):
                         return False
                 elif len(prods) == 0:
                     try:
-                        if not self.dry_run:
+                        if not self.__dry_run:
                             bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
@@ -362,7 +363,7 @@ class S3Client(object):
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the
         files wanted. If some error happend, will return an empty file list and false result
         """
-        bucket = self.get_bucket(bucket_name)
+        bucket = self.__get_bucket(bucket_name)
         objs = []
         if prefix and prefix.strip() != "":
             try:
@@ -381,13 +382,17 @@ class S3Client(object):
             files = [i.key for i in objs]
         return (files, True)
 
-    def read_file_content(self, bucket_name, key):
-        bucket = self.get_bucket(bucket_name)
-        fileObject = bucket.Object(key)
-        return str(fileObject.get()['Body'].read(), 'utf-8')
+    def read_file_content(self, bucket_name: str, key: str) -> str:
+        bucket = self.__get_bucket(bucket_name)
+        file_object = bucket.Object(key)
+        return str(file_object.get()['Body'].read(), 'utf-8')
 
-    def list_folder_content(self, bucket_name, folder) -> List[str]:
-        bucket = self.get_bucket(bucket_name)
+    def list_folder_content(self, bucket_name: str, folder: str) -> List[str]:
+        """List the content in folder in an s3 bucket. Note it's not recursive,
+           which means the content only contains the items in that folder, but
+           not in its subfolders.
+        """
+        bucket = self.__get_bucket(bucket_name)
         try:
             if not folder or folder.strip() == "/" or folder.strip() == "":
                 result = bucket.meta.client.list_objects(
@@ -416,16 +421,23 @@ class S3Client(object):
             contents.extend([f.get("Key") for f in files])
         return contents
 
-    def get_bucket(self, bucket_name: str):
-        if self.bucket and self.bucket.name == bucket_name:
-            return self.bucket
-        logger.info("Changing the bucket to %s", bucket_name)
-        self.bucket = self.client.Bucket(bucket_name)
-        return self.bucket
+    def file_exists_in_bucket(
+        self, bucket_name: str, path: str
+    ) -> bool:
+        bucket = self.__get_bucket(bucket_name)
+        file_object = bucket.Object(path)
+        return self.__file_exists(file_object)
 
-    def file_exists(self, fileObject) -> bool:
+    def __get_bucket(self, bucket_name: str) -> s3.Bucket:
+        if self.__bucket and self.__bucket.name == bucket_name:
+            return self.__bucket
+        logger.info("Changing the bucket to %s", bucket_name)
+        self.__bucket = self.__client.Bucket(bucket_name)
+        return self.__bucket
+
+    def __file_exists(self, file_object: Object) -> bool:
         try:
-            fileObject.load()
+            file_object.load()
             return True
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
@@ -433,21 +445,14 @@ class S3Client(object):
             else:
                 raise e
 
-    def file_exists_in_bucket(
-        self, bucket_name: str, path: str
-    ) -> bool:
-        bucket = self.get_bucket(bucket_name)
-        fileObject = bucket.Object(path)
-        return self.file_exists(fileObject)
-
     def __update_file_metadata(
-        self, fileObject, bucket_name: str, key: str, metadata: Dict
+        self, file_object: s3.Object, bucket_name: str, metadata: Dict
     ):
-        if not self.dry_run:
-            fileObject.metadata.update(metadata)
-            fileObject.copy_from(
-                CopySource={"Bucket": bucket_name, "Key": key},
-                Metadata=fileObject.metadata,
+        if not self.__dry_run:
+            file_object.metadata.update(metadata)
+            file_object.copy_from(
+                CopySource={"Bucket": bucket_name, "Key": file_object.key},
+                Metadata=file_object.metadata,
                 MetadataDirective="REPLACE",
             )
 

@@ -16,11 +16,16 @@ limitations under the License.
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
+from tests.commons import (
+    TEST_NPM_BUCKET, CODE_FRAME_7_14_5_INDEXES,
+    CODE_FRAME_7_15_8_INDEXES, CODE_FRAME_7_14_5_INDEX,
+    CODE_FRAME_INDEX, COMMONS_ROOT_INDEX,
+)
 from moto import mock_s3
 import boto3
 import os
 
-TEST_BUCKET = "npm_bucket"
+TEST_BUdCKET = "npm_bucket"
 
 CODE_FRAME_7_14_5_INDEXES = [
     "@babel/code-frame/7.14.5/index.html",
@@ -36,17 +41,16 @@ NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 COMMONS_ROOT_INDEX = "index.html"
 
-
 @mock_s3
 class NpmFileIndexTest(BaseTest):
     def setUp(self):
         super().setUp()
         # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_NPM_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         try:
             bucket.objects.all().delete()
             bucket.delete()
@@ -74,11 +78,11 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir,
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         self.assertEqual(5, len(actual_files))
@@ -106,7 +110,7 @@ class NpmFileIndexTest(BaseTest):
     def test_overlap_upload_index(self):
         self.__prepare_content()
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         self.assertEqual(7, len(objs))
@@ -142,12 +146,12 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET,
+            bucket_name=TEST_NPM_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         self.assertEqual(5, len(objs))
@@ -171,7 +175,7 @@ class NpmFileIndexTest(BaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )
 
@@ -183,7 +187,7 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )
 
@@ -191,6 +195,6 @@ class NpmFileIndexTest(BaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )

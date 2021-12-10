@@ -1,6 +1,7 @@
 setuptools-rust
 jinja2
 boto3
+boto3_type_annotations
 botocore
 click
 requests
