@@ -84,6 +84,14 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--work_dir",
+    "-w",
+    help="""
+    The temporary working directory into which archives should
+    be extracted, when needed.
+    """,
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -106,6 +114,7 @@ def upload(
     target: str,
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
+    work_dir: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -143,6 +152,7 @@ def upload(
                                  bucket_name=aws_bucket,
                                  prefix=prefix_,
                                  aws_profile=aws_profile,
+                                 dir_=work_dir,
                                  dry_run=dryrun)
         else:
             ignore_patterns_list = None
@@ -157,6 +167,7 @@ def upload(
                                    bucket_name=aws_bucket,
                                    aws_profile=aws_profile,
                                    prefix=prefix_,
+                                   dir_=work_dir,
                                    dry_run=dryrun)
     except Exception:
         print(traceback.format_exc())
@@ -216,6 +227,14 @@ def upload(
     """,
 )
 @option(
+    "--work_dir",
+    "-w",
+    help="""
+    The temporary working directory into which archives should
+    be extracted, when needed.
+    """,
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -238,6 +257,7 @@ def delete(
     target: str,
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
+    work_dir: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -275,6 +295,7 @@ def delete(
                            bucket_name=aws_bucket,
                            prefix=prefix_,
                            aws_profile=aws_profile,
+                           dir_=work_dir,
                            dry_run=dryrun)
         else:
             ignore_patterns_list = None
@@ -289,6 +310,7 @@ def delete(
                              bucket_name=aws_bucket,
                              aws_profile=aws_profile,
                              prefix=prefix_,
+                             dir_=work_dir,
                              dry_run=dryrun)
     except Exception:
         print(traceback.format_exc())
