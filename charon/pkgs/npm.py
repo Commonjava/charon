@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 PACKAGE_JSON = "package.json"
 
+
 class NPMPackageMetadata(object):
     """ This NPMPackageMetadata will represent the npm package(not version) package.json.
     """

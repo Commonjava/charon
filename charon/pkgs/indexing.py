@@ -15,7 +15,8 @@ limitations under the License.
 """
 from charon.config import get_template
 from charon.storage import S3Client
-from charon.constants import INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE, PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM
+from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
+                              PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM)
 from jinja2 import Template
 import os
 import logging
@@ -50,7 +51,7 @@ class IndexedHTML(object):
         self.header = header
         self.items = items
 
-    def generate_index_file_content(self, package_type:str) -> str:
+    def generate_index_file_content(self, package_type: str) -> str:
         if package_type == PACKAGE_TYPE_MAVEN:
             template = Template(MAVEN_INDEX_TEMPLATE)
         elif package_type == PACKAGE_TYPE_NPM:
@@ -146,7 +147,7 @@ def __generate_index_html(
     return index
 
 
-def __to_html(package_type:str, contents: List[str], folder: str, top_level: str) -> str:
+def __to_html(package_type: str, contents: List[str], folder: str, top_level: str) -> str:
     items = []
     if folder != "/":
         items.append("../")
