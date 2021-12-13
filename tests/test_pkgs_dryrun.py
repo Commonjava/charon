@@ -85,7 +85,7 @@ class PkgsDryRunTest(BaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(11, len(objs))
+        self.assertEqual(7, len(objs))
 
     def __prepare_maven_content(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")

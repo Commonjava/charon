@@ -35,6 +35,8 @@ PROG = 'charon'
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
 META_FILE_FAILED = "Fail"
+PACKAGE_TYPE_MAVEN = "maven"
+PACKAGE_TYPE_NPM = "npm"
 MAVEN_METADATA_TEMPLATE = '''
 <metadata>
   {%- if meta.group_id is defined %}
@@ -133,6 +135,36 @@ body {
   <main>
     <ul style="list-style: none outside;" id="contents">
     {% for item in index.items %}{% if item.endswith("/") %}
+        <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
+    {% else %}
+        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
+    {% endif %}{% endfor%}
+    </ul>
+  </main>
+  <hr/>
+</body>
+</html>
+'''
+NPM_INDEX_HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ index.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+body {
+  background: #fff;
+}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ index.header }}</h1>
+  </header>
+  <hr/>
+  <main>
+    <ul style="list-style: none outside;" id="contents">
+    {% for item in index.items %}{% if item.startswith("@") or item.startswith("..") %}
         <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
     {% else %}
         <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>

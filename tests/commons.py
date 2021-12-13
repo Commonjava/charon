@@ -92,12 +92,10 @@ CODE_FRAME_META = "@babel/code-frame/package.json"
 CODE_FRAME_7_14_5_INDEXES = [
     "@babel/code-frame/7.14.5/index.html",
     "@babel/code-frame/-/index.html",
-    "@babel/index.html"
 ]
 CODE_FRAME_7_15_8_INDEXES = [
     "@babel/code-frame/7.15.8/index.html",
     "@babel/code-frame/-/index.html",
-    "@babel/index.html"
 ]
 CODE_FRAME_7_14_5_INDEX = "@babel/code-frame/7.14.5/index.html"
 CODE_FRAME_INDEX = "@babel/code-frame/index.html"

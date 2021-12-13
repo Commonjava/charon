@@ -15,7 +15,8 @@ limitations under the License.
 """
 from charon.config import get_template
 from charon.storage import S3Client
-from charon.constants import INDEX_HTML_TEMPLATE
+from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
+                              PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM)
 from jinja2 import Template
 import os
 import logging
@@ -26,17 +27,21 @@ from charon.utils.strings import remove_prefix
 logger = logging.getLogger(__name__)
 
 
-def __get_index_template() -> str:
+def __get_index_template(package_type: str) -> str:
     """Gets the jinja2 template file content for index generation"""
     try:
         return get_template("index.html.j2")
     except FileNotFoundError:
         logger.info("index template file not defined,"
                     " will use default template.")
-        return INDEX_HTML_TEMPLATE
+        if package_type == PACKAGE_TYPE_MAVEN:
+            return INDEX_HTML_TEMPLATE
+        elif package_type == PACKAGE_TYPE_NPM:
+            return NPM_INDEX_HTML_TEMPLATE
 
 
-INDEX_TEMPLATE = __get_index_template()
+MAVEN_INDEX_TEMPLATE = __get_index_template(PACKAGE_TYPE_MAVEN)
+NPM_INDEX_TEMPLATE = __get_index_template(PACKAGE_TYPE_NPM)
 
 
 class IndexedHTML(object):
@@ -46,12 +51,16 @@ class IndexedHTML(object):
         self.header = header
         self.items = items
 
-    def generate_index_file_content(self) -> str:
-        template = Template(INDEX_TEMPLATE)
+    def generate_index_file_content(self, package_type: str) -> str:
+        if package_type == PACKAGE_TYPE_MAVEN:
+            template = Template(MAVEN_INDEX_TEMPLATE)
+        elif package_type == PACKAGE_TYPE_NPM:
+            template = Template(NPM_INDEX_TEMPLATE)
         return template.render(index=self)
 
 
 def generate_indexes(
+    package_type: str,
     top_level: str,
     changed_dirs: List[str],
     s3_client: S3Client,
@@ -76,13 +85,13 @@ def generate_indexes(
     s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
     for folder_ in s3_folders:
         index_html = __generate_index_html(
-            s3_client, bucket, folder_, top_level, prefix
+            package_type, s3_client, bucket, folder_, top_level, prefix
         )
         if index_html:
             generated_htmls.append(index_html)
 
     root_index = __generate_index_html(
-        s3_client, bucket, "/", top_level, prefix
+        package_type, s3_client, bucket, "/", top_level, prefix
     )
     if root_index:
         generated_htmls.append(root_index)
@@ -91,6 +100,7 @@ def generate_indexes(
 
 
 def __generate_index_html(
+    package_type: str,
     s3_client: S3Client,
     bucket: str,
     folder_: str,
@@ -132,12 +142,12 @@ def __generate_index_html(
                     real_contents.append(c)
         else:
             real_contents = contents
-        index = __to_html(real_contents, folder_, top_level)
+        index = __to_html(package_type, real_contents, folder_, top_level)
 
     return index
 
 
-def __to_html(contents: List[str], folder: str, top_level: str) -> str:
+def __to_html(package_type: str, contents: List[str], folder: str, top_level: str) -> str:
     items = []
     if folder != "/":
         items.append("../")
@@ -154,7 +164,7 @@ def __to_html(contents: List[str], folder: str, top_level: str) -> str:
         html_path = os.path.join(top_level, "index.html")
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
     with open(html_path, 'w', encoding='utf-8') as html:
-        html.write(index.generate_index_file_content())
+        html.write(index.generate_index_file_content(package_type))
     return html_path
 
 
@@ -164,10 +174,6 @@ def __sort_index_items(items):
     if 'maven-metadata.xml' in sorted_items:
         sorted_items.remove('maven-metadata.xml')
         sorted_items.append('maven-metadata.xml')
-    elif 'package.json' in sorted_items:
-        sorted_items.remove('package.json')
-        sorted_items.append('package.json')
-
     return sorted_items
 
 

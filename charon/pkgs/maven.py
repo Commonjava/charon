@@ -23,7 +23,8 @@ from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
-                              ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME)
+                              ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
+                              PACKAGE_TYPE_MAVEN)
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -365,7 +366,7 @@ def handle_maven_uploading(
     if do_index:
         logger.info("Start generating index files to s3")
         created_indexes = indexing.generate_indexes(
-            top_level, valid_dirs, s3_client, bucket, prefix_
+            PACKAGE_TYPE_MAVEN, top_level, valid_dirs, s3_client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 
@@ -520,7 +521,7 @@ def handle_maven_del(
     if do_index:
         logger.info("Start generating index files for all changed entries")
         created_indexes = indexing.generate_indexes(
-            top_level, valid_dirs, s3_client, bucket, prefix_
+            PACKAGE_TYPE_MAVEN, top_level, valid_dirs, s3_client, bucket, prefix_
         )
         logger.info("Index files generation done.\n")
 

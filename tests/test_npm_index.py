@@ -18,12 +18,15 @@ from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
 from tests.commons import (
     TEST_NPM_BUCKET, CODE_FRAME_7_14_5_INDEXES,
-    CODE_FRAME_7_15_8_INDEXES, CODE_FRAME_7_14_5_INDEX,
-    CODE_FRAME_INDEX, COMMONS_ROOT_INDEX,
+    CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX
 )
 from moto import mock_s3
 import boto3
 import os
+
+TEST_BUdCKET = "npm_bucket"
+
+NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
 @mock_s3
@@ -70,29 +73,29 @@ class NpmFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(8, len(actual_files))
+        self.assertEqual(5, len(actual_files))
 
-        PREFIXED_7145_INDEXES = CODE_FRAME_7_14_5_INDEXES
-        PREFIXED_CODE_FRAME_INDEX = CODE_FRAME_INDEX
+        PREFIXED_7158_INDEXES = CODE_FRAME_7_15_8_INDEXES
+        PREFIXED_NAMESPACE_BABEL_INDEX = NAMESPACE_BABEL_INDEX
         PREFIXED_ROOT_INDEX = COMMONS_ROOT_INDEX
         if prefix and prefix != "/":
-            PREFIXED_7145_INDEXES = [
-                os.path.join(prefix, f) for f in CODE_FRAME_7_14_5_INDEXES
+            PREFIXED_7158_INDEXES = [
+                os.path.join(prefix, f) for f in CODE_FRAME_7_15_8_INDEXES
             ]
-            PREFIXED_CODE_FRAME_INDEX = os.path.join(prefix, CODE_FRAME_INDEX)
+            PREFIXED_NAMESPACE_BABEL_INDEX = os.path.join(prefix, NAMESPACE_BABEL_INDEX)
             PREFIXED_ROOT_INDEX = os.path.join(prefix, COMMONS_ROOT_INDEX)
 
-        for f in PREFIXED_7145_INDEXES:
-            self.assertIn(f, actual_files)
+        for assert_file in PREFIXED_7158_INDEXES:
+            self.assertNotIn(assert_file, actual_files)
 
         for obj in objs:
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
-        indedx_obj = test_bucket.Object(PREFIXED_CODE_FRAME_INDEX)
+        indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"-/index.html\" title=\"-/\">-/</a>", index_content)
-        self.assertIn("<a href=\"7.14.5/index.html\" title=\"7.14.5/\">7.14.5/</a>", index_content)
+        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
+                      index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
         indedx_obj = test_bucket.Object(PREFIXED_ROOT_INDEX)
@@ -106,19 +109,18 @@ class NpmFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(11, len(objs))
+        self.assertEqual(7, len(objs))
 
+        self.assertIn(NAMESPACE_BABEL_INDEX, actual_files)
         for assert_file in CODE_FRAME_7_14_5_INDEXES:
-            self.assertIn(assert_file, actual_files)
-
+            self.assertNotIn(assert_file, actual_files)
         for assert_file in CODE_FRAME_7_15_8_INDEXES:
-            self.assertIn(assert_file, actual_files)
+            self.assertNotIn(assert_file, actual_files)
 
-        indedx_obj = test_bucket.Object(CODE_FRAME_INDEX)
+        indedx_obj = test_bucket.Object(NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"7.14.5/index.html\" title=\"7.14.5/\">7.14.5/</a>", index_content)
-        self.assertIn("<a href=\"7.15.8/index.html\" title=\"7.15.8/\">7.15.8/</a>", index_content)
-        self.assertIn("<a href=\"-/index.html\" title=\"-/\">-/</a>", index_content)
+        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
+                      index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
 
     def test_deletion_index(self):
@@ -148,34 +150,23 @@ class NpmFileIndexTest(BaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(8, len(objs))
+        self.assertEqual(5, len(objs))
 
-        PREFIXED_7158_INDEXES = CODE_FRAME_7_15_8_INDEXES
-        PREFIXED_FRAME_7145_INDEX = CODE_FRAME_7_14_5_INDEX
-        PREFIXED_FRAME_INDEX = CODE_FRAME_INDEX
+        PREFIXED_NAMESPACE_BABEL_INDEX = NAMESPACE_BABEL_INDEX
         if prefix and prefix != "/":
-            PREFIXED_7158_INDEXES = [
-                os.path.join(prefix, f) for f in CODE_FRAME_7_15_8_INDEXES
-            ]
-            PREFIXED_FRAME_7145_INDEX = os.path.join(prefix, CODE_FRAME_7_14_5_INDEX)
-            PREFIXED_FRAME_INDEX = os.path.join(prefix, CODE_FRAME_INDEX)
+            PREFIXED_NAMESPACE_BABEL_INDEX = os.path.join(prefix, NAMESPACE_BABEL_INDEX)
 
-        for assert_file in PREFIXED_7158_INDEXES:
-            self.assertIn(assert_file, actual_files)
-        self.assertNotIn(PREFIXED_FRAME_7145_INDEX, actual_files)
+        self.assertIn(PREFIXED_NAMESPACE_BABEL_INDEX, actual_files)
 
         for obj in objs:
             self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
             self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
-        indedx_obj = test_bucket.Object(PREFIXED_FRAME_INDEX)
+        indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"7.15.8/index.html\" title=\"7.15.8/\">7.15.8/</a>", index_content)
-        self.assertIn("<a href=\"-/index.html\" title=\"-/\">-/</a>", index_content)
+        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
+                      index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
-        self.assertNotIn(
-            "<a href=\"7.14.5/index.html\" title=\"7.14.5/\">7.14.5/</a>",
-            index_content)
 
         product_7_15_8 = "code-frame-7.15.8"
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
