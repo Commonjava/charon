@@ -1,51 +1,49 @@
+"""
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from charon.pkgs.maven import handle_maven_uploading
-from charon.pkgs.pkg_utils import is_metadata
-from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from charon.utils.strings import remove_prefix
-from tests.base import BaseTest, SHORT_TEST_PREFIX, LONG_TEST_PREFIX
+from tests.base import SHORT_TEST_PREFIX, LONG_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_MVN_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_459_FILES,
+    TEST_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_459_FILES,
     COMMONS_CLIENT_METAS, COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS,
-    NON_MVN_FILES, ARCHETYPE_CATALOG, ARCHETYPE_CATALOG_FILES
+    NON_MVN_FILES, ARCHETYPE_CATALOG, ARCHETYPE_CATALOG_FILES,
+    COMMONS_CLIENT_456_MVN_NUM, COMMONS_CLIENT_MVN_NUM,
+    COMMONS_CLIENT_META_NUM
 )
 from moto import mock_s3
-import boto3
 import os
 
 
 @mock_s3
-class MavenUploadTest(BaseTest):
-    def setUp(self):
-        super().setUp()
-        # mock_s3 is used to generate expected content
-        self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_MVN_BUCKET)
-
-    def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        try:
-            bucket.objects.all().delete()
-            bucket.delete()
-        except ValueError:
-            pass
-        super().tearDown()
-
-    def __prepare_s3(self):
-        return boto3.resource('s3')
-
+class MavenUploadTest(PackageBaseTest):
     def test_fresh_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir,
             do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        objs = list(test_bucket.objects.all())
+        objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(22, len(actual_files))
+        self.assertEqual(
+            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
 
         filesets = [
             COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
@@ -60,21 +58,9 @@ class MavenUploadTest(BaseTest):
         for f in NON_MVN_FILES:
             self.assertNotIn(f, actual_files)
 
-        for obj in objs:
-            file_obj = obj.Object()
-            if not is_metadata(file_obj.key):
-                self.assertEqual(product, file_obj.metadata[PRODUCT_META_KEY])
-            else:
-                self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
-                if file_obj.key.endswith("maven-metadata.xml"):
-                    sha1_checksum = file_obj.metadata[CHECKSUM_META_KEY].strip()
-                    sha1_obj = test_bucket.Object(file_obj.key+".sha1")
-                    sha1_file_content = str(sha1_obj.get()['Body'].read(), 'utf-8')
-                    self.assertEqual(sha1_checksum, sha1_file_content)
-            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
-            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
+        self.check_content(objs, [product])
 
-        meta_obj_client = test_bucket.Object(COMMONS_CLIENT_METAS[0])
+        meta_obj_client = self.test_bucket.Object(COMMONS_CLIENT_METAS[0])
         meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
         self.assertIn(
             "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
@@ -85,7 +71,7 @@ class MavenUploadTest(BaseTest):
         self.assertIn("<release>4.5.6</release>", meta_content_client)
         self.assertNotIn("<version>4.5.9</version>", meta_content_client)
 
-        meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_METAS[0])
+        meta_obj_logging = self.test_bucket.Object(COMMONS_LOGGING_METAS[0])
         meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
         self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
         self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
@@ -93,7 +79,7 @@ class MavenUploadTest(BaseTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        catalog = test_bucket.Object(ARCHETYPE_CATALOG)
+        catalog = self.test_bucket.Object(ARCHETYPE_CATALOG)
         cat_content = str(catalog.get()["Body"].read(), "utf-8")
         self.assertIn("<version>4.5.6</version>", cat_content)
         self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
@@ -104,20 +90,22 @@ class MavenUploadTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        objs = list(test_bucket.objects.all())
+        objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(26, len(actual_files))
+        self.assertEqual(
+            COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
 
         filesets = [
             COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
@@ -128,18 +116,14 @@ class MavenUploadTest(BaseTest):
             for f in fileset:
                 self.assertIn(f, actual_files)
 
-        product_mix = set([product_456, product_459])
-
+        product_mix = [product_456, product_459]
         for f in COMMONS_LOGGING_FILES:
             self.assertIn(f, actual_files)
-            self.assertSetEqual(
-                product_mix,
-                set(test_bucket.Object(f).metadata[PRODUCT_META_KEY].split(",")),
-            )
+            self.check_product(f, product_mix)
         for f in COMMONS_LOGGING_METAS:
             self.assertIn(f, actual_files)
 
-        meta_obj_client = test_bucket.Object(COMMONS_CLIENT_METAS[0])
+        meta_obj_client = self.test_bucket.Object(COMMONS_CLIENT_METAS[0])
         meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
         self.assertIn(
             "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
@@ -150,7 +134,7 @@ class MavenUploadTest(BaseTest):
         self.assertIn("<version>4.5.6</version>", meta_content_client)
         self.assertIn("<version>4.5.9</version>", meta_content_client)
 
-        meta_obj_logging = test_bucket.Object(COMMONS_LOGGING_METAS[0])
+        meta_obj_logging = self.test_bucket.Object(COMMONS_LOGGING_METAS[0])
         meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
         self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
         self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
@@ -158,7 +142,7 @@ class MavenUploadTest(BaseTest):
         self.assertIn("<latest>1.2</latest>", meta_content_logging)
         self.assertIn("<release>1.2</release>", meta_content_logging)
 
-        catalog = test_bucket.Object(ARCHETYPE_CATALOG)
+        catalog = self.test_bucket.Object(ARCHETYPE_CATALOG)
         cat_content = str(catalog.get()["Body"].read(), "utf-8")
         self.assertIn("<version>4.5.6</version>", cat_content)
         self.assertIn("<version>4.5.9</version>", cat_content)
@@ -170,14 +154,11 @@ class MavenUploadTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir, do_index=False
+            bucket_name=TEST_BUCKET, dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        objs = list(test_bucket.objects.all())
+        objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(17, len(actual_files))
-
         ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
@@ -185,7 +166,13 @@ class MavenUploadTest(BaseTest):
             "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1"
         ]
-
+        not_ignored = [e for e in COMMONS_CLIENT_456_FILES if e not in ignored_files]
+        not_ignored.extend(
+            [e for e in COMMONS_LOGGING_FILES if e not in ignored_files])
+        self.assertEqual(
+            len(not_ignored) * 2 + COMMONS_CLIENT_META_NUM, len(actual_files))
+        for f in not_ignored:
+            self.assertIn(f, actual_files)
         for f in ignored_files:
             self.assertNotIn(f, actual_files)
 
@@ -203,16 +190,18 @@ class MavenUploadTest(BaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        objs = list(test_bucket.objects.all())
+        objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(22, len(actual_files))
+        self.assertEqual(
+            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [
@@ -238,17 +227,10 @@ class MavenUploadTest(BaseTest):
         for f in PREFIXED_NON_MVN_FILES:
             self.assertNotIn(f, actual_files)
 
-        for obj in objs:
-            file_obj = obj.Object()
-            if not is_metadata(file_obj.key):
-                self.assertEqual(product, file_obj.metadata[PRODUCT_META_KEY])
-            else:
-                self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
-            self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
-            self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
+        self.check_content(objs, [product])
 
-        meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_METAS[0])
+        meta_obj_client = self.test_bucket.Object(PREFIXED_COMMONS_CLIENT_METAS[0])
         self.assertIsNotNone(meta_obj_client)
 
-        meta_obj_logging = test_bucket.Object(PREFIXED_COMMONS_LOGGING_METAS[0])
+        meta_obj_logging = self.test_bucket.Object(PREFIXED_COMMONS_LOGGING_METAS[0])
         self.assertIsNotNone(meta_obj_logging)

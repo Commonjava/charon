@@ -13,42 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from charon.constants import PROD_INFO_SUFFIX
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
-from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
+from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_NPM_BUCKET, CODE_FRAME_7_14_5_INDEXES,
+    TEST_BUCKET, CODE_FRAME_7_14_5_INDEXES,
     CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX
 )
 from moto import mock_s3
-import boto3
 import os
-
-TEST_BUdCKET = "npm_bucket"
 
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
 @mock_s3
-class NpmFileIndexTest(BaseTest):
-    def setUp(self):
-        super().setUp()
-        # mock_s3 is used to generate expected content
-        self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_NPM_BUCKET)
-
-    def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
-        try:
-            bucket.objects.all().delete()
-            bucket.delete()
-        except ValueError:
-            pass
-        super().tearDown()
-
-    def __prepare_s3(self):
-        return boto3.resource('s3')
-
+class NpmFileIndexTest(PackageBaseTest):
     def test_uploading_index(self):
         self.__test_upload_prefix()
 
@@ -66,14 +46,14 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
+            bucket_name=TEST_BUCKET, prefix=prefix,
             dir_=self.tempdir,
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(5, len(actual_files))
+        self.assertEqual(7, len(actual_files))
 
         PREFIXED_7158_INDEXES = CODE_FRAME_7_15_8_INDEXES
         PREFIXED_NAMESPACE_BABEL_INDEX = NAMESPACE_BABEL_INDEX
@@ -89,8 +69,9 @@ class NpmFileIndexTest(BaseTest):
             self.assertNotIn(assert_file, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            if not obj.key.endswith(PROD_INFO_SUFFIX):
+                self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -106,10 +87,10 @@ class NpmFileIndexTest(BaseTest):
     def test_overlap_upload_index(self):
         self.__prepare_content()
 
-        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(7, len(objs))
+        self.assertEqual(11, len(objs))
 
         self.assertIn(NAMESPACE_BABEL_INDEX, actual_files)
         for assert_file in CODE_FRAME_7_14_5_INDEXES:
@@ -142,15 +123,15 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_NPM_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_NPM_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(5, len(objs))
+        self.assertEqual(7, len(objs))
 
         PREFIXED_NAMESPACE_BABEL_INDEX = NAMESPACE_BABEL_INDEX
         if prefix and prefix != "/":
@@ -159,8 +140,9 @@ class NpmFileIndexTest(BaseTest):
         self.assertIn(PREFIXED_NAMESPACE_BABEL_INDEX, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            if not obj.key.endswith(PROD_INFO_SUFFIX):
+                self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -172,7 +154,7 @@ class NpmFileIndexTest(BaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
+            bucket_name=TEST_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )
 
@@ -184,7 +166,7 @@ class NpmFileIndexTest(BaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
+            bucket_name=TEST_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )
 
@@ -192,6 +174,6 @@ class NpmFileIndexTest(BaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_NPM_BUCKET, prefix=prefix,
+            bucket_name=TEST_BUCKET, prefix=prefix,
             dir_=self.tempdir
         )

@@ -15,6 +15,7 @@ limitations under the License.
 """
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
+from charon.constants import PROD_INFO_SUFFIX
 
 from boto3 import session
 from botocore.errorfactory import ClientError
@@ -134,8 +135,6 @@ class S3Client(object):
                 f_meta = {}
                 if sha1.strip() != "":
                     f_meta[CHECKSUM_META_KEY] = sha1
-                if product:
-                    f_meta[PRODUCT_META_KEY] = product
                 try:
                     if not self.__dry_run:
                         if len(f_meta) > 0:
@@ -149,6 +148,8 @@ class S3Client(object):
                                 full_file_path,
                                 ExtraArgs={'ContentType': content_type}
                             )
+                        if product:
+                            self.__update_prod_info(path_key, bucket_name, [product])
                     logger.info('Uploaded %s to bucket %s', path, bucket_name)
                     uploaded_files.append(path_key)
                 except (ClientError, HTTPClientError) as e:
@@ -170,25 +171,15 @@ class S3Client(object):
                                  'one in S3. Product: %s', path_key, product)
                     return False
 
-                prods = []
-                try:
-                    prods = f_meta[PRODUCT_META_KEY].split(",")
-                except KeyError:
-                    pass
-                if not self.__dry_run and product not in prods:
+                (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
+                if not self.__dry_run and no_error and product not in prods:
                     logger.info(
                         "File %s has new product, updating the product %s",
                         full_file_path,
                         product,
                     )
                     prods.append(product)
-                    try:
-                        self.__update_file_metadata(file_object, bucket_name,
-                                                    {PRODUCT_META_KEY: ",".join(prods)})
-                    except (ClientError, HTTPClientError) as e:
-                        logger.error("ERROR: file %s not uploaded to bucket"
-                                     " %s due to error: %s ", full_file_path,
-                                     bucket_name, e)
+                    if not self.__update_prod_info(path_key, bucket_name, prods):
                         return False
             return True
 
@@ -198,7 +189,7 @@ class S3Client(object):
 
     def upload_metadatas(
         self, meta_file_paths: List[str], bucket_name: str,
-        product: Optional[str], root="/", key_prefix: str = None
+        product: Optional[str] = None, root="/", key_prefix: str = None
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
@@ -237,14 +228,6 @@ class S3Client(object):
                 )
 
             f_meta[CHECKSUM_META_KEY] = sha1
-            prods = (
-                f_meta[PRODUCT_META_KEY].split(",")
-                if PRODUCT_META_KEY in f_meta
-                else []
-            )
-            if product and product not in prods:
-                prods.append(product)
-                f_meta[PRODUCT_META_KEY] = ",".join(prods)
             try:
                 if not self.__dry_run:
                     if need_overwritten:
@@ -253,15 +236,16 @@ class S3Client(object):
                             Metadata=f_meta,
                             ContentType=content_type
                         )
-
-                    else:
-                        # Should we update the s3 object metadata for metadata files?
-                        try:
-                            self.__update_file_metadata(file_object, bucket_name, f_meta)
-                        except (ClientError, HTTPClientError) as e:
-                            logger.error("ERROR: metadata %s not updated to bucket"
-                                         " %s due to error: %s ", full_file_path,
-                                         bucket_name, e)
+                    if product:
+                        # NOTE: This should not happen for most cases, as most of the metadata
+                        # file does not have product info. Just leave for requirement change in
+                        # future
+                        (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
+                        if not no_error:
+                            return False
+                        if no_error and product not in prods:
+                            prods.append(product)
+                        if not self.__update_prod_info(path_key, bucket_name, prods):
                             return False
                 logger.info('Updated metadata %s to bucket %s', path, bucket_name)
                 uploaded_files.append(path_key)
@@ -306,11 +290,9 @@ class S3Client(object):
                 # the product reference counts will be used (from object metadata).
                 prods = []
                 if product:
-                    try:
-                        prods = file_object.metadata[PRODUCT_META_KEY].split(",")
-                    except KeyError:
-                        pass
-
+                    (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
+                    if not no_error:
+                        return False
                     if product in prods:
                         prods.remove(product)
 
@@ -321,10 +303,10 @@ class S3Client(object):
                             " will remove %s from its metadata",
                             path, product
                         )
-                        self.__update_file_metadata(
-                            file_object,
+                        self.__update_prod_info(
+                            path_key,
                             bucket_name,
-                            {PRODUCT_META_KEY: ",".join(prods)},
+                            prods,
                         )
                         logger.info(
                             "Removed product %s from metadata of file %s",
@@ -341,6 +323,8 @@ class S3Client(object):
                     try:
                         if not self.__dry_run:
                             bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
+                            if not self.__update_prod_info(path_key, bucket_name, prods):
+                                return False
                         logger.info("Deleted %s from bucket %s", path, bucket_name)
                         deleted_files.append(path)
                         return True
@@ -439,23 +423,74 @@ class S3Client(object):
         try:
             file_object.load()
             return True
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "404":
+        except (ClientError, HTTPClientError) as e:
+            if isinstance(e, ClientError) and e.response["Error"]["Code"] == "404":
                 return False
             else:
-                raise e
+                logger.error("Error: file existence check failed due "
+                             "to error: %s", e)
 
-    def __update_file_metadata(
-        self, file_object: s3.Object, bucket_name: str, metadata: Dict
-    ):
-        if not self.__dry_run:
-            file_object.metadata.update(metadata)
-            file_object.copy_from(
-                CopySource={"Bucket": bucket_name, "Key": file_object.key},
-                Metadata=file_object.metadata,
-                ContentType=file_object.content_type,
-                MetadataDirective="REPLACE",
-            )
+    # def __update_file_metadata(
+    #     self, file_object: s3.Object, bucket_name: str, metadata: Dict
+    # ):
+    #     if not self.__dry_run:
+    #         file_object.metadata.update(metadata)
+    #         file_object.copy_from(
+    #             CopySource={"Bucket": bucket_name, "Key": file_object.key},
+    #             Metadata=file_object.metadata,
+    #             ContentType=file_object.content_type,
+    #             MetadataDirective="REPLACE",
+    #         )
+
+    def __get_prod_info(
+        self, file: str, bucket_name: str
+    ) -> Tuple[List[str], bool]:
+        logger.debug("Getting product infomation for file %s", file)
+        prod_info_file = file + PROD_INFO_SUFFIX
+        try:
+            info_file_content = self.read_file_content(bucket_name, prod_info_file)
+            prods = [p.strip() for p in info_file_content.split("\n")]
+            logger.debug("Got product information as below %s", prods)
+            return (prods, True)
+        except (ClientError, HTTPClientError) as e:
+            logger.error("ERROR: Can not get product info for file %s "
+                         "due to error: %s", file, e)
+            return ([], False)
+
+    def __update_prod_info(
+        self, file: str, bucket_name: str, prods: List[str]
+    ) -> bool:
+        prod_info_file = file + PROD_INFO_SUFFIX
+        bucket = self.__get_bucket(bucket_name)
+        file_obj = bucket.Object(prod_info_file)
+        content_type = "text/plain"
+        if len(prods) > 0:
+            logger.debug("Updating product infomation for file %s "
+                         "with products: %s", file, prods)
+            try:
+                file_obj.put(
+                    Body="\n".join(prods).encode("utf-8"),
+                    ContentType=content_type
+                )
+                logger.debug("Updated product infomation for file %s", file)
+                return True
+            except (ClientError, HTTPClientError) as e:
+                logger.error("ERROR: Can not update product info for file %s "
+                             "due to error: %s", file, e)
+                return False
+        else:
+            logger.debug("Removing product infomation file for file %s "
+                         "because no products left", file)
+            try:
+                if self.__file_exists(file_obj):
+                    bucket.delete_objects(
+                        Delete={"Objects": [{"Key": prod_info_file}]})
+                    logger.debug("Removed product infomation file for file %s", file)
+                return True
+            except (ClientError, HTTPClientError) as e:
+                logger.error("ERROR: Can not delete product info file for file %s "
+                             "due to error: %s", file, e)
+                return False
 
     def __do_path_cut_and(
         self, file_paths: List[str],

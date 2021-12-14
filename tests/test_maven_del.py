@@ -1,37 +1,35 @@
+"""
+Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from charon.utils.strings import remove_prefix
-from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, BaseTest
+from charon.constants import PROD_INFO_SUFFIX
+from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_MVN_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_METAS,
-    COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS, ARCHETYPE_CATALOG,
-    ARCHETYPE_CATALOG_FILES
+    TEST_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_459_FILES,
+    COMMONS_CLIENT_METAS, COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS,
+    ARCHETYPE_CATALOG, ARCHETYPE_CATALOG_FILES, COMMONS_CLIENT_459_MVN_NUM,
+    COMMONS_CLIENT_META_NUM
 )
 from moto import mock_s3
-import boto3
 import os
 
 
 @mock_s3
-class MavenDeleteTest(BaseTest):
-    def setUp(self):
-        super().setUp()
-        # mock_s3 is used to generate expected content
-        self.mock_s3 = self.__prepare_s3()
-        self.mock_s3.create_bucket(Bucket=TEST_MVN_BUCKET)
-
-    def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
-        try:
-            bucket.objects.all().delete()
-            bucket.delete()
-        except ValueError:
-            pass
-        super().tearDown()
-
-    def __prepare_s3(self):
-        return boto3.resource("s3")
-
+class MavenDeleteTest(PackageBaseTest):
     def test_maven_deletion(self):
         self.__prepare_content()
 
@@ -39,14 +37,17 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir,
             do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(22, len(actual_files))
+        self.assertEqual(
+            COMMONS_CLIENT_459_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
 
         for f in COMMONS_CLIENT_456_FILES:
             self.assertNotIn(f, actual_files)
@@ -60,8 +61,9 @@ class MavenDeleteTest(BaseTest):
             self.assertIn(f, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            if not obj.key.endswith(PROD_INFO_SUFFIX):
+                self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         product_459 = "commons-client-4.5.9"
         meta_obj_client = test_bucket.Object(COMMONS_CLIENT_METAS[0])
@@ -97,7 +99,7 @@ class MavenDeleteTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            bucket_name=TEST_MVN_BUCKET, dir_=self.tempdir,
+            bucket_name=TEST_BUCKET, dir_=self.tempdir,
             do_index=False
         )
 
@@ -108,34 +110,38 @@ class MavenDeleteTest(BaseTest):
         self.__prepare_content()
         product_456 = "commons-client-4.5.6"
         product_459 = "commons-client-4.5.9"
-        product_mix = set([product_456, product_459])
+        product_mix = [product_456, product_459]
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
 
         handle_maven_del(
             test_zip, product_456,
             ignore_patterns=[".*.sha1"],
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             dir_=self.tempdir,
             do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(24, len(actual_files))
 
         httpclient_ignored_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1"
         ]
+        not_ignored = [e for e in COMMONS_CLIENT_456_FILES if e not in httpclient_ignored_files]
+        not_ignored.extend(COMMONS_CLIENT_459_FILES)
+        not_ignored.extend(
+            [e for e in COMMONS_LOGGING_FILES if e not in httpclient_ignored_files])
+        self.assertEqual(
+            len(not_ignored) * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
+
         for f in httpclient_ignored_files:
             self.assertIn(f, actual_files)
-            self.assertEqual(
-                product_456,
-                test_bucket.Object(f)
-                .metadata[PRODUCT_META_KEY]
-            )
+            self.check_product(f, [product_456])
 
         commons_logging_sha1_files = [
             "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.sha1",
@@ -144,14 +150,7 @@ class MavenDeleteTest(BaseTest):
         ]
         for f in commons_logging_sha1_files:
             self.assertIn(f, actual_files)
-            self.assertSetEqual(
-                product_mix,
-                set(
-                    test_bucket.Object(f)
-                    .metadata[PRODUCT_META_KEY]
-                    .split(",")
-                )
-            )
+            self.check_product(f, product_mix)
 
         non_sha1_files = [
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom",
@@ -176,15 +175,18 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir, do_index=False
         )
 
-        test_bucket = self.mock_s3.Bucket(TEST_MVN_BUCKET)
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-        self.assertEqual(22, len(actual_files))
+        self.assertEqual(
+            COMMONS_CLIENT_459_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [
@@ -206,8 +208,9 @@ class MavenDeleteTest(BaseTest):
             self.assertIn(f, actual_files)
 
         for obj in objs:
-            self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+            if not obj.key.endswith(PROD_INFO_SUFFIX):
+                self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
+                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
 
         product_459 = "commons-client-4.5.9"
         meta_obj_client = test_bucket.Object(PREFIXED_COMMONS_CLIENT_METAS[0])
@@ -219,7 +222,7 @@ class MavenDeleteTest(BaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False
@@ -233,7 +236,7 @@ class MavenDeleteTest(BaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False
@@ -243,7 +246,7 @@ class MavenDeleteTest(BaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            bucket_name=TEST_MVN_BUCKET,
+            bucket_name=TEST_BUCKET,
             prefix=prefix,
             dir_=self.tempdir,
             do_index=False

@@ -13,9 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from charon.storage import S3Client, PRODUCT_META_KEY, CHECKSUM_META_KEY
+from typing import List
+
+from boto3_type_annotations import s3
+from charon.storage import S3Client, CHECKSUM_META_KEY
 from charon.utils.archive import extract_zip_all
 from charon.utils.files import overwrite_file, read_sha1
+from charon.constants import PROD_INFO_SUFFIX
 from tests.base import BaseTest, SHORT_TEST_PREFIX
 from moto import mock_s3
 import boto3
@@ -28,7 +32,7 @@ import shutil
 MY_BUCKET = "my_bucket"
 MY_PREFIX = "mock_folder"
 
-COMMONS_LANG3_ZIP_ENTRY = 30
+COMMONS_LANG3_ZIP_ENTRY = 60
 COMMONS_LANG3_ZIP_MVN_ENTRY = 26
 
 
@@ -143,39 +147,39 @@ class S3ClientTest(BaseTest):
 
     def test_upload_and_delete_files(self):
         (temp_root, root, all_files) = self.__prepare_files()
-
         bucket = self.mock_s3.Bucket(MY_BUCKET)
-
         # test upload existed files with the product. The product will be added to metadata
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
+
+        def content_check(products: List[str], objs: List[s3.ObjectSummary]):
+            self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objs))
+            for o in objs:
+                obj = o.Object()
+                if obj.key.endswith(PROD_INFO_SUFFIX):
+                    content = str(obj.get()['Body'].read(), 'utf-8')
+                    self.assertEqual(
+                        set(products),
+                        set([f for f in content.split("\n") if f.strip() != ""])
+                    )
+                else:
+                    self.assertNotEqual("", obj.metadata[CHECKSUM_META_KEY])
+
         objects = list(bucket.objects.all())
-        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
-        for obj in objects:
-            self.assertEqual("apache-commons", obj.Object().metadata[PRODUCT_META_KEY])
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
+        content_check(["apache-commons"], objects)
 
         # test upload existed files with extra product. The extra product will be added to metadata
         self.s3_client.upload_files(all_files, bucket_name=MY_BUCKET, product="commons-lang3",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
-        for obj in objects:
-            self.assertEqual(
-                set("apache-commons,commons-lang3".split(",")),
-                set(obj.Object().metadata["rh-products"].split(",")),
-            )
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
+        content_check(set(["apache-commons", "commons-lang3"]), objects)
 
         # test delete files with one product. The file will not be deleted, but the product will
         # be removed from metadata.
         self.s3_client.delete_files(all_files, bucket_name=MY_BUCKET, product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
-        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objects))
-        for obj in objects:
-            self.assertEqual("commons-lang3", obj.Object().metadata["rh-products"])
-            self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY])
+        content_check(["commons-lang3"], objects)
 
         # test delete files with left product. The file will be deleted, because all products
         # have been removed from metadata.
@@ -198,7 +202,7 @@ class S3ClientTest(BaseTest):
             root=root,
             key_prefix=SHORT_TEST_PREFIX)
         objects = list(bucket.objects.all())
-        self.assertEqual(COMMONS_LANG3_ZIP_ENTRY - 4, len(objects))
+        self.assertEqual(COMMONS_LANG3_ZIP_MVN_ENTRY * 2, len(objects))
         for obj in objects:
             self.assertTrue(obj.key.startswith(SHORT_TEST_PREFIX))
 
@@ -228,13 +232,15 @@ class S3ClientTest(BaseTest):
             [file], bucket_name=MY_BUCKET, product="foo-bar-1.0", root=temp_root
         )
         objects = list(bucket.objects.all())
-        self.assertEqual(1, len(objects))
+        self.assertEqual(2, len(objects))
         obj = objects[0].Object()
-        self.assertEqual("foo-bar-1.0", obj.metadata[PRODUCT_META_KEY])
         self.assertEqual(sha1_1, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
         )
+        obj = objects[1].Object()
+        content = str(obj.get()['Body'].read(), 'utf-8')
+        self.assertEqual("foo-bar-1.0", content.strip())
 
         os.remove(file)
 
@@ -246,13 +252,15 @@ class S3ClientTest(BaseTest):
             [file], bucket_name=MY_BUCKET, product="foo-bar-1.0-2", root=temp_root
         )
         objects = list(bucket.objects.all())
-        self.assertEqual(1, len(objects))
+        self.assertEqual(2, len(objects))
         obj = objects[0].Object()
-        self.assertEqual("foo-bar-1.0", obj.metadata[PRODUCT_META_KEY])
         self.assertEqual(sha1_1, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
         )
+        obj = objects[1].Object()
+        content = str(obj.get()['Body'].read(), 'utf-8')
+        self.assertEqual("foo-bar-1.0", content.strip())
 
         shutil.rmtree(temp_root)
 
@@ -278,12 +286,11 @@ class S3ClientTest(BaseTest):
         overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_metadatas(
-            [file], bucket_name=MY_BUCKET, product="foo-bar-1.0", root=temp_root
+            [file], bucket_name=MY_BUCKET, root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(1, len(objects))
         obj = objects[0].Object()
-        self.assertEqual("foo-bar-1.0", obj.metadata[PRODUCT_META_KEY])
         self.assertEqual(sha1_1, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
@@ -295,16 +302,11 @@ class S3ClientTest(BaseTest):
         self.s3_client.upload_metadatas(
             [file],
             bucket_name=MY_BUCKET,
-            product="foo-bar-1.0-repeated",
             root=temp_root,
         )
         objects = list(bucket.objects.all())
         self.assertEqual(1, len(objects))
         obj = objects[0].Object()
-        self.assertEqual(
-            set("foo-bar-1.0,foo-bar-1.0-repeated".split(",")),
-            set(obj.metadata[PRODUCT_META_KEY].split(",")),
-        )
         self.assertEqual(sha1_1_repeated, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
@@ -329,15 +331,11 @@ class S3ClientTest(BaseTest):
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_metadatas(
-            [file], bucket_name=MY_BUCKET, product="foo-bar-1.0-2", root=temp_root
+            [file], bucket_name=MY_BUCKET, root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(1, len(objects))
         obj = objects[0].Object()
-        self.assertEqual(
-            set("foo-bar-1.0,foo-bar-1.0-2,foo-bar-1.0-repeated".split(",")),
-            set(obj.metadata[PRODUCT_META_KEY].split(",")),
-        )
         self.assertEqual(sha1_2, obj.metadata[CHECKSUM_META_KEY])
         self.assertEqual(
             content2, str(obj.get()["Body"].read(), sys.getdefaultencoding())

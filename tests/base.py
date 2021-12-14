@@ -17,8 +17,16 @@ import unittest
 import tempfile
 import os
 import shutil
+import boto3
+from typing import List
 from charon.utils.files import overwrite_file
 from charon.config import CONFIG_FILE
+from charon.constants import PROD_INFO_SUFFIX
+from charon.pkgs.pkg_utils import is_metadata
+from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
+from tests.commons import TEST_BUCKET
+from boto3_type_annotations import s3
+
 
 SHORT_TEST_PREFIX = "ga"
 LONG_TEST_PREFIX = "earlyaccess/all"
@@ -72,3 +80,49 @@ targets:
 
     def get_config_base(self) -> str:
         return os.path.join(self.get_temp_dir(), '.charon')
+
+
+class PackageBaseTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        # mock_s3 is used to generate expected content
+        self.mock_s3 = self.__prepare_s3()
+        self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+
+    def tearDown(self):
+        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        try:
+            bucket.objects.all().delete()
+            bucket.delete()
+        except ValueError:
+            pass
+        super().tearDown()
+
+    def __prepare_s3(self):
+        return boto3.resource('s3')
+
+    def check_product(self, file: str, prods: List[str]):
+        prod_file = file + PROD_INFO_SUFFIX
+        prod_f_obj = self.test_bucket.Object(prod_file)
+        content = str(prod_f_obj.get()['Body'].read(), 'utf-8')
+        self.assertEqual(
+            set(prods),
+            set([f for f in content.split("\n") if f.strip() != ""])
+        )
+
+    def check_content(self, objs: List[s3.ObjectSummary], products: List[str]):
+        for obj in objs:
+            file_obj = obj.Object()
+            if not file_obj.key.endswith(PROD_INFO_SUFFIX):
+                if not is_metadata(file_obj.key):
+                    self.check_product(file_obj.key, products)
+                else:
+                    self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
+                    if file_obj.key.endswith("maven-metadata.xml"):
+                        sha1_checksum = file_obj.metadata[CHECKSUM_META_KEY].strip()
+                        sha1_obj = self.test_bucket.Object(file_obj.key + ".sha1")
+                        sha1_file_content = str(sha1_obj.get()['Body'].read(), 'utf-8')
+                        self.assertEqual(sha1_checksum, sha1_file_content)
+                self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
+                self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
