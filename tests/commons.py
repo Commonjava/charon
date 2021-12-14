@@ -1,5 +1,5 @@
 # For maven
-TEST_MVN_BUCKET = "test_bucket"
+TEST_BUCKET = "test_bucket"
 COMMONS_CLIENT_456_FILES = [
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.sha1",
     "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar",
@@ -49,6 +49,20 @@ NON_MVN_FILES = [
     "commons-client-4.5.9/licenses/licenses.txt",
     "commons-client-4.5.9/README.md"
 ]
+COMMONS_CLIENT_456_MVN_NUM = (
+    len(COMMONS_CLIENT_456_FILES) +
+    len(COMMONS_LOGGING_FILES))
+COMMONS_CLIENT_459_MVN_NUM = (
+    len(COMMONS_CLIENT_459_FILES) +
+    len(COMMONS_LOGGING_FILES))
+COMMONS_CLIENT_MVN_NUM = (
+    len(COMMONS_CLIENT_456_FILES) +
+    len(COMMONS_CLIENT_459_FILES) +
+    len(COMMONS_LOGGING_FILES))
+COMMONS_CLIENT_META_NUM = (
+    len(COMMONS_CLIENT_METAS) +
+    len(COMMONS_LOGGING_METAS) +
+    len(ARCHETYPE_CATALOG_FILES))
 # For maven indexes
 COMMONS_CLIENT_456_INDEXES = [
     "index.html",

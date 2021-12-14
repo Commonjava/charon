@@ -134,11 +134,9 @@ body {
   <hr/>
   <main>
     <ul style="list-style: none outside;" id="contents">
-    {% for item in index.items %}{% if item.endswith("/") %}
-        <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
-    {% else %}
+    {% for item in index.items %}
         <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
-    {% endif %}{% endfor%}
+    {% endfor%}
     </ul>
   </main>
   <hr/>
@@ -175,3 +173,5 @@ body {
 </body>
 </html>
 '''
+
+PROD_INFO_SUFFIX = ".prodinfo"

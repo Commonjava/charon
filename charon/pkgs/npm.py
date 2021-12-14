@@ -113,7 +113,7 @@ def handle_npm_uploading(
         _, _failed_metas = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
-            product=product,
+            product=None,
             root=target_dir,
             key_prefix=prefix_
         )
@@ -189,7 +189,7 @@ def handle_npm_del(
         all_meta_files.append(file)
     client.delete_files(
         file_paths=all_meta_files, bucket_name=bucket,
-        product=product, root=target_dir, key_prefix=prefix_
+        product=None, root=target_dir, key_prefix=prefix_
     )
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
