@@ -30,60 +30,16 @@ import os
 @mock_s3
 class MavenUploadTest(PackageBaseTest):
     def test_fresh_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
-        product = "commons-client-4.5.6"
-        handle_maven_uploading(
-            test_zip, product,
-            bucket_name=TEST_BUCKET, dir_=self.tempdir,
-            do_index=False
-        )
+        self.__test_prefix_upload("")
 
-        objs = list(self.test_bucket.objects.all())
-        actual_files = [obj.key for obj in objs]
-        self.assertEqual(
-            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
-            len(actual_files)
-        )
+    def test_short_prefix_upload(self):
+        self.__test_prefix_upload(SHORT_TEST_PREFIX)
 
-        filesets = [
-            COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
-            COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS,
-            ARCHETYPE_CATALOG_FILES
-        ]
+    def test_long_prefix_upload(self):
+        self.__test_prefix_upload(LONG_TEST_PREFIX)
 
-        for fileset in filesets:
-            for f in fileset:
-                self.assertIn(f, actual_files)
-
-        for f in NON_MVN_FILES:
-            self.assertNotIn(f, actual_files)
-
-        self.check_content(objs, [product])
-
-        meta_obj_client = self.test_bucket.Object(COMMONS_CLIENT_METAS[0])
-        meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
-        self.assertIn(
-            "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
-        )
-        self.assertIn("<artifactId>httpclient</artifactId>", meta_content_client)
-        self.assertIn("<version>4.5.6</version>", meta_content_client)
-        self.assertIn("<latest>4.5.6</latest>", meta_content_client)
-        self.assertIn("<release>4.5.6</release>", meta_content_client)
-        self.assertNotIn("<version>4.5.9</version>", meta_content_client)
-
-        meta_obj_logging = self.test_bucket.Object(COMMONS_LOGGING_METAS[0])
-        meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
-        self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
-        self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
-        self.assertIn("<version>1.2</version>", meta_content_logging)
-        self.assertIn("<latest>1.2</latest>", meta_content_logging)
-        self.assertIn("<release>1.2</release>", meta_content_logging)
-
-        catalog = self.test_bucket.Object(ARCHETYPE_CATALOG)
-        cat_content = str(catalog.get()["Body"].read(), "utf-8")
-        self.assertIn("<version>4.5.6</version>", cat_content)
-        self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
-        self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
+    def test_root_prefix_upload(self):
+        self.__test_prefix_upload("/")
 
     def test_overlap_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -102,6 +58,7 @@ class MavenUploadTest(PackageBaseTest):
 
         objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
+        # need to double mvn num because of .prodinfo files
         self.assertEqual(
             COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
             len(actual_files)
@@ -169,21 +126,13 @@ class MavenUploadTest(PackageBaseTest):
         not_ignored = [e for e in COMMONS_CLIENT_456_FILES if e not in ignored_files]
         not_ignored.extend(
             [e for e in COMMONS_LOGGING_FILES if e not in ignored_files])
+        # need to double mvn num because of .prodinfo files
         self.assertEqual(
             len(not_ignored) * 2 + COMMONS_CLIENT_META_NUM, len(actual_files))
         for f in not_ignored:
             self.assertIn(f, actual_files)
         for f in ignored_files:
             self.assertNotIn(f, actual_files)
-
-    def test_short_prefix_upload(self):
-        self.__test_prefix_upload(SHORT_TEST_PREFIX)
-
-    def test_long_prefix_upload(self):
-        self.__test_prefix_upload(LONG_TEST_PREFIX)
-
-    def test_root_prefix_upload(self):
-        self.__test_prefix_upload("/")
 
     def __test_prefix_upload(self, prefix: str):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -198,6 +147,7 @@ class MavenUploadTest(PackageBaseTest):
 
         objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
+        # need to double mvn num because of .prodinfo files
         self.assertEqual(
             COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
             len(actual_files)
@@ -206,20 +156,20 @@ class MavenUploadTest(PackageBaseTest):
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [
             os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES]
-        for f in PREFIXED_COMMONS_CLIENT_456_FILES:
-            self.assertIn(f, actual_files)
         PREFIXED_COMMONS_CLIENT_METAS = [
             os.path.join(prefix_, f) for f in COMMONS_CLIENT_METAS]
-        for f in PREFIXED_COMMONS_CLIENT_METAS:
-            self.assertIn(f, actual_files)
-
         PREFIXED_COMMONS_LOGGING_FILES = [
             os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES]
-        for f in PREFIXED_COMMONS_LOGGING_FILES:
-            self.assertIn(f, actual_files)
         PREFIXED_COMMONS_LOGGING_METAS = [
             os.path.join(prefix_, f) for f in COMMONS_LOGGING_METAS]
-        for f in PREFIXED_COMMONS_LOGGING_METAS:
+        PREFIXED_ARCHETYPE_CATALOG_FILES = [
+            os.path.join(prefix_, f) for f in ARCHETYPE_CATALOG_FILES]
+        file_set = [
+            *PREFIXED_COMMONS_CLIENT_456_FILES, *PREFIXED_COMMONS_CLIENT_METAS,
+            *PREFIXED_COMMONS_LOGGING_FILES, *PREFIXED_COMMONS_LOGGING_METAS,
+            *PREFIXED_ARCHETYPE_CATALOG_FILES
+        ]
+        for f in file_set:
             self.assertIn(f, actual_files)
 
         PREFIXED_NON_MVN_FILES = [
@@ -230,7 +180,26 @@ class MavenUploadTest(PackageBaseTest):
         self.check_content(objs, [product])
 
         meta_obj_client = self.test_bucket.Object(PREFIXED_COMMONS_CLIENT_METAS[0])
-        self.assertIsNotNone(meta_obj_client)
+        meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
+        )
+        self.assertIn("<artifactId>httpclient</artifactId>", meta_content_client)
+        self.assertIn("<version>4.5.6</version>", meta_content_client)
+        self.assertIn("<latest>4.5.6</latest>", meta_content_client)
+        self.assertIn("<release>4.5.6</release>", meta_content_client)
+        self.assertNotIn("<version>4.5.9</version>", meta_content_client)
 
         meta_obj_logging = self.test_bucket.Object(PREFIXED_COMMONS_LOGGING_METAS[0])
-        self.assertIsNotNone(meta_obj_logging)
+        meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
+        self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
+        self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
+        self.assertIn("<version>1.2</version>", meta_content_logging)
+        self.assertIn("<latest>1.2</latest>", meta_content_logging)
+        self.assertIn("<release>1.2</release>", meta_content_logging)
+
+        catalog = self.test_bucket.Object(PREFIXED_ARCHETYPE_CATALOG_FILES[0])
+        cat_content = str(catalog.get()["Body"].read(), "utf-8")
+        self.assertIn("<version>4.5.6</version>", cat_content)
+        self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
+        self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
