@@ -20,7 +20,7 @@ from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
-from charon.config import get_template
+from charon.config import get_template, get_config
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
@@ -254,7 +254,7 @@ def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -
 def handle_maven_uploading(
     repo: str,
     prod_key: str,
-    ignore_patterns=None,
+    ignore_patterns: List[str] = None,
     root="maven-repository",
     targets: List[Tuple[str, str, str]] = None,
     aws_profile=None,
@@ -284,10 +284,11 @@ def handle_maven_uploading(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
+    ignore_dirs = get_config().get_ignore_dirs()
     (top_level,
      valid_mvn_paths,
      valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, ignore_dirs, root)
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
@@ -447,10 +448,11 @@ def handle_maven_del(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
+    ignore_dirs = get_config().get_ignore_dirs()
     (top_level,
      valid_mvn_paths,
      valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, ignore_dirs, root)
 
     # 3. Delete all valid_paths from s3
     logger.debug("Valid poms: %s", valid_poms)
@@ -589,16 +591,30 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     sys.exit(1)
 
 
-def _scan_paths(files_root: str, ignore_patterns: List[str],
+def _scan_paths(files_root: str, ignore_patterns: List[str], ignore_dirs: List[str],
                 root: str) -> Tuple[str, List[str], List[str], List[str]]:
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
     logger.info("Scan %s to collect files", files_root)
     top_level = root
-    valid_mvn_paths, non_mvn_paths, ignored_paths, valid_poms, valid_dirs = [], [], [], [], []
+    valid_mvn_paths, non_mvn_paths, files_ignored, dirs_ignored, \
+        valid_poms, valid_dirs = [], [], [], [], [], []
     changed_dirs = set()
     top_found = False
     for root_dir, dirs, names in os.walk(files_root):
+        ignored_current_dir = False
+        if ignore_dirs:
+            for ignored in ignore_dirs:
+                ignored = ignored if ignored.endswith("/") else ignored + "/"
+                if ignored in root_dir:
+                    logger.debug("Found ignored directory %s, "
+                                 "all files will be ignored in this dir",
+                                 root_dir)
+                    ignored_current_dir = True
+                    dirs_ignored.append(root_dir)
+                    break
+        if ignored_current_dir:
+            continue
         for directory in dirs:
             changed_dirs.add(os.path.join(root_dir, directory))
             if not top_found:
@@ -615,7 +631,7 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
                 # Let's wait to do the regex / pom examination until we
                 # know we're inside a valid root directory.
                 if _is_ignored(name, ignore_patterns):
-                    ignored_paths.append(path)
+                    files_ignored.append(path)
                     continue
 
                 valid_mvn_paths.append(path)
@@ -644,10 +660,15 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
                 valid_dirs.append(c)
     logger.info("Files scanning done.\n")
 
+    if ignore_dirs and len(ignore_dirs) > 0:
+        logger.info(
+            "Ignored all files in these directories: \n%s\n",
+            "\n".join(dirs_ignored)
+        )
     if ignore_patterns and len(ignore_patterns) > 0:
         logger.info(
             "Ignored paths with ignore_patterns %s as below:\n%s\n",
-            ignore_patterns, "\n".join(ignored_paths)
+            ignore_patterns, "\n".join(files_ignored)
         )
 
     return (top_level, valid_mvn_paths, valid_poms, valid_dirs)
@@ -994,7 +1015,7 @@ def __hash_decorate_metadata(path: str, metadata: str) -> List[str]:
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
     for ignored_name in STANDARD_GENERATED_IGNORES:
         if ignored_name in filename:
-            logger.info("Ignoring standard generated Maven path: %s", filename)
+            logger.debug("Ignoring standard generated Maven path: %s", filename)
             return True
 
     if ignore_patterns:

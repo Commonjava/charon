@@ -34,6 +34,7 @@ class CharonConfig(object):
     """
     def __init__(self, data: Dict):
         self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
+        self.__ignore_dirs: List[str] = data.get("ignore_dirs", None)
         self.__aws_profile: str = data.get("aws_profile", None)
         self.__targets: Dict = data.get("targets", None)
         if not self.__targets or not isinstance(self.__targets, Dict):
@@ -42,6 +43,9 @@ class CharonConfig(object):
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
+
+    def get_ignore_dirs(self) -> List[str]:
+        return self.__ignore_dirs
 
     def get_aws_profile(self) -> str:
         return self.__aws_profile

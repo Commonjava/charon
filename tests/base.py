@@ -43,6 +43,11 @@ ignore_patterns:
     - ".*^(redhat).*"
     - ".*snapshot.*"
 
+ignore_dirs:
+    - ".meta"
+    - ".index"
+    - ".nexus"
+
 targets:
     ga:
         bucket: "charon-test"
