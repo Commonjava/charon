@@ -78,11 +78,13 @@ class NpmFileIndexTest(PackageBaseTest):
         self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
                       index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(PREFIXED_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
         self.assertIn("<a href=\"@babel/index.html\" title=\"@babel/\">@babel/</a>", index_content)
         self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_overlap_upload_index(self):
         self.__prepare_content()
@@ -103,6 +105,7 @@ class NpmFileIndexTest(PackageBaseTest):
         self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
                       index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_deletion_index(self):
         self.__test_deletion_prefix()
@@ -149,6 +152,7 @@ class NpmFileIndexTest(PackageBaseTest):
         self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
                       index_content)
         self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_7_15_8 = "code-frame-7.15.8"
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")

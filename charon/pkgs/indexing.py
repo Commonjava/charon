@@ -16,7 +16,7 @@ limitations under the License.
 from charon.config import get_template
 from charon.storage import S3Client
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
-                              PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM)
+                              PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
 from jinja2 import Template
 import os
 import logging
@@ -115,6 +115,8 @@ def __generate_index_html(
         bucket_name=bucket,
         folder=search_folder
     )
+    # Should filter out the .prodinfo files
+    contents = [c for c in contents if not c.endswith(PROD_INFO_SUFFIX)]
     index = None
     if len(contents) == 1 and contents[0].endswith("index.html"):
         logger.info("The folder %s only contains index.html, "
