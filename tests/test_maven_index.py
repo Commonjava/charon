@@ -61,6 +61,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -71,6 +72,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_overlap_upload_index(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
@@ -99,6 +101,7 @@ class MavenFileIndexTest(PackageBaseTest):
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_LOGGING_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -107,6 +110,7 @@ class MavenFileIndexTest(PackageBaseTest):
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -117,6 +121,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_upload_index_with_short_prefix(self):
         self.__test_upload_index_with_prefix(SHORT_TEST_PREFIX)
@@ -165,6 +170,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_ROOT_INDEX))
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -175,6 +181,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_deletion_index(self):
         self.__prepare_content()
@@ -214,6 +221,7 @@ class MavenFileIndexTest(PackageBaseTest):
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
         self.assertNotIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(COMMONS_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -224,6 +232,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_459 = "commons-client-4.5.9"
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
@@ -282,6 +291,7 @@ class MavenFileIndexTest(PackageBaseTest):
             "<a href=\"maven-metadata.xml\" title=\"maven-metadata.xml\">maven-metadata.xml</a>",
             index_content)
         self.assertNotIn("<a href=\"4.5.6/\" title=\"4.5.6/\">4.5.6/</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(os.path.join(prefix_, COMMONS_ROOT_INDEX))
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
@@ -292,6 +302,7 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
