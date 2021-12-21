@@ -13,30 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from charon.utils.files import HashType
+import logging
+import os
+import re
+import sys
+from datetime import datetime
+from tempfile import mkdtemp
+from typing import Dict, List, Tuple
+from zipfile import ZipFile, BadZipFile
+
+from defusedxml import ElementTree
+from jinja2 import Template
+
 import charon.pkgs.indexing as indexing
-from charon.utils.files import overwrite_file, digest
-from charon.utils.archive import extract_zip_all
-from charon.utils.strings import remove_prefix
-from charon.storage import S3Client
-from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.config import get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from typing import Dict, List, Tuple
-from jinja2 import Template
-from datetime import datetime
-from zipfile import ZipFile, BadZipFile
-from tempfile import mkdtemp
-from defusedxml import ElementTree
-
-import os
-import sys
-import logging
-import re
-
+from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process, log_errors
+from charon.storage import S3Client
+from charon.utils.archive import extract_zip_all
+from charon.utils.files import HashType
+from charon.utils.files import overwrite_file, digest
+from charon.utils.strings import remove_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +279,7 @@ def handle_maven_uploading(
 
         Returns the directory used for archive processing.
     """
+    errors = dict()
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
@@ -307,10 +308,11 @@ def handle_maven_uploading(
     logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
-    _, failed_files = s3_client.upload_files(
+    _, failed_files, file_errors = s3_client.upload_files(
         file_paths=valid_mvn_paths, bucket_name=bucket,
         product=prod_key, root=top_level, key_prefix=prefix_
     )
+    errors.update(file_errors)
     logger.info("Files uploading done\n")
 
     # 5. Use uploaded poms to scan s3 for metadata refreshment
@@ -326,13 +328,14 @@ def handle_maven_uploading(
     # 6. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start updating maven-metadata.xml to s3")
-        (_, _failed_metas) = s3_client.upload_metadatas(
+        (_, _failed_metas, meta_errors) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
             root=top_level,
             key_prefix=prefix_
         )
+        errors.update(meta_errors)
         failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
 
@@ -351,13 +354,14 @@ def handle_maven_uploading(
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
             archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
             logger.info("Start updating archetype-catalog.xml to s3")
-            (_, _failed_metas) = s3_client.upload_metadatas(
+            (_, _failed_metas, archetype_meta_errors) = s3_client.upload_metadatas(
                 meta_file_paths=archetype_files,
                 bucket_name=bucket,
                 product=None,
                 root=top_level,
                 key_prefix=prefix_
             )
+            errors.update(archetype_meta_errors)
             failed_metas.extend(_failed_metas)
             logger.info("archetype-catalog.xml updating done\n")
 
@@ -371,18 +375,20 @@ def handle_maven_uploading(
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
-        (_, _failed_metas) = s3_client.upload_metadatas(
+        (_, _failed_metas, index_errors) = s3_client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,
             root=top_level,
             key_prefix=prefix_
         )
+        errors.update(index_errors)
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
     else:
         logger.info("Bypass indexing")
 
+    log_errors(errors)
     upload_post_process(failed_files, failed_metas, prod_key)
 
     return tmp_root
@@ -474,7 +480,7 @@ def handle_maven_del(
     )
     failed_metas = meta_files.get(META_FILE_FAILED, [])
     if META_FILE_GEN_KEY in meta_files:
-        (_, _failed_metas) = s3_client.upload_metadatas(
+        (_, _failed_metas, _) = s3_client.upload_metadatas(
             meta_file_paths=meta_files[META_FILE_GEN_KEY],
             bucket_name=bucket,
             product=None,
@@ -508,7 +514,7 @@ def handle_maven_del(
             )
             failed_metas.extend(_failed_metas)
         elif archetype_action > 0:
-            (_, _failed_metas) = s3_client.upload_metadatas(
+            (_, _failed_metas, _) = s3_client.upload_metadatas(
                 meta_file_paths=archetype_files,
                 bucket_name=bucket,
                 product=None,
@@ -526,7 +532,7 @@ def handle_maven_del(
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
-        (_, _failed_index_files) = s3_client.upload_metadatas(
+        (_, _failed_index_files, _) = s3_client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,

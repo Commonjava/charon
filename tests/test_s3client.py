@@ -356,7 +356,7 @@ class S3ClientTest(BaseTest):
         (temp_root, root, all_files) = self.__prepare_files()
         shutil.rmtree(root)
 
-        _, failed_paths = self.s3_client.upload_files(
+        _, failed_paths, _ = self.s3_client.upload_files(
             all_files, bucket_name=MY_BUCKET, product="apache-commons",
             root=temp_root
         )
@@ -365,7 +365,7 @@ class S3ClientTest(BaseTest):
 
     def test_exists_override_failing(self):
         (temp_root, _, all_files) = self.__prepare_files()
-        uploaded_paths, failed_paths = self.s3_client.upload_files(
+        uploaded_paths, failed_paths, _ = self.s3_client.upload_files(
             all_files, bucket_name=MY_BUCKET, product="apache-commons",
             root=temp_root
         )
@@ -375,7 +375,7 @@ class S3ClientTest(BaseTest):
         # Change content to make hash changes
         with open(all_files[0], "w+", encoding="utf-8") as f:
             f.write("changed content")
-        uploaded_paths, failed_paths = self.s3_client.upload_files(
+        uploaded_paths, failed_paths, _ = self.s3_client.upload_files(
             all_files, bucket_name=MY_BUCKET, product="apache-commons-2",
             root=temp_root
         )

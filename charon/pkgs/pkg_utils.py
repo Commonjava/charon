@@ -1,6 +1,6 @@
-from typing import List
-import sys
 import logging
+import sys
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -48,3 +48,15 @@ def __post_process(
             logger.error("Failed metadata files: \n%s",
                          failed_metas)
         sys.exit(1)
+
+
+def log_errors(errors: dict):
+    if len(errors.keys()) > 0:
+        logger.error("%d file(s) uploading occurs error(s), please see errors.log for details.",
+                     len(errors))
+        with open('errors.log', 'w') as f:
+            SEPARATING_LINE = "---------------------------------------------------------------"
+            for i in errors:
+                f.write("Path: %s\n%s\n" % (i, SEPARATING_LINE))
+                f.write(errors.get(i))
+                f.write("\n%s\n\n" % SEPARATING_LINE)

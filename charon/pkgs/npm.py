@@ -16,8 +16,8 @@ limitations under the License.
 import logging
 import os
 import sys
-from json import load, loads, dump, JSONDecodeError
 import tarfile
+from json import load, loads, dump, JSONDecodeError
 from tempfile import mkdtemp
 from typing import Set, Tuple
 
@@ -25,9 +25,9 @@ from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
+from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process, log_errors
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
-from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,7 @@ def handle_npm_uploading(
 
         Returns the directory used for archive processing.
     """
+    errors = dict()
     target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
         tarball_path, prod=product, dir__=dir_
     )
@@ -93,13 +94,14 @@ def handle_npm_uploading(
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
-    _, failed_files = client.upload_files(
+    _, failed_files, file_errors = client.upload_files(
         file_paths=valid_paths,
         bucket_name=bucket,
         product=product,
         root=target_dir,
         key_prefix=prefix_
     )
+    errors.update(file_errors)
     logger.info("Files uploading done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
@@ -110,13 +112,14 @@ def handle_npm_uploading(
 
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        _, _failed_metas = client.upload_metadatas(
+        _, _failed_metas, meta_errors = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=None,
             root=target_dir,
             key_prefix=prefix_
         )
+        errors.update(meta_errors)
         failed_metas.extend(_failed_metas)
         logger.info("package.json uploading done")
 
@@ -130,17 +133,20 @@ def handle_npm_uploading(
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index files to s3")
-        (_, _failed_metas) = client.upload_metadatas(
+        (_, _failed_metas, index_errors) = client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket, product=None,
             root=target_dir, key_prefix=prefix_
         )
+        errors.update(index_errors)
         failed_metas.extend(_failed_metas)
         logger.info("Index files updating done\n")
     else:
         logger.info("Bypass indexing\n")
 
+    log_errors(errors)
     upload_post_process(failed_files, failed_metas, product)
+
     return target_dir
 
 
@@ -193,7 +199,7 @@ def handle_npm_del(
     )
     failed_metas = []
     if META_FILE_GEN_KEY in meta_files:
-        _, _failed_metas = client.upload_metadatas(
+        _, _failed_metas, _ = client.upload_metadatas(
             meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
             bucket_name=bucket,
             product=None,
@@ -211,7 +217,7 @@ def handle_npm_del(
         logger.info("Index files generation done.\n")
 
         logger.info("Start updating index to s3")
-        (_, _failed_index_files) = client.upload_metadatas(
+        (_, _failed_index_files, _) = client.upload_metadatas(
             meta_file_paths=created_indexes,
             bucket_name=bucket,
             product=None,
