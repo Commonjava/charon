@@ -16,6 +16,7 @@ limitations under the License.
 from typing import Dict, List
 from ruamel.yaml import YAML
 from pathlib import Path
+from charon.utils.logs import add_file_handler
 import os
 import logging
 
@@ -24,6 +25,7 @@ from charon.utils.strings import remove_prefix
 CONFIG_FILE = "charon.yaml"
 
 logger = logging.getLogger(__name__)
+add_file_handler(logger)
 
 
 class CharonConfig(object):
@@ -48,7 +50,7 @@ class CharonConfig(object):
     def get_aws_bucket(self, target: str) -> str:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
-            logger.error("The target %s is not found in charon configuration.")
+            logger.error("The target %s is not found in charon configuration.", target)
             return None
         bucket = target_.get("bucket", None)
         if not bucket:

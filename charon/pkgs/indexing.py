@@ -17,6 +17,7 @@ from charon.config import get_template
 from charon.storage import S3Client
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
                               PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
+from charon.utils.logs import add_file_handler
 from jinja2 import Template
 import os
 import logging
@@ -25,6 +26,7 @@ from typing import List, Set
 from charon.utils.strings import remove_prefix
 
 logger = logging.getLogger(__name__)
+add_file_handler(logger)
 
 
 def __get_index_template(package_type: str) -> str:

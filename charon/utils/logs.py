@@ -72,3 +72,12 @@ def set_logging(name="charon", level=logging.DEBUG, handler=None):
     logger = logging.getLogger('charon')
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
         hdlr.setFormatter(formatter)
+
+
+def add_file_handler(logger: logging):
+    handler = logging.FileHandler('errors.log')
+    handler.setLevel(logging.ERROR)
+    handler.setLevel(logging.WARN)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)

@@ -24,8 +24,10 @@ from enum import Enum
 from json import load, JSONDecodeError
 from typing import Tuple
 from zipfile import ZipFile, is_zipfile
+from charon.utils.logs import add_file_handler
 
 logger = logging.getLogger(__name__)
+add_file_handler(logger)
 
 
 def extract_zip_all(zf: ZipFile, target_dir: str):

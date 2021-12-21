@@ -29,8 +29,10 @@ from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
+from charon.utils.logs import add_file_handler
 
 logger = logging.getLogger(__name__)
+add_file_handler(logger)
 
 PACKAGE_JSON = "package.json"
 

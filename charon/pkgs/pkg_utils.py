@@ -1,8 +1,10 @@
 from typing import List
+from charon.utils.logs import add_file_handler
 import sys
 import logging
 
 logger = logging.getLogger(__name__)
+add_file_handler(logger)
 
 
 def is_metadata(file: str) -> bool:
@@ -35,9 +37,11 @@ def __post_process(
     operation: str
 ):
     if len(failed_files) == 0 and len(failed_metas) == 0:
-        logger.info("Product release %s is successfully"
-                    "%s Ronda service.", operation, product_key)
+        logger.info("Product release is successfully %s "
+                    " %s Ronda service.", operation, product_key)
     else:
+        total = len(failed_files) + len(failed_metas)
+        logger.error("%d file(s) occur errors/warnings, please see errors.log for details.", total)
         logger.error("Product release %s is %s Ronda "
                      "service, but has some failures as below:",
                      product_key, operation)
