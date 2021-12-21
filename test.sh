@@ -2,7 +2,7 @@
 set -eux
 
 # Prepare env vars
-ENGINE=${ENGINE:="docker"}
+ENGINE=${ENGINE:="podman"}
 OS=${OS:="centos"}
 OS_VERSION=${OS_VERSION:="8"}
 PYTHON_VERSION=${PYTHON_VERSION:="3"}
