@@ -74,10 +74,14 @@ def set_logging(name="charon", level=logging.DEBUG, handler=None):
         hdlr.setFormatter(formatter)
 
 
-def add_file_handler(logger: logging):
-    handler = logging.FileHandler('errors.log')
-    handler.setLevel(logging.ERROR)
-    handler.setLevel(logging.WARN)
+def getLogger(name: str) -> logging:
+    error_log = "./errors.log"
+    handler = logging.FileHandler(error_log)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
+    handler.setLevel(logging.ERROR)
+    handler.setLevel(logging.WARN)
+
+    logger = logging.getLogger(name)
     logger.addHandler(handler)
+    return logger

@@ -1,10 +1,8 @@
 from typing import List
-from charon.utils.logs import add_file_handler
+from charon.utils.logs import getLogger
 import sys
-import logging
 
-logger = logging.getLogger(__name__)
-add_file_handler(logger)
+logger = getLogger(__name__)
 
 
 def is_metadata(file: str) -> bool:

@@ -25,7 +25,7 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from charon.utils.logs import add_file_handler
+from charon.utils.logs import getLogger
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -35,12 +35,9 @@ from defusedxml import ElementTree
 
 import os
 import sys
-import logging
 import re
 
-
-logger = logging.getLogger(__name__)
-add_file_handler(logger)
+logger = getLogger(__name__)
 
 
 def __get_mvn_template(kind: str, default: str) -> str:
@@ -650,7 +647,7 @@ def _generate_rollback_archetype_catalog(
                 try:
                     local_archetypes = _parse_archetypes(f.read())
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
                         root
@@ -672,7 +669,7 @@ def _generate_rollback_archetype_catalog(
                 try:
                     remote_archetypes = _parse_archetypes(remote_xml)
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "CLEANING invalid remote archetype-catalog.xml",
                         bucket
@@ -751,7 +748,7 @@ def _generate_upload_archetype_catalog(
                 try:
                     local_archetypes = _parse_archetypes(f.read())
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
                         root
@@ -770,7 +767,7 @@ def _generate_upload_archetype_catalog(
                 try:
                     remote_archetypes = _parse_archetypes(remote_xml)
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "OVERWRITING bucket archetype-catalog.xml with the valid, local copy.",
                         bucket

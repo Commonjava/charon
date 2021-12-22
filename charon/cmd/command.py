@@ -15,7 +15,7 @@ limitations under the License.
 """
 from typing import List
 from charon.config import CharonConfig, get_config
-from charon.utils.logs import set_logging, add_file_handler
+from charon.utils.logs import set_logging, getLogger
 from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
@@ -28,8 +28,7 @@ import logging
 import os
 import sys
 
-logger = logging.getLogger(__name__)
-add_file_handler(logger)
+logger = getLogger(__name__)
 
 
 @argument(
