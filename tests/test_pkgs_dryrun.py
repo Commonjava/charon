@@ -51,7 +51,7 @@ class PkgsDryRunTest(PackageBaseTest):
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
-        self.assertEqual(50, len(objs))
+        self.assertEqual(68, len(objs))
 
     def test_npm_upload_dry_run(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")

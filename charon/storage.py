@@ -18,7 +18,7 @@ import threading
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
 from charon.constants import PROD_INFO_SUFFIX, MANIFEST_SUFFIX
-
+from charon.utils.strings import trail_path_with_root
 from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
@@ -748,17 +748,12 @@ class S3Client(object):
         path_handler: Callable[[str, str, int, int, List[str], asyncio.Semaphore], Awaitable[bool]],
         root="/"
     ) -> List[str]:
-        slash_root = root
-        if not root.endswith("/"):
-            slash_root = slash_root + "/"
         failed_paths = []
         index = 1
         file_paths_count = len(file_paths)
         tasks = []
         for full_path in file_paths:
-            path = full_path
-            if path.startswith(slash_root):
-                path = path[len(slash_root):]
+            path = trail_path_with_root(full_path, root)
             tasks.append(
                 asyncio.ensure_future(
                     path_handler(full_path, path, index, file_paths_count, failed_paths)

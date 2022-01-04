@@ -85,6 +85,11 @@ COMMONS_LOGGING_INDEXES = [
     "commons-logging/commons-logging/index.html",
     "commons-logging/commons-logging/1.2/index.html",
 ]
+IGNORED_META_FOLDER_ITEMS = [
+    ".index/org/foo/bar/foo-bar.pom",
+    ".nexus/org/foo/bar/foo-bar.pom",
+    ".meta/org/foo/bar/foo-bar.pom"
+]
 COMMONS_CLIENT_INDEX = "org/apache/httpcomponents/httpclient/index.html"
 COMMONS_CLIENT_456_INDEX = "org/apache/httpcomponents/httpclient/4.5.6/index.html"
 COMMONS_LOGGING_INDEX = "commons-logging/commons-logging/index.html"

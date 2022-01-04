@@ -21,7 +21,7 @@ from tests.commons import (
     COMMONS_CLIENT_METAS, COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS,
     NON_MVN_FILES, ARCHETYPE_CATALOG, ARCHETYPE_CATALOG_FILES,
     COMMONS_CLIENT_456_MVN_NUM, COMMONS_CLIENT_MVN_NUM,
-    COMMONS_CLIENT_META_NUM
+    COMMONS_CLIENT_META_NUM, IGNORED_META_FOLDER_ITEMS
 )
 from moto import mock_s3
 import os
@@ -62,7 +62,9 @@ class MavenUploadTest(PackageBaseTest):
         actual_files = [obj.key for obj in objs]
         # need to double mvn num because of .prodinfo files
         self.assertEqual(
-            COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            COMMONS_CLIENT_MVN_NUM * 2 +
+            COMMONS_CLIENT_META_NUM +
+            len(IGNORED_META_FOLDER_ITEMS) * 2,
             len(actual_files)
         )
 
@@ -112,7 +114,7 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, [".*.sha1"],
+            test_zip, product_456, [".*.sha1", r"^\.nexus/.*", r"^\.index/.*", r"^\.meta/.*"],
             targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir, do_index=False
         )
@@ -151,7 +153,9 @@ class MavenUploadTest(PackageBaseTest):
         actual_files = [obj.key for obj in objs]
         # need to double mvn num because of .prodinfo files
         self.assertEqual(
-            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            COMMONS_CLIENT_456_MVN_NUM * 2 +
+            COMMONS_CLIENT_META_NUM +
+            len(IGNORED_META_FOLDER_ITEMS) * 2,
             len(actual_files)
         )
 

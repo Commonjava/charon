@@ -40,13 +40,8 @@ class BaseTest(unittest.TestCase):
         self.__prepare_template(config_base)
         default_config_content = """
 ignore_patterns:
-    - ".*^(redhat).*"
-    - ".*snapshot.*"
-
-ignore_dirs:
-    - ".meta"
-    - ".index"
-    - ".nexus"
+    - .*^(redhat).*
+    - .*snapshot.*
 
 targets:
     ga:

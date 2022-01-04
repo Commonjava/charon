@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from charon.utils.files import HashType
+from charon.utils.strings import trail_path_with_root
 import charon.pkgs.indexing as indexing
 from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
-from charon.config import get_template, get_config
+from charon.config import get_template
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
@@ -284,11 +285,11 @@ def handle_maven_uploading(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    ignore_dirs = get_config().get_ignore_dirs()
+    # ignore_dirs = get_config().get_ignore_dirs()
     (top_level,
      valid_mvn_paths,
      valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, ignore_dirs, root)
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # This prefix is a subdir under top-level directory in tarball
     # or root before real GAV dir structure
@@ -448,11 +449,11 @@ def handle_maven_del(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    ignore_dirs = get_config().get_ignore_dirs()
+    # ignore_dirs = get_config().get_ignore_dirs()
     (top_level,
      valid_mvn_paths,
      valid_poms,
-     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, ignore_dirs, root)
+     valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # 3. Delete all valid_paths from s3
     logger.debug("Valid poms: %s", valid_poms)
@@ -591,7 +592,7 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     sys.exit(1)
 
 
-def _scan_paths(files_root: str, ignore_patterns: List[str], ignore_dirs: List[str],
+def _scan_paths(files_root: str, ignore_patterns: List[str],
                 root: str) -> Tuple[str, List[str], List[str], List[str]]:
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
@@ -603,10 +604,12 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], ignore_dirs: List[s
     top_found = False
     for root_dir, dirs, names in os.walk(files_root):
         ignored_current_dir = False
-        if ignore_dirs:
-            for ignored in ignore_dirs:
-                ignored = ignored if ignored.endswith("/") else ignored + "/"
-                if ignored in root_dir:
+        if ignore_patterns:
+            for ignored in ignore_patterns:
+                checking_dir = root_dir
+                if top_found and top_level in root_dir:
+                    checking_dir = trail_path_with_root(root_dir, top_level)
+                if re.match(ignored, checking_dir):
                     logger.debug("Found ignored directory %s, "
                                  "all files will be ignored in this dir",
                                  root_dir)
@@ -660,12 +663,12 @@ def _scan_paths(files_root: str, ignore_patterns: List[str], ignore_dirs: List[s
                 valid_dirs.append(c)
     logger.info("Files scanning done.\n")
 
-    if ignore_dirs and len(ignore_dirs) > 0:
+    if dirs_ignored and len(dirs_ignored) > 0:
         logger.info(
             "Ignored all files in these directories: \n%s\n",
             "\n".join(dirs_ignored)
         )
-    if ignore_patterns and len(ignore_patterns) > 0:
+    if files_ignored and len(files_ignored) > 0:
         logger.info(
             "Ignored paths with ignore_patterns %s as below:\n%s\n",
             ignore_patterns, "\n".join(files_ignored)
