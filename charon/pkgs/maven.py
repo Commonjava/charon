@@ -425,18 +425,10 @@ def handle_maven_del(
      valid_poms,
      valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
-    # 3. Parse GA from valid_poms for later maven metadata refreshing
+    # 3. Delete all valid_paths from s3
     logger.info("Start generating maven-metadata.xml files for all artifacts")
     logger.debug("Valid poms: %s", valid_poms)
-    changed_gavs = parse_gavs(valid_poms, top_level)
-    ga_paths = []
-    for g, avs in changed_gavs.items():
-        for a, _ in avs.items():
-            logger.debug("G: %s, A: %s", g, a)
-            ga_paths.append(os.path.join("/".join(g.split(".")), a))
-
     prefix_ = remove_prefix(prefix, "/")
-    # 4. Delete all valid_paths from s3
     logger.info("Start deleting files from s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
@@ -449,7 +441,7 @@ def handle_maven_del(
     )
     logger.info("Files deletion done\n")
 
-    # 5. Use changed GA to scan s3 for metadata refreshment
+    # 4. Use changed GA to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all changed GAs")
     meta_files = _generate_metadatas(
         s3=s3_client, bucket=bucket,
@@ -459,7 +451,7 @@ def handle_maven_del(
 
     logger.info("maven-metadata.xml files generation done\n")
 
-    # 6. Upload all maven-metadata.xml. We need to delete metadata files
+    # 5. Upload all maven-metadata.xml. We need to delete metadata files
     # firstly for all affected GA, and then replace the theirs content.
     logger.info("Start updating maven-metadata.xml to s3")
     all_meta_files = []
@@ -484,7 +476,7 @@ def handle_maven_del(
         failed_metas.extend(_failed_metas)
     logger.info("maven-metadata.xml updating done\n")
 
-    # 7. Determine refreshment of archetype-catalog.xml
+    # 6. Determine refreshment of archetype-catalog.xml
     if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
         logger.info("Start generating archetype-catalog.xml")
         archetype_action = _generate_rollback_archetype_catalog(
@@ -494,7 +486,7 @@ def handle_maven_del(
         )
         logger.info("archetype-catalog.xml files generation done\n")
 
-        # 8. Upload or Delete archetype-catalog.xml if it has changed
+        # 7. Upload or Delete archetype-catalog.xml if it has changed
         archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
         archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
         if archetype_action < 0:
@@ -903,9 +895,9 @@ def _generate_metadatas(
             un_prefixed_poms = existed_poms
             if prefix:
                 if not prefix.endswith("/"):
-                    un_prefixed_poms = [__remove_prefix(pom, prefix) for pom in existed_poms]
+                    un_prefixed_poms = [remove_prefix(pom, prefix) for pom in existed_poms]
                 else:
-                    un_prefixed_poms = [__remove_prefix(pom, prefix + "/") for pom in existed_poms]
+                    un_prefixed_poms = [remove_prefix(pom, prefix + "/") for pom in existed_poms]
             all_poms.extend(un_prefixed_poms)
     gav_dict = parse_gavs(all_poms)
     if len(gav_dict) > 0:
@@ -951,11 +943,6 @@ def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
 def _handle_error(err_msgs: List[str]):
     # Reminder: will implement later
     pass
-
-
-def __remove_prefix(s: str, prefix: str) -> str:
-    if s.startswith(prefix):
-        return s[len(prefix):]
 
 
 class VersionCompareKey:
