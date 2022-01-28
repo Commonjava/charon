@@ -79,7 +79,6 @@ def getLogger(name: str) -> logging:
     handler = logging.FileHandler(error_log)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
-    handler.setLevel(logging.ERROR)
     handler.setLevel(logging.WARN)
 
     logger = logging.getLogger(name)
