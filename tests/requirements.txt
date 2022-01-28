@@ -5,5 +5,5 @@ pytest-cov
 pytest-html
 flake8
 requests-mock
-moto
+moto==3.0.2.dev12
 
