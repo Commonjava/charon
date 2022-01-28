@@ -26,6 +26,7 @@ from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.commons import TEST_BUCKET
 from boto3_type_annotations import s3
+from moto import mock_s3
 
 
 SHORT_TEST_PREFIX = "ga"
@@ -82,6 +83,7 @@ targets:
         return os.path.join(self.get_temp_dir(), '.charon')
 
 
+@mock_s3
 class PackageBaseTest(BaseTest):
     def setUp(self):
         super().setUp()
