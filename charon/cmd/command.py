@@ -126,10 +126,10 @@ def upload(
     """
     tmp_dir = work_dir
     try:
+        __decide_mode(is_quiet=quiet, is_debug=debug)
         if dryrun:
             logger.info("Running in dry-run mode,"
                         "no files will be uploaded.")
-        __decide_mode(is_quiet=quiet, is_debug=debug)
         if not __validate_prod_key(product, version):
             return
         conf = get_config()
@@ -279,10 +279,10 @@ def delete(
     """
     tmp_dir = work_dir
     try:
+        __decide_mode(is_quiet=quiet, is_debug=debug)
         if dryrun:
             logger.info("Running in dry-run mode,"
                         "no files will be deleted.")
-        __decide_mode(is_quiet=quiet, is_debug=debug)
         if not __validate_prod_key(product, version):
             return
         conf = get_config()
@@ -395,6 +395,8 @@ def __decide_mode(is_quiet: bool, is_debug: bool):
         logger.info("Debug mode enabled, "
                     "will give all debug logs for tracing.")
         set_logging(level=logging.DEBUG)
+    else:
+        set_logging(level=logging.INFO)
 
 
 @group()
