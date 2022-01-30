@@ -175,3 +175,5 @@ body {
 '''
 
 PROD_INFO_SUFFIX = ".prodinfo"
+
+DEFAULT_ERRORS_LOG = "errors.log"

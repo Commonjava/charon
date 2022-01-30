@@ -25,7 +25,6 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from charon.utils.logs import getLogger
 from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
@@ -35,9 +34,10 @@ from defusedxml import ElementTree
 
 import os
 import sys
+import logging
 import re
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def __get_mvn_template(kind: str, default: str) -> str:

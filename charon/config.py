@@ -16,14 +16,14 @@ limitations under the License.
 from typing import Dict, List
 from ruamel.yaml import YAML
 from pathlib import Path
-from charon.utils.logs import getLogger
 import os
+import logging
 
 from charon.utils.strings import remove_prefix
 
 CONFIG_FILE = "charon.yaml"
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class CharonConfig(object):

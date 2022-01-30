@@ -15,7 +15,6 @@ limitations under the License.
 """
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
-from charon.utils.logs import getLogger
 from charon.constants import PROD_INFO_SUFFIX
 
 from boto3 import session
@@ -25,9 +24,10 @@ from botocore.config import Config
 from boto3_type_annotations import s3
 from typing import Callable, Dict, List, Optional, Tuple
 import os
+import logging
 import mimetypes
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 PRODUCT_META_KEY = "rh-products"
 CHECKSUM_META_KEY = "checksum"

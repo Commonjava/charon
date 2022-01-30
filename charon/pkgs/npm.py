@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import logging
 import os
 import sys
 from json import load, loads, dump, JSONDecodeError
@@ -28,9 +29,8 @@ from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
-from charon.utils.logs import getLogger
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 PACKAGE_JSON = "package.json"
 

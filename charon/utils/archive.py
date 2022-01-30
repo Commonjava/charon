@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import logging
 import os
 import sys
 import tarfile
@@ -23,9 +24,8 @@ from enum import Enum
 from json import load, JSONDecodeError
 from typing import Tuple
 from zipfile import ZipFile, is_zipfile
-from charon.utils.logs import getLogger
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def extract_zip_all(zf: ZipFile, target_dir: str):

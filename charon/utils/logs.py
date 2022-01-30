@@ -15,10 +15,10 @@ limitations under the License.
 """
 import logging
 import sys
+import os
 from locale import nl_langinfo, CODESET
-from os import fdopen, dup
 
-from charon.constants import CHARON_LOGGING_FMT
+from charon.constants import CHARON_LOGGING_FMT, DEFAULT_ERRORS_LOG
 
 
 class EncodedStream(object):
@@ -26,7 +26,7 @@ class EncodedStream(object):
     # over stderr.  Normal techniques were not working, so we dup
     # the file handler and force it UTF-8.  :-(
     def __init__(self, fileno, encoding):
-        self.binarystream = fdopen(dup(fileno), 'wb')
+        self.binarystream = os.fdopen(os.dup(fileno), 'wb')
         self.encoding = encoding
 
     def write(self, text):
@@ -45,7 +45,7 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(name="charon", level=logging.DEBUG, handler=None):
+def set_logging(product: str, version: str, name="charon", level=logging.DEBUG, handler=None):
     # create logger
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
@@ -69,18 +69,21 @@ def set_logging(name="charon", level=logging.DEBUG, handler=None):
     # add ch to logger
     logger.addHandler(handler)
 
+    set_log_file_handler(product, version, logger)
+
     logger = logging.getLogger('charon')
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
         hdlr.setFormatter(formatter)
 
 
-def getLogger(name: str) -> logging:
-    error_log = "./errors.log"
+def set_log_file_handler(product: str, version: str, logger: logging):
+    log_loc = os.getenv("ERROR_LOG_LOCATION")
+    error_log = "".join([product, "-", version, ".", DEFAULT_ERRORS_LOG])
+    if log_loc:
+        os.makedirs(log_loc, exist_ok=True)
+        error_log = os.path.join(log_loc, error_log)
     handler = logging.FileHandler(error_log)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(fmt=CHARON_LOGGING_FMT)
     handler.setFormatter(formatter)
     handler.setLevel(logging.WARN)
-
-    logger = logging.getLogger(name)
     logger.addHandler(handler)
-    return logger
