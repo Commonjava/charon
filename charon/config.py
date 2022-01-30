@@ -48,7 +48,7 @@ class CharonConfig(object):
     def get_aws_bucket(self, target: str) -> str:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
-            logger.error("The target %s is not found in charon configuration.")
+            logger.error("The target %s is not found in charon configuration.", target)
             return None
         bucket = target_.get("bucket", None)
         if not bucket:

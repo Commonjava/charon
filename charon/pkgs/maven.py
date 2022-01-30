@@ -37,7 +37,6 @@ import sys
 import logging
 import re
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -648,7 +647,7 @@ def _generate_rollback_archetype_catalog(
                 try:
                     local_archetypes = _parse_archetypes(f.read())
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
                         root
@@ -670,7 +669,7 @@ def _generate_rollback_archetype_catalog(
                 try:
                     remote_archetypes = _parse_archetypes(remote_xml)
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "CLEANING invalid remote archetype-catalog.xml",
                         bucket
@@ -749,7 +748,7 @@ def _generate_upload_archetype_catalog(
                 try:
                     local_archetypes = _parse_archetypes(f.read())
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from local archive with root: %s. "
                         "SKIPPING invalid archetype processing.",
                         root
@@ -768,7 +767,7 @@ def _generate_upload_archetype_catalog(
                 try:
                     remote_archetypes = _parse_archetypes(remote_xml)
                 except ElementTree.ParseError:
-                    logging.warning(
+                    logger.warning(
                         "Failed to parse archetype-catalog.xml from bucket: %s. "
                         "OVERWRITING bucket archetype-catalog.xml with the valid, local copy.",
                         bucket
