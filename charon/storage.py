@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+import asyncio
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
 from charon.constants import PROD_INFO_SUFFIX
@@ -22,10 +23,14 @@ from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
 from botocore.config import Config
 from boto3_type_annotations import s3
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 import os
 import logging
 import mimetypes
+import functools
+from concurrent.futures import ThreadPoolExecutor
+
+_executor = ThreadPoolExecutor(10)
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +48,18 @@ class S3Client(object):
     some convenient methods to be used in the charon.
     """
 
-    def __init__(self, aws_profile=None, extra_conf=None, dry_run=False) -> None:
+    def __init__(
+        self,
+        aws_profile=None, extra_conf=None,
+        con_limit=100, dry_run=False
+    ) -> None:
         self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
         self.__bucket: s3.Bucket = None
         self.__dry_run = dry_run
+        self.__con_sem = asyncio.BoundedSemaphore(con_limit)
 
     def __init_aws_client(
-        self, aws_profile=None, extra_conf=None, enable_acc=False
+        self, aws_profile=None, extra_conf=None
     ) -> s3.ServiceResource:
         if aws_profile:
             logger.debug("Using aws profile: %s", aws_profile)
@@ -113,78 +123,96 @@ class S3Client(object):
 
         uploaded_files = []
 
-        def path_upload_handler(full_file_path: str, path: str, index: int, total: int) -> bool:
-            if not os.path.isfile(full_file_path):
-                logger.warning('Warning: file %s does not exist during uploading. Product: %s',
-                               full_file_path, product)
-                return False
+        async def path_upload_handler(
+            full_file_path: str, path: str, index: int,
+            total: int, failed: List[str]
+        ):
+            async with self.__con_sem:
+                if not os.path.isfile(full_file_path):
+                    logger.warning('Warning: file %s does not exist during uploading. Product: %s',
+                                   full_file_path, product)
+                    failed.append(full_file_path)
+                    return
 
-            logger.info(
-                '(%d/%d) Uploading %s to bucket %s',
-                index, total, full_file_path, bucket_name
-            )
-
-            path_key = os.path.join(key_prefix, path) if key_prefix else path
-            file_object: s3.Object = bucket.Object(path_key)
-            existed = self.__file_exists(file_object)
-            sha1 = read_sha1(full_file_path)
-            (content_type, _) = mimetypes.guess_type(full_file_path)
-            if not content_type:
-                content_type = DEFAULT_MIME_TYPE
-            if not existed:
-                f_meta = {}
-                if sha1.strip() != "":
-                    f_meta[CHECKSUM_META_KEY] = sha1
-                try:
-                    if not self.__dry_run:
-                        if len(f_meta) > 0:
-                            file_object.put(
-                                Body=open(full_file_path, "rb"),
-                                Metadata=f_meta,
-                                ContentType=content_type
-                            )
-                        else:
-                            file_object.upload_file(
-                                full_file_path,
-                                ExtraArgs={'ContentType': content_type}
-                            )
-                        if product:
-                            self.__update_prod_info(path_key, bucket_name, [product])
-                    logger.info('Uploaded %s to bucket %s', path, bucket_name)
-                    uploaded_files.append(path_key)
-                except (ClientError, HTTPClientError) as e:
-                    logger.error("ERROR: file %s not uploaded to bucket"
-                                 " %s due to error: %s ", full_file_path,
-                                 bucket_name, e)
-                    return False
-            else:
                 logger.info(
-                    "File %s already exists, check if need to update product.",
-                    full_file_path,
+                    '(%d/%d) Uploading %s to bucket %s',
+                    index, total, full_file_path, bucket_name
                 )
-                f_meta = file_object.metadata
-                checksum = (
-                    f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
-                )
-                if checksum != "" and checksum.strip() != sha1:
-                    logger.error('Error: checksum check failed. The file %s is different from the '
-                                 'one in S3. Product: %s', path_key, product)
-                    return False
 
-                (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
-                if not self.__dry_run and no_error and product not in prods:
+                path_key = os.path.join(key_prefix, path) if key_prefix else path
+                file_object: s3.Object = bucket.Object(path_key)
+                existed = await self.__run_async(self.__file_exists, file_object)
+                sha1 = read_sha1(full_file_path)
+                (content_type, _) = mimetypes.guess_type(full_file_path)
+                if not content_type:
+                    content_type = DEFAULT_MIME_TYPE
+                if not existed:
+                    f_meta = {}
+                    if sha1.strip() != "":
+                        f_meta[CHECKSUM_META_KEY] = sha1
+                    try:
+                        if not self.__dry_run:
+                            if len(f_meta) > 0:
+                                await self.__run_async(
+                                    functools.partial(
+                                        file_object.put,
+                                        Body=open(full_file_path, "rb"),
+                                        Metadata=f_meta,
+                                        ContentType=content_type
+                                    )
+                                )
+                            else:
+                                await self.__run_async(
+                                    functools.partial(
+                                        file_object.upload_file,
+                                        Filename=full_file_path,
+                                        ExtraArgs={'ContentType': content_type}
+                                    )
+                                )
+                            if product:
+                                await self.__update_prod_info(path_key, bucket_name, [product])
+
+                        logger.info('Uploaded %s to bucket %s', path, bucket_name)
+                        uploaded_files.append(path_key)
+                    except (ClientError, HTTPClientError) as e:
+                        logger.error("ERROR: file %s not uploaded to bucket"
+                                     " %s due to error: %s ", full_file_path,
+                                     bucket_name, e)
+                        failed.append(full_file_path)
+                        return
+                else:
                     logger.info(
-                        "File %s has new product, updating the product %s",
+                        "File %s already exists, check if need to update product.",
                         full_file_path,
-                        product,
                     )
-                    prods.append(product)
-                    if not self.__update_prod_info(path_key, bucket_name, prods):
-                        return False
-            return True
+                    f_meta = file_object.metadata
+                    checksum = (
+                        f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
+                    )
+                    if checksum != "" and checksum.strip() != sha1:
+                        logger.error('Error: checksum check failed. The file %s is '
+                                     'different from the one in S3. Product: %s',
+                                     path_key, product)
+                        failed.append(full_file_path)
+                        return
+                    (prods, no_error) = await self.__run_async(
+                        self.__get_prod_info,
+                        path_key, bucket_name
+                    )
+                    if not self.__dry_run and no_error and product not in prods:
+                        logger.info(
+                            "File %s has new product, updating the product %s",
+                            full_file_path,
+                            product,
+                        )
+                        prods.append(product)
+                        result = await self.__update_prod_info(path_key, bucket_name, prods)
+                        if not result:
+                            failed.append(full_file_path)
+                            return
 
         return (uploaded_files, self.__do_path_cut_and(
-            file_paths=file_paths, fn=path_upload_handler, root=root
+            file_paths=file_paths, path_handler=path_upload_handler, root=root
         ))
 
     def upload_metadatas(
@@ -201,63 +229,76 @@ class S3Client(object):
 
         uploaded_files = []
 
-        def path_upload_handler(full_file_path: str, path: str, index: int, total: int):
-            if not os.path.isfile(full_file_path):
-                logger.warning('Warning: file %s does not exist during uploading. Product: %s',
-                               full_file_path, product)
-                return False
+        async def path_upload_handler(
+            full_file_path: str, path: str, index: int,
+            total: int, failed: List[str]
+        ):
+            async with self.__con_sem:
+                if not os.path.isfile(full_file_path):
+                    logger.warning('Warning: file %s does not exist during uploading. Product: %s',
+                                   full_file_path, product)
+                    failed.append(full_file_path)
+                    return
 
-            logger.info(
-                '(%d/%d) Updating metadata %s to bucket %s',
-                index, total, path, bucket_name
-            )
-
-            path_key = os.path.join(key_prefix, path) if key_prefix else path
-            file_object: s3.Object = bucket.Object(path_key)
-            existed = self.__file_exists(file_object)
-            f_meta = {}
-            need_overwritten = True
-            sha1 = read_sha1(full_file_path)
-            (content_type, _) = mimetypes.guess_type(full_file_path)
-            if not content_type:
-                content_type = DEFAULT_MIME_TYPE
-            if existed:
-                f_meta = file_object.metadata
-                need_overwritten = (
-                    CHECKSUM_META_KEY not in f_meta or sha1 != f_meta[CHECKSUM_META_KEY]
+                logger.info(
+                    '(%d/%d) Updating metadata %s to bucket %s',
+                    index, total, path, bucket_name
                 )
 
-            f_meta[CHECKSUM_META_KEY] = sha1
-            try:
-                if not self.__dry_run:
-                    if need_overwritten:
-                        file_object.put(
-                            Body=open(full_file_path, "rb"),
-                            Metadata=f_meta,
-                            ContentType=content_type
-                        )
-                    if product:
-                        # NOTE: This should not happen for most cases, as most of the metadata
-                        # file does not have product info. Just leave for requirement change in
-                        # future
-                        (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
-                        if not no_error:
-                            return False
-                        if no_error and product not in prods:
-                            prods.append(product)
-                        if not self.__update_prod_info(path_key, bucket_name, prods):
-                            return False
-                logger.info('Updated metadata %s to bucket %s', path, bucket_name)
-                uploaded_files.append(path_key)
-            except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: file %s not uploaded to bucket"
-                             " %s due to error: %s ", full_file_path,
-                             bucket_name, e)
-                return False
-            return True
+                path_key = os.path.join(key_prefix, path) if key_prefix else path
+                file_object: s3.Object = bucket.Object(path_key)
+                existed = await self.__run_async(self.__file_exists, file_object)
+                f_meta = {}
+                need_overwritten = True
+                sha1 = read_sha1(full_file_path)
+                (content_type, _) = mimetypes.guess_type(full_file_path)
+                if not content_type:
+                    content_type = DEFAULT_MIME_TYPE
+                if existed:
+                    f_meta = file_object.metadata
+                    need_overwritten = (
+                        CHECKSUM_META_KEY not in f_meta or sha1 != f_meta[CHECKSUM_META_KEY]
+                    )
+
+                f_meta[CHECKSUM_META_KEY] = sha1
+                try:
+                    if not self.__dry_run:
+                        if need_overwritten:
+                            await self.__run_async(
+                                functools.partial(
+                                    file_object.put,
+                                    Body=open(full_file_path, "rb"),
+                                    Metadata=f_meta,
+                                    ContentType=content_type
+                                )
+                            )
+                        if product:
+                            # NOTE: This should not happen for most cases, as most of the metadata
+                            # file does not have product info. Just leave for requirement change in
+                            # future
+                            (prods, no_error) = await self.__run_async(
+                                self.__get_prod_info,
+                                path_key, bucket_name
+                            )
+                            if not no_error:
+                                failed.append(full_file_path)
+                                return
+                            if no_error and product not in prods:
+                                prods.append(product)
+                            updated = await self.__update_prod_info(path_key, bucket_name, prods)
+                            if not updated:
+                                failed.append(full_file_path)
+                                return
+                    logger.info('Updated metadata %s to bucket %s', path, bucket_name)
+                    uploaded_files.append(path_key)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error("ERROR: file %s not uploaded to bucket"
+                                 " %s due to error: %s ", full_file_path,
+                                 bucket_name, e)
+                    failed.append(full_file_path)
 
         return (uploaded_files, self.__do_path_cut_and(
-            file_paths=meta_file_paths, fn=path_upload_handler, root=root
+            file_paths=meta_file_paths, path_handler=path_upload_handler, root=root
         ))
 
     def delete_files(
@@ -278,68 +319,82 @@ class S3Client(object):
 
         deleted_files = []
 
-        def path_delete_handler(full_file_path: str, path: str, index: int, total: int):
-            logger.info('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
-            path_key = os.path.join(key_prefix, path) if key_prefix else path
-            file_object = bucket.Object(path_key)
-            existed = self.__file_exists(file_object)
-            if existed:
-                # NOTE: If we're NOT using the product key to track collisions
-                # (in the case of metadata), then this prods array will remain
-                # empty, and we will just delete the file, below. Otherwise,
-                # the product reference counts will be used (from object metadata).
-                prods = []
-                if product:
-                    (prods, no_error) = self.__get_prod_info(path_key, bucket_name)
-                    if not no_error:
-                        return False
-                    if product in prods:
-                        prods.remove(product)
+        async def path_delete_handler(
+            full_file_path: str, path: str, index: int,
+            total: int, failed: List[str]
+        ):
+            async with self.__con_sem:
+                logger.info('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
+                path_key = os.path.join(key_prefix, path) if key_prefix else path
+                file_object = bucket.Object(path_key)
+                existed = await self.__run_async(self.__file_exists, file_object)
+                if existed:
+                    # NOTE: If we're NOT using the product key to track collisions
+                    # (in the case of metadata), then this prods array will remain
+                    # empty, and we will just delete the file, below. Otherwise,
+                    # the product reference counts will be used (from object metadata).
+                    prods = []
+                    if product:
+                        (prods, no_error) = await self.__run_async(
+                            self.__get_prod_info,
+                            path_key, bucket_name
+                        )
+                        if not no_error:
+                            return False
+                        if product in prods:
+                            prods.remove(product)
 
-                if len(prods) > 0:
-                    try:
-                        logger.info(
-                            "File %s has other products overlapping,"
-                            " will remove %s from its metadata",
-                            path, product
-                        )
-                        self.__update_prod_info(
-                            path_key,
-                            bucket_name,
-                            prods,
-                        )
-                        logger.info(
-                            "Removed product %s from metadata of file %s",
-                            product, path
-                        )
-                        return True
-                    except (ClientError, HTTPClientError) as e:
-                        logger.error(
-                            "ERROR: Failed to update metadata of file"
-                            " %s due to error: %s ", path, e
-                        )
-                        return False
-                elif len(prods) == 0:
-                    try:
-                        if not self.__dry_run:
-                            bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
-                            if not self.__update_prod_info(path_key, bucket_name, prods):
-                                return False
-                        logger.info("Deleted %s from bucket %s", path, bucket_name)
-                        deleted_files.append(path)
-                        return True
-                    except (ClientError, HTTPClientError) as e:
-                        logger.error("ERROR: file %s failed to delete from bucket"
-                                     " %s due to error: %s ", full_file_path,
-                                     bucket_name, e)
-                        return False
-            else:
-                logger.info("File %s does not exist in s3 bucket %s, skip deletion.",
-                            path, bucket_name)
-                return True
+                    if len(prods) > 0:
+                        try:
+                            logger.info(
+                                "File %s has other products overlapping,"
+                                " will remove %s from its metadata",
+                                path, product
+                            )
+                            await self.__update_prod_info(path_key, bucket_name, prods)
+                            logger.info(
+                                "Removed product %s from metadata of file %s",
+                                product, path
+                            )
+                            return
+                        except (ClientError, HTTPClientError) as e:
+                            logger.error(
+                                "ERROR: Failed to update metadata of file"
+                                " %s due to error: %s ", path, e
+                            )
+                            failed.append(full_file_path)
+                            return
+                    elif len(prods) == 0:
+                        try:
+                            if not self.__dry_run:
+                                await self.__run_async(
+                                    functools.partial(
+                                        bucket.delete_objects,
+                                        Delete={"Objects": [{"Key": path_key}]}
+                                    )
+                                )
+                                updated = await self.__update_prod_info(
+                                    path_key, bucket_name, prods
+                                )
+                                if not updated:
+                                    failed.append(full_file_path)
+                                    return
+                            logger.info("Deleted %s from bucket %s", path, bucket_name)
+                            deleted_files.append(path)
+                            return
+                        except (ClientError, HTTPClientError) as e:
+                            logger.error("ERROR: file %s failed to delete from bucket"
+                                         " %s due to error: %s ", full_file_path,
+                                         bucket_name, e)
+                            failed.append(full_file_path)
+                            return
+                else:
+                    logger.info("File %s does not exist in s3 bucket %s, skip deletion.",
+                                path, bucket_name)
+                    return
 
         failed_files = self.__do_path_cut_and(
-            file_paths=file_paths, fn=path_delete_handler, root=root)
+            file_paths=file_paths, path_handler=path_delete_handler, root=root)
 
         return (deleted_files, failed_files)
 
@@ -430,18 +485,6 @@ class S3Client(object):
                 logger.error("Error: file existence check failed due "
                              "to error: %s", e)
 
-    # def __update_file_metadata(
-    #     self, file_object: s3.Object, bucket_name: str, metadata: Dict
-    # ):
-    #     if not self.__dry_run:
-    #         file_object.metadata.update(metadata)
-    #         file_object.copy_from(
-    #             CopySource={"Bucket": bucket_name, "Key": file_object.key},
-    #             Metadata=file_object.metadata,
-    #             ContentType=file_object.content_type,
-    #             MetadataDirective="REPLACE",
-    #         )
-
     def __get_prod_info(
         self, file: str, bucket_name: str
     ) -> Tuple[List[str], bool]:
@@ -457,7 +500,7 @@ class S3Client(object):
                          "due to error: %s", file, e)
             return ([], False)
 
-    def __update_prod_info(
+    async def __update_prod_info(
         self, file: str, bucket_name: str, prods: List[str]
     ) -> bool:
         prod_info_file = file + PROD_INFO_SUFFIX
@@ -468,9 +511,12 @@ class S3Client(object):
             logger.debug("Updating product infomation for file %s "
                          "with products: %s", file, prods)
             try:
-                file_obj.put(
-                    Body="\n".join(prods).encode("utf-8"),
-                    ContentType=content_type
+                await self.__run_async(
+                    functools.partial(
+                        file_obj.put,
+                        Body="\n".join(prods).encode("utf-8"),
+                        ContentType=content_type
+                    )
                 )
                 logger.debug("Updated product infomation for file %s", file)
                 return True
@@ -482,9 +528,17 @@ class S3Client(object):
             logger.debug("Removing product infomation file for file %s "
                          "because no products left", file)
             try:
-                if self.__file_exists(file_obj):
-                    bucket.delete_objects(
-                        Delete={"Objects": [{"Key": prod_info_file}]})
+                result = await self.__run_async(
+                    self.__file_exists,
+                    file_obj
+                )
+                if result:
+                    await self.__run_async(
+                        functools.partial(
+                            bucket.delete_objects,
+                            Delete={"Objects": [{"Key": prod_info_file}]}
+                        )
+                    )
                     logger.debug("Removed product infomation file for file %s", file)
                 return True
             except (ClientError, HTTPClientError) as e:
@@ -494,7 +548,8 @@ class S3Client(object):
 
     def __do_path_cut_and(
         self, file_paths: List[str],
-        fn: Callable[[str, str, int, int], bool], root="/"
+        path_handler: Callable[[str, str, int, int, List[str], asyncio.Semaphore], Awaitable[bool]],
+        root="/"
     ) -> List[str]:
         slash_root = root
         if not root.endswith("/"):
@@ -502,11 +557,21 @@ class S3Client(object):
         failed_paths = []
         index = 1
         file_paths_count = len(file_paths)
+        tasks = []
         for full_path in file_paths:
             path = full_path
             if path.startswith(slash_root):
                 path = path[len(slash_root):]
-            if not fn(full_path, path, index, file_paths_count):
-                failed_paths.append(path)
+            tasks.append(
+                asyncio.ensure_future(
+                    path_handler(full_path, path, index, file_paths_count, failed_paths)
+                )
+            )
             index += 1
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.gather(*tasks))
         return failed_paths
+
+    async def __run_async(self, fn: Callable, *args) -> Any:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(_executor, fn, *args)
