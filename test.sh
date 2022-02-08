@@ -43,6 +43,9 @@ function setup_charon() {
   if [[ $OS == "centos" ]]; then
     # Don't let builddep enable *-source repos since they give 404 errors
     $RUN rm -f /etc/yum.repos.d/CentOS-Sources.repo
+    # Resolve "Failed to download metadata for repo: Cannot prepare internal mirrorlist: No URLs in mirrorlist" problem
+    $RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-AppStream.repo
+    $RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
     # This has to run *before* we try installing anything from EPEL
     $RUN $PKG $ENABLE_REPO install -y epel-release
   fi
