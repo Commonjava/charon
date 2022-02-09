@@ -1,9 +1,9 @@
-setuptools-rust
-jinja2
+setuptools-rust==1.1.2
+jinja2==3.0.3
 boto3==1.20.45
 botocore==1.23.45
 boto3_type_annotations==0.3.1
-click
-requests
-ruamel.yaml
-defusedxml
+click==8.0.3
+requests==2.27.1
+ruamel.yaml==0.17.20
+defusedxml==0.7.1
