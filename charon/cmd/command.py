@@ -148,6 +148,7 @@ def upload(
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
         prefix_ = conf.get_bucket_prefix(target)
+        manifest_bucket_name = conf.get_manifest_bucket()
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir = handle_npm_uploading(
@@ -157,7 +158,9 @@ def upload(
                 prefix=prefix_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
+                target=target,
+                manifest_bucket_name=manifest_bucket_name
             )
         else:
             ignore_patterns_list = None
@@ -175,7 +178,9 @@ def upload(
                 aws_profile=aws_profile,
                 prefix=prefix_,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
+                target=target,
+                manifest_bucket_name=manifest_bucket_name
             )
     except Exception:
         print(traceback.format_exc())
@@ -301,6 +306,7 @@ def delete(
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
         prefix_ = conf.get_bucket_prefix(target)
+        manifest_bucket_name = conf.get_manifest_bucket()
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir = handle_npm_del(
@@ -310,7 +316,9 @@ def delete(
                 prefix=prefix_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
+                target=target,
+                manifest_bucket_name=manifest_bucket_name
             )
         else:
             ignore_patterns_list = None
@@ -328,7 +336,9 @@ def delete(
                 aws_profile=aws_profile,
                 prefix=prefix_,
                 dir_=work_dir,
-                dry_run=dryrun
+                dry_run=dryrun,
+                target=target,
+                manifest_bucket_name=manifest_bucket_name
             )
     except Exception:
         print(traceback.format_exc())

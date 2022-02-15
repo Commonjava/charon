@@ -24,7 +24,7 @@ from charon.config import CONFIG_FILE
 from charon.constants import PROD_INFO_SUFFIX
 from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
-from tests.commons import TEST_BUCKET
+from tests.commons import TEST_BUCKET, TEST_MANIFEST_BUCKET
 from boto3_type_annotations import s3
 from moto import mock_s3
 
@@ -90,13 +90,16 @@ class PackageBaseTest(BaseTest):
         # mock_s3 is used to generate expected content
         self.mock_s3 = self.__prepare_s3()
         self.mock_s3.create_bucket(Bucket=TEST_BUCKET)
+        self.mock_s3.create_bucket(Bucket=TEST_MANIFEST_BUCKET)
         self.test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        self.test_manifest_bucket = self.mock_s3.Bucket(TEST_MANIFEST_BUCKET)
 
     def tearDown(self):
-        bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        buckets = [self.mock_s3.Bucket(TEST_BUCKET), self.mock_s3.Bucket(TEST_MANIFEST_BUCKET)]
         try:
-            bucket.objects.all().delete()
-            bucket.delete()
+            for bucket in buckets:
+                bucket.objects.all().delete()
+                bucket.delete()
         except ValueError:
             pass
         super().tearDown()
