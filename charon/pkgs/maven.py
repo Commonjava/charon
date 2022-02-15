@@ -906,9 +906,9 @@ def _generate_metadatas(
                 try:
                     metas = gen_meta_file(g, a, vers, root)
                 except FileNotFoundError:
-                    logger.error("Failed to create metadata file for GA"
-                                 " %s, please check if aligned Maven GA"
-                                 " is correct in your tarball.", f'{g}:{a}')
+                    logger.warning("Failed to create or update metadata file for GA"
+                                   " %s, please check if aligned Maven GA"
+                                   " is correct in your tarball.", f'{g}:{a}')
                 logger.debug("Generated metadata file %s for %s:%s", meta_files, g, a)
                 meta_files_generation.extend(metas)
         meta_files[META_FILE_GEN_KEY] = meta_files_generation
