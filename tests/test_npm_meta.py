@@ -67,7 +67,8 @@ class NPMMetadataOnS3Test(BaseTest):
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
             )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            target=(MY_BUCKET, None),
             dir_=self.tempdir
             )
         (files, _) = self.s3_client.get_files(
@@ -119,7 +120,8 @@ class NPMMetadataOnS3Test(BaseTest):
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
         )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            target=(MY_BUCKET, None),
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(

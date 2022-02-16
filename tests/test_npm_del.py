@@ -43,7 +43,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            target=(TEST_BUCKET, prefix),
             dir_=self.tempdir, do_index=False
         )
 
@@ -87,7 +87,7 @@ class NPMDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            target=(TEST_BUCKET, prefix),
             dir_=self.tempdir, do_index=False
         )
         objs = list(test_bucket.objects.all())
@@ -98,7 +98,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            target=(TEST_BUCKET, prefix),
             dir_=self.tempdir, do_index=False
         )
 
@@ -106,6 +106,6 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            bucket_name=TEST_BUCKET, prefix=prefix,
+            target=(TEST_BUCKET, prefix),
             dir_=self.tempdir, do_index=False
         )

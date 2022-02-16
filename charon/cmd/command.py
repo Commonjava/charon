@@ -151,17 +151,18 @@ def upload(
         manifest_bucket_name = conf.get_manifest_bucket()
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            tmp_dir = handle_npm_uploading(
+            tmp_dir, succeeded = handle_npm_uploading(
                 archive_path,
                 product_key,
-                bucket_name=aws_bucket,
-                prefix=prefix_,
+                target=(aws_bucket, prefix_),
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
+                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -169,19 +170,20 @@ def upload(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            tmp_dir = handle_maven_uploading(
+            tmp_dir, succeeded = handle_maven_uploading(
                 archive_path,
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                bucket_name=aws_bucket,
+                targets=[(aws_bucket, prefix_)],
                 aws_profile=aws_profile,
-                prefix=prefix_,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
+                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
@@ -309,17 +311,18 @@ def delete(
         manifest_bucket_name = conf.get_manifest_bucket()
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            tmp_dir = handle_npm_del(
+            tmp_dir, succeeded = handle_npm_del(
                 archive_path,
                 product_key,
-                bucket_name=aws_bucket,
-                prefix=prefix_,
+                target=(aws_bucket, prefix_),
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
+                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -327,19 +330,20 @@ def delete(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            tmp_dir = handle_maven_del(
+            tmp_dir, succeeded = handle_maven_del(
                 archive_path,
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                bucket_name=aws_bucket,
+                targets=[(aws_bucket, prefix_)],
                 aws_profile=aws_profile,
-                prefix=prefix_,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
+                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state

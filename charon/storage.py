@@ -55,7 +55,7 @@ class S3Client(object):
     def __init__(
         self,
         aws_profile=None, extra_conf=None,
-        con_limit=100, dry_run=False
+        con_limit=25, dry_run=False
     ) -> None:
         self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
         self.__buckets: Dict[str, s3.Bucket] = {}
@@ -104,9 +104,10 @@ class S3Client(object):
         return False
 
     def upload_files(
-        self, file_paths: List[str], bucket_name: str,
-        product: str, root="/", key_prefix: str = None
-    ) -> Tuple[List[str], List[str]]:
+        self, file_paths: List[str],
+        target: Tuple[str, str],
+        product: str, root="/"
+    ) -> List[str]:
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
@@ -124,8 +125,9 @@ class S3Client(object):
             Note that if file name match
             * Return all failed to upload files due to any exceptions.
         """
+        bucket_name = target[0]
+        key_prefix = target[1]
         bucket = self.__get_bucket(bucket_name)
-
         uploaded_files = []
 
         async def path_upload_handler(
@@ -230,15 +232,16 @@ class S3Client(object):
                             failed.append(full_file_path)
                             return
 
-        return (uploaded_files, self.__do_path_cut_and(
+        return self.__do_path_cut_and(
             file_paths=file_paths,
             path_handler=self.__path_handler_count_wrapper(path_upload_handler),
             root=root
-        ))
+        )
 
     def upload_metadatas(
-        self, meta_file_paths: List[str], bucket_name: str,
-        product: Optional[str] = None, root="/", key_prefix: str = None
+        self, meta_file_paths: List[str],
+        target: Tuple[str, str],
+        product: Optional[str] = None, root="/"
     ) -> Tuple[List[str], List[str]]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
@@ -246,8 +249,8 @@ class S3Client(object):
             * The metadata files' checksum will also be overwritten each time
             * Return all failed to upload metadata files due to exceptions
         """
+        bucket_name = target[0]
         bucket = self.__get_bucket(bucket_name)
-
         uploaded_files = []
 
         async def path_upload_handler(
@@ -268,6 +271,7 @@ class S3Client(object):
                     index, total, path, bucket_name
                 )
 
+                key_prefix = target[1]
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
                 file_object: s3.Object = bucket.Object(path_key)
                 existed = False
@@ -358,8 +362,8 @@ class S3Client(object):
                 'manifest file %s', manifest_bucket_name, manifest_name)
 
     def delete_files(
-        self, file_paths: List[str], bucket_name: str,
-        product: Optional[str], root="/", key_prefix: str = None
+        self, file_paths: List[str], target: Tuple[str, str],
+        product: Optional[str], root="/"
     ) -> Tuple[List[str], List[str]]:
         """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
@@ -371,6 +375,7 @@ class S3Client(object):
             really be removed from the bucket. Only when the metadata is all cleared, the file
             will be finally removed from bucket.
         """
+        bucket_name = target[0]
         bucket = self.__get_bucket(bucket_name)
 
         deleted_files = []
@@ -380,6 +385,7 @@ class S3Client(object):
             total: int, failed: List[str]
         ):
             async with self.__con_sem:
+                key_prefix = target[1]
                 logger.debug('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
                 file_object = bucket.Object(path_key)
