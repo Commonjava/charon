@@ -15,7 +15,7 @@ limitations under the License.
 """
 from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
-from charon.utils.files import overwrite_file, digest
+from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
@@ -261,7 +261,9 @@ def handle_maven_uploading(
     prefix=None,
     dir_=None,
     do_index=True,
-    dry_run=False
+    dry_run=False,
+    target=None,
+    manifest_bucket_name=None
 ) -> str:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -302,6 +304,7 @@ def handle_maven_uploading(
         # Question: should we exit here?
 
     prefix_ = remove_prefix(prefix, "/")
+
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
@@ -312,7 +315,18 @@ def handle_maven_uploading(
     )
     logger.info("Files uploading done\n")
 
-    # 5. Use uploaded poms to scan s3 for metadata refreshment
+    # 5. Do manifest uploading
+    logger.info("Start uploading manifest to s3")
+    if not manifest_bucket_name:
+        logger.warning(
+            'Warning: No manifest bucket is provided, will ignore the process of manifest '
+            'uploading')
+    else:
+        manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
+        s3_client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
+        logger.info("Manifest uploading is done\n")
+
+    # 6. Use uploaded poms to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all artifacts")
     meta_files = _generate_metadatas(
         s3=s3_client, bucket=bucket,
@@ -322,7 +336,7 @@ def handle_maven_uploading(
     logger.info("maven-metadata.xml files generation done\n")
 
     failed_metas = meta_files.get(META_FILE_FAILED, [])
-    # 6. Upload all maven-metadata.xml
+    # 7. Upload all maven-metadata.xml
     if META_FILE_GEN_KEY in meta_files:
         logger.info("Start updating maven-metadata.xml to s3")
         (_, _failed_metas) = s3_client.upload_metadatas(
@@ -335,7 +349,7 @@ def handle_maven_uploading(
         failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
 
-    # 7. Determine refreshment of archetype-catalog.xml
+    # 8. Determine refreshment of archetype-catalog.xml
     if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
         logger.info("Start generating archetype-catalog.xml")
         upload_archetype_file = _generate_upload_archetype_catalog(
@@ -345,7 +359,7 @@ def handle_maven_uploading(
         )
         logger.info("archetype-catalog.xml files generation done\n")
 
-        # 8. Upload archetype-catalog.xml if it has changed
+        # 9. Upload archetype-catalog.xml if it has changed
         if upload_archetype_file:
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
             archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
@@ -397,7 +411,9 @@ def handle_maven_del(
     prefix=None,
     dir_=None,
     do_index=True,
-    dry_run=False
+    dry_run=False,
+    target=None,
+    manifest_bucket_name=None
 ) -> str:
     """ Handle the maven product release tarball deletion process.
         * repo is the location of the tarball in filesystem
@@ -425,7 +441,6 @@ def handle_maven_del(
      valid_dirs) = _scan_paths(tmp_root, ignore_patterns, root)
 
     # 3. Delete all valid_paths from s3
-    logger.info("Start generating maven-metadata.xml files for all artifacts")
     logger.debug("Valid poms: %s", valid_poms)
     prefix_ = remove_prefix(prefix, "/")
     logger.info("Start deleting files from s3")
@@ -440,7 +455,12 @@ def handle_maven_del(
     )
     logger.info("Files deletion done\n")
 
-    # 4. Use changed GA to scan s3 for metadata refreshment
+    # 4. Delete related manifest from s3
+    logger.info("Start deleting manifest from s3")
+    s3_client.delete_manifest(prod_key, target, manifest_bucket_name)
+    logger.info("Manifest deletion is done\n")
+
+    # 5. Use changed GA to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all changed GAs")
     meta_files = _generate_metadatas(
         s3=s3_client, bucket=bucket,
@@ -450,7 +470,7 @@ def handle_maven_del(
 
     logger.info("maven-metadata.xml files generation done\n")
 
-    # 5. Upload all maven-metadata.xml. We need to delete metadata files
+    # 6. Upload all maven-metadata.xml. We need to delete metadata files
     # firstly for all affected GA, and then replace the theirs content.
     logger.info("Start updating maven-metadata.xml to s3")
     all_meta_files = []
@@ -475,7 +495,7 @@ def handle_maven_del(
         failed_metas.extend(_failed_metas)
     logger.info("maven-metadata.xml updating done\n")
 
-    # 6. Determine refreshment of archetype-catalog.xml
+    # 7. Determine refreshment of archetype-catalog.xml
     if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
         logger.info("Start generating archetype-catalog.xml")
         archetype_action = _generate_rollback_archetype_catalog(
@@ -485,7 +505,7 @@ def handle_maven_del(
         )
         logger.info("archetype-catalog.xml files generation done\n")
 
-        # 7. Upload or Delete archetype-catalog.xml if it has changed
+        # 8. Upload or Delete archetype-catalog.xml if it has changed
         archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
         archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
         if archetype_action < 0:

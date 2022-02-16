@@ -29,6 +29,7 @@ from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
+from charon.utils.files import write_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +63,16 @@ class NPMPackageMetadata(object):
 
 
 def handle_npm_uploading(
-        tarball_path: str, product: str,
-        bucket_name=None, prefix=None,
+        tarball_path: str,
+        product: str,
+        bucket_name=None,
+        prefix=None,
         aws_profile=None,
-        dir_=None, do_index=True,
-        dry_run=False
+        dir_=None,
+        do_index=True,
+        dry_run=False,
+        target=None,
+        manifest_bucket_name=None
 ) -> str:
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
@@ -90,6 +96,7 @@ def handle_npm_uploading(
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
     prefix_ = remove_prefix(prefix, "/")
+
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
@@ -101,6 +108,16 @@ def handle_npm_uploading(
         key_prefix=prefix_
     )
     logger.info("Files uploading done\n")
+
+    logger.info("Start uploading manifest to s3")
+    if not manifest_bucket_name:
+        logger.warning(
+            'Warning: No manifest bucket is provided, will ignore the process of manifest '
+            'uploading')
+    else:
+        manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
+        client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
+        logger.info("Manifest uploading is done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
     meta_files = _gen_npm_package_metadata_for_upload(
@@ -145,10 +162,16 @@ def handle_npm_uploading(
 
 
 def handle_npm_del(
-        tarball_path: str, product: str,
-        bucket_name=None, prefix=None,
-        aws_profile=None, dir_=None,
-        do_index=True, dry_run=False
+        tarball_path: str,
+        product: str,
+        bucket_name=None,
+        prefix=None,
+        aws_profile=None,
+        dir_=None,
+        do_index=True,
+        dry_run=False,
+        target=None,
+        manifest_bucket_name=None
 ) -> str:
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
@@ -176,6 +199,10 @@ def handle_npm_del(
         key_prefix=prefix_
     )
     logger.info("Files deletion done\n")
+
+    logger.info("Start deleting manifest from s3")
+    client.delete_manifest(product, target, manifest_bucket_name)
+    logger.info("Manifest deletion is done\n")
 
     logger.info("Start generating package.json for package: %s", package_name_path)
     meta_files = _gen_npm_package_metadata_for_del(
@@ -251,8 +278,10 @@ def _gen_npm_package_metadata_for_upload(
     package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
     if prefix and prefix != "/":
         package_metadata_key = os.path.join(prefix, package_metadata_key)
-    (package_json_files, success) = client.get_files(bucket_name=bucket,
-                                                     prefix=package_metadata_key)
+    (package_json_files, success) = client.get_files(
+        bucket_name=bucket,
+        prefix=package_metadata_key
+    )
     if not success:
         logger.warning("Error to get remote metadata files for %s", package_metadata_key)
     result = source_package
@@ -319,8 +348,8 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[
-        str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, list,
+                                                                               NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
         _, valid_paths = extract_npm_tarball(path, tmp_root, True)

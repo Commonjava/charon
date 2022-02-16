@@ -14,9 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import asyncio
+
+from boto3.exceptions import S3UploadFailedError
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
-from charon.constants import PROD_INFO_SUFFIX
+from charon.constants import PROD_INFO_SUFFIX, MANIFEST_SUFFIX
 
 from boto3 import session
 from botocore.errorfactory import ClientError
@@ -301,6 +303,25 @@ class S3Client(object):
             file_paths=meta_file_paths, path_handler=path_upload_handler, root=root
         ))
 
+    def upload_manifest(
+            self, manifest_name: str, manifest_full_path: str, target: str,
+            manifest_bucket_name: str
+    ):
+        target = target if target else "default"
+        env_folder = "-".join([target, "charon-metadata"])
+        path_key = os.path.join(env_folder, manifest_name)
+        manifest_bucket = self.__get_bucket(manifest_bucket_name)
+        try:
+            file_object: s3.Object = manifest_bucket.Object(path_key)
+            file_object.upload_file(
+                Filename=manifest_full_path,
+                ExtraArgs={'ContentType': DEFAULT_MIME_TYPE}
+            )
+        except S3UploadFailedError:
+            logger.warning(
+                'Warning: Manifest bucket %s does not exist in S3, will ignore uploading of '
+                'manifest file %s', manifest_bucket_name, manifest_name)
+
     def delete_files(
         self, file_paths: List[str], bucket_name: str,
         product: Optional[str], root="/", key_prefix: str = None
@@ -397,6 +418,26 @@ class S3Client(object):
             file_paths=file_paths, path_handler=path_delete_handler, root=root)
 
         return (deleted_files, failed_files)
+
+    def delete_manifest(self, product_key: str, target: str, manifest_bucket_name: str):
+        if not manifest_bucket_name:
+            logger.warning(
+                'Warning: No manifest bucket is provided, will ignore the process of manifest '
+                'deleting')
+            return
+        manifest_name = product_key + MANIFEST_SUFFIX
+        target = target if target else "default"
+        env_folder = "-".join([target, "charon-metadata"])
+        path_key = os.path.join(env_folder, manifest_name)
+
+        manifest_bucket = self.__get_bucket(manifest_bucket_name)
+        file_object: s3.Object = manifest_bucket.Object(path_key)
+        if self.__file_exists(file_object):
+            manifest_bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
+        else:
+            logger.warning(
+                'Warning: Manifest %s does not exist in S3 bucket %s, will ignore its deleting',
+                manifest_name, manifest_bucket_name)
 
     def get_files(self, bucket_name: str, prefix=None, suffix=None) -> Tuple[List[str], bool]:
         """Get the file names from s3 bucket. Can use prefix and suffix to filter the

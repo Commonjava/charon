@@ -17,6 +17,8 @@ from enum import Enum
 import os
 import hashlib
 import errno
+from typing import List, Tuple
+from charon.constants import MANIFEST_SUFFIX
 
 
 class HashType(Enum):
@@ -77,3 +79,22 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
             hash_obj.update(data)
 
     return hash_obj.hexdigest()
+
+
+def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, str]:
+    manifest_name = product_key + MANIFEST_SUFFIX
+    manifest_path = os.path.join(root, manifest_name)
+    artifacts = []
+    for path in paths:
+        if path.startswith(root):
+            path = path[len(root):]
+        if path.startswith("/"):
+            path = path[1:]
+        artifacts.append(path)
+
+    if not os.path.isfile(manifest_path):
+        with open(manifest_path, mode="a", encoding="utf-8"):
+            pass
+    with open(manifest_path, mode="w", encoding="utf-8") as f:
+        f.write('\n'.join(artifacts))
+    return manifest_name, manifest_path
