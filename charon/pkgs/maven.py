@@ -305,7 +305,6 @@ def handle_maven_uploading(
 
     prefix_ = remove_prefix(prefix, "/")
 
-    manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
@@ -318,8 +317,14 @@ def handle_maven_uploading(
 
     # 5. Do manifest uploading
     logger.info("Start uploading manifest to s3")
-    s3_client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
-    logger.info("Manifest uploading is done\n")
+    if not manifest_bucket_name:
+        logger.warning(
+            'Warning: No manifest bucket is provided, will ignore the process of manifest '
+            'uploading')
+    else:
+        manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
+        s3_client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
+        logger.info("Manifest uploading is done\n")
 
     # 6. Use uploaded poms to scan s3 for metadata refreshment
     logger.info("Start generating maven-metadata.xml files for all artifacts")

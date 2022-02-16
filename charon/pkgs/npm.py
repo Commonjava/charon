@@ -97,8 +97,6 @@ def handle_npm_uploading(
 
     prefix_ = remove_prefix(prefix, "/")
 
-    manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
-
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     bucket = bucket_name
@@ -112,8 +110,14 @@ def handle_npm_uploading(
     logger.info("Files uploading done\n")
 
     logger.info("Start uploading manifest to s3")
-    client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
-    logger.info("Manifest uploading is done\n")
+    if not manifest_bucket_name:
+        logger.warning(
+            'Warning: No manifest bucket is provided, will ignore the process of manifest '
+            'uploading')
+    else:
+        manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
+        client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
+        logger.info("Manifest uploading is done\n")
 
     logger.info("Start generating package.json for package: %s", package_metadata.name)
     meta_files = _gen_npm_package_metadata_for_upload(
