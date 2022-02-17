@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import asyncio
-
-from boto3.exceptions import S3UploadFailedError
+import threading
 from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
 from charon.constants import PROD_INFO_SUFFIX, MANIFEST_SUFFIX
@@ -23,6 +22,7 @@ from charon.constants import PROD_INFO_SUFFIX, MANIFEST_SUFFIX
 from boto3 import session
 from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
+from boto3.exceptions import S3UploadFailedError
 from botocore.config import Config
 from boto3_type_annotations import s3
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
@@ -56,9 +56,10 @@ class S3Client(object):
         con_limit=100, dry_run=False
     ) -> None:
         self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
-        self.__bucket: s3.Bucket = None
+        self.__buckets: Dict[str, s3.Bucket] = {}
         self.__dry_run = dry_run
         self.__con_sem = asyncio.BoundedSemaphore(con_limit)
+        self.__lock = threading.Lock()
 
     def __init_aws_client(
         self, aws_profile=None, extra_conf=None
@@ -509,11 +510,17 @@ class S3Client(object):
         return self.__file_exists(file_object)
 
     def __get_bucket(self, bucket_name: str) -> s3.Bucket:
-        if self.__bucket and self.__bucket.name == bucket_name:
-            return self.__bucket
-        logger.info("Changing the bucket to %s", bucket_name)
-        self.__bucket = self.__client.Bucket(bucket_name)
-        return self.__bucket
+        self.__lock.acquire()
+        try:
+            bucket = self.__buckets.get(bucket_name)
+            if bucket:
+                return bucket
+            logger.debug("Cache aws bucket %s", bucket_name)
+            bucket = self.__client.Bucket(bucket_name)
+            self.__buckets[bucket_name] = bucket
+            return bucket
+        finally:
+            self.__lock.release()
 
     def __file_exists(self, file_object: Object) -> bool:
         try:
