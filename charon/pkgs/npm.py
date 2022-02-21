@@ -19,7 +19,7 @@ import sys
 from json import load, loads, dump, JSONDecodeError
 import tarfile
 from tempfile import mkdtemp
-from typing import Set, Tuple
+from typing import List, Set, Tuple
 
 from semantic_version import compare
 
@@ -65,12 +65,11 @@ class NPMPackageMetadata(object):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        target: Tuple[str, str] = None,
+        targets: List[Tuple[str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
         dry_run=False,
-        manifest_folder=None,
         manifest_bucket_name=None
 ) -> Tuple[str, bool]:
     """ Handle the npm product release tarball uploading process.
@@ -94,11 +93,11 @@ def handle_npm_uploading(
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
-    prefix_ = remove_prefix(target[1], "/")
-
+    main_target = targets[0]
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    bucket = target[0]
+    bucket = main_target[1]
+    prefix_ = remove_prefix(main_target[2], "/")
     failed_files = client.upload_files(
         file_paths=valid_paths,
         target=(bucket, prefix_),
@@ -107,71 +106,74 @@ def handle_npm_uploading(
     )
     logger.info("Files uploading done\n")
 
-    logger.info("Start uploading manifest to s3")
-    if not manifest_bucket_name:
-        logger.warning(
-            'Warning: No manifest bucket is provided, will ignore the process of manifest '
-            'uploading\n')
-    else:
-        manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
-        client.upload_manifest(
-            manifest_name, manifest_full_path,
-            manifest_folder, manifest_bucket_name
+    for target in targets:
+        manifest_folder = target[0]
+        logger.info("Start uploading manifest to s3")
+        if not manifest_bucket_name:
+            logger.warning(
+                'Warning: No manifest bucket is provided, will ignore the process of manifest '
+                'uploading\n')
+        else:
+            manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
+            client.upload_manifest(
+                manifest_name, manifest_full_path,
+                manifest_folder, manifest_bucket_name
+            )
+            logger.info("Manifest uploading is done\n")
+
+        bucket_ = target[1]
+        prefix__ = remove_prefix(target[2], "/")
+        logger.info("Start generating package.json for package: %s", package_metadata.name)
+        meta_files = _gen_npm_package_metadata_for_upload(
+            client, bucket_, target_dir, package_metadata, prefix__
         )
-        logger.info("Manifest uploading is done\n")
+        logger.info("package.json generation done\n")
 
-    logger.info("Start generating package.json for package: %s", package_metadata.name)
-    meta_files = _gen_npm_package_metadata_for_upload(
-        client, bucket, target_dir, package_metadata, prefix_
-    )
-    logger.info("package.json generation done\n")
+        failed_metas = []
+        if META_FILE_GEN_KEY in meta_files:
+            _, _failed_metas = client.upload_metadatas(
+                meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
+                target=(bucket_, prefix__),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("package.json uploading done")
 
-    failed_metas = []
-    if META_FILE_GEN_KEY in meta_files:
-        _, _failed_metas = client.upload_metadatas(
-            meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
-            target=(bucket, prefix_),
-            product=None,
-            root=target_dir
-        )
-        failed_metas.extend(_failed_metas)
-        logger.info("package.json uploading done")
+        # this step generates index.html for each dir and add them to file list
+        # index is similar to metadata, it will be overwritten everytime
+        if do_index:
+            logger.info("Start generating index files to s3")
+            created_indexes = indexing.generate_indexes(
+                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_, prefix__
+            )
+            logger.info("Index files generation done.\n")
 
-    # this step generates index.html for each dir and add them to file list
-    # index is similar to metadata, it will be overwritten everytime
-    if do_index:
-        logger.info("Start generating index files to s3")
-        created_indexes = indexing.generate_indexes(
-            PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
-        )
-        logger.info("Index files generation done.\n")
+            logger.info("Start updating index files to s3")
+            (_, _failed_metas) = client.upload_metadatas(
+                meta_file_paths=created_indexes,
+                target=(bucket_, prefix__),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Index files updating done\n")
+        else:
+            logger.info("Bypass indexing\n")
 
-        logger.info("Start updating index files to s3")
-        (_, _failed_metas) = client.upload_metadatas(
-            meta_file_paths=created_indexes,
-            target=(bucket, prefix_),
-            product=None,
-            root=target_dir
-        )
-        failed_metas.extend(_failed_metas)
-        logger.info("Index files updating done\n")
-    else:
-        logger.info("Bypass indexing\n")
-
-    upload_post_process(failed_files, failed_metas, product, bucket)
-    succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
-    return (target_dir, succeeded)
+        upload_post_process(failed_files, failed_metas, product, bucket_)
+        succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
+        return (target_dir, succeeded)
 
 
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        target: Tuple[str, str] = None,
+        targets: List[Tuple[str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
         dry_run=False,
-        manifest_folder=None,
         manifest_bucket_name=None
 ) -> Tuple[str, str]:
     """ Handle the npm product release tarball deletion process.
@@ -190,69 +192,71 @@ def handle_npm_del(
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
-    prefix_ = remove_prefix(target[1], "/")
     logger.info("Start deleting files from s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    bucket = target[0]
-    _, failed_files = client.delete_files(
-        file_paths=valid_paths,
-        target=(bucket, prefix_),
-        product=product, root=target_dir
-    )
-    logger.info("Files deletion done\n")
-
-    logger.info("Start deleting manifest from s3")
-    client.delete_manifest(product, manifest_folder, manifest_bucket_name)
-    logger.info("Manifest deletion is done\n")
-
-    logger.info("Start generating package.json for package: %s", package_name_path)
-    meta_files = _gen_npm_package_metadata_for_del(
-        client, bucket, target_dir, package_name_path, prefix_
-    )
-    logger.info("package.json generation done\n")
-
-    logger.info("Start uploading package.json to s3")
-    all_meta_files = []
-    for _, file in meta_files.items():
-        all_meta_files.append(file)
-    client.delete_files(
-        file_paths=all_meta_files,
-        target=(bucket, prefix_),
-        product=None, root=target_dir
-    )
-    failed_metas = []
-    if META_FILE_GEN_KEY in meta_files:
-        _, _failed_metas = client.upload_metadatas(
-            meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
+    for target in targets:
+        bucket = target[1]
+        prefix_ = remove_prefix(target[2], "/")
+        manifest_folder = target[0]
+        _, failed_files = client.delete_files(
+            file_paths=valid_paths,
             target=(bucket, prefix_),
-            product=None,
-            root=target_dir
+            product=product, root=target_dir
         )
-        failed_metas.extend(_failed_metas)
-    logger.info("package.json uploading done")
+        logger.info("Files deletion done\n")
 
-    if do_index:
-        logger.info("Start generating index files for all changed entries")
-        created_indexes = indexing.generate_indexes(
-            PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
+        logger.info("Start deleting manifest from s3")
+        client.delete_manifest(product, manifest_folder, manifest_bucket_name)
+        logger.info("Manifest deletion is done\n")
+
+        logger.info("Start generating package.json for package: %s", package_name_path)
+        meta_files = _gen_npm_package_metadata_for_del(
+            client, bucket, target_dir, package_name_path, prefix_
         )
-        logger.info("Index files generation done.\n")
+        logger.info("package.json generation done\n")
 
-        logger.info("Start updating index to s3")
-        (_, _failed_index_files) = client.upload_metadatas(
-            meta_file_paths=created_indexes,
+        logger.info("Start uploading package.json to s3")
+        all_meta_files = []
+        for _, file in meta_files.items():
+            all_meta_files.append(file)
+        client.delete_files(
+            file_paths=all_meta_files,
             target=(bucket, prefix_),
-            product=None,
-            root=target_dir
+            product=None, root=target_dir
         )
-        failed_metas.extend(_failed_index_files)
-        logger.info("Index files updating done.\n")
-    else:
-        logger.info("Bypassing indexing\n")
+        failed_metas = []
+        if META_FILE_GEN_KEY in meta_files:
+            _, _failed_metas = client.upload_metadatas(
+                meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
+                target=(bucket, prefix_),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_metas)
+        logger.info("package.json uploading done")
 
-    rollback_post_process(failed_files, failed_metas, product, bucket)
-    succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
-    return (target_dir, succeeded)
+        if do_index:
+            logger.info("Start generating index files for all changed entries")
+            created_indexes = indexing.generate_indexes(
+                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
+            )
+            logger.info("Index files generation done.\n")
+
+            logger.info("Start updating index to s3")
+            (_, _failed_index_files) = client.upload_metadatas(
+                meta_file_paths=created_indexes,
+                target=(bucket, prefix_),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_index_files)
+            logger.info("Index files updating done.\n")
+        else:
+            logger.info("Bypassing indexing\n")
+
+        rollback_post_process(failed_files, failed_metas, product, bucket)
+        succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
+        return (target_dir, succeeded)
 
 
 def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:

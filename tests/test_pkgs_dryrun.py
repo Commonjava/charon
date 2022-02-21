@@ -58,7 +58,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            target=(TEST_BUCKET, None),
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -74,7 +74,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            target=(TEST_BUCKET, None),
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -105,7 +105,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            target=(TEST_BUCKET, None),
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir
         )
 
@@ -113,6 +113,6 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            target=(TEST_BUCKET, None),
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir
         )

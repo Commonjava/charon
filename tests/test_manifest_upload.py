@@ -65,10 +65,9 @@ class ManifestUploadTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_zip, product,
-            target=(TEST_BUCKET, None),
+            targets=[(TEST_TARGET, TEST_BUCKET, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_folder=TEST_TARGET,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
 
