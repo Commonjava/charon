@@ -175,11 +175,10 @@ def upload(
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                targets=[(aws_bucket, prefix_)],
+                targets=[(target, aws_bucket, prefix_)],
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
             if not succeeded:
@@ -335,11 +334,10 @@ def delete(
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                targets=[(aws_bucket, prefix_)],
+                targets=[(target, aws_bucket, prefix_)],
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_folder=target,
                 manifest_bucket_name=manifest_bucket_name
             )
             if not succeeded:

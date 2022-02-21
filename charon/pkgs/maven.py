@@ -256,12 +256,11 @@ def handle_maven_uploading(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    targets: List[Tuple[str, str]] = None,
+    targets: List[Tuple[str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
     dry_run=False,
-    manifest_folder=None,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
@@ -273,9 +272,9 @@ def handle_maven_uploading(
           need to upload in the tarball
         * root is a prefix in the tarball to identify which path is
           the beginning of the maven GAV path
-        * target is the a tuple of s3 bucket name and prefix for the bucket,
-          whic will be used to store artifacts with the prefix. See target
-          definition in Charon configuration for details
+        * targets contains the target name with its bucket name and prefix
+          for the bucket, which will be used to store artifacts with the
+          prefix. See target definition in Charon configuration for details
         * dir_ is base dir for extracting the tarball, will use system
           tmp dir if None.
 
@@ -305,39 +304,40 @@ def handle_maven_uploading(
         # Question: should we exit here?
 
     main_target = targets[0]
-    main_target_prefix = remove_prefix(main_target[1], "/")
+    main_bucket_prefix = remove_prefix(main_target[2], "/")
     succeeded = True
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    bucket = main_target[0]
+    bucket = main_target[1]
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
-        target=(bucket, main_target_prefix),
+        target=(bucket, main_bucket_prefix),
         product=prod_key,
         root=top_level
     )
     logger.info("Files uploading done\n")
 
-    # 5. Do manifest uploading
-    logger.info("Start uploading manifest to s3")
-    if not manifest_bucket_name:
-        logger.warning(
-            'Warning: No manifest bucket is provided, will ignore the process of manifest '
-            'uploading\n')
-    else:
-        manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
-        s3_client.upload_manifest(
-            manifest_name, manifest_full_path,
-            manifest_folder, manifest_bucket_name
-        )
-        logger.info("Manifest uploading is done\n")
-
-    # 6. Use uploaded poms to scan s3 for metadata refreshment
     all_failed_metas: Dict[str, List[str]] = {}
     for target in targets:
-        bucket_ = target[0]
-        prefix__ = remove_prefix(target[1], "/")
+        # 5. Do manifest uploading
+        logger.info("Start uploading manifest to s3")
+        manifest_folder = target[0]
+        if not manifest_bucket_name:
+            logger.warning(
+                'Warning: No manifest bucket is provided, will ignore the process of manifest '
+                'uploading\n')
+        else:
+            manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
+            s3_client.upload_manifest(
+                manifest_name, manifest_full_path,
+                manifest_folder, manifest_bucket_name
+            )
+            logger.info("Manifest uploading is done\n")
+
+        # 6. Use uploaded poms to scan s3 for metadata refreshment
+        bucket_ = target[1]
+        prefix__ = remove_prefix(target[2], "/")
         failed_metas = []
         logger.info("Start generating maven-metadata.xml files for bucket %s", bucket_)
         meta_files = _generate_metadatas(
@@ -421,12 +421,11 @@ def handle_maven_del(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    targets: Tuple[str, str] = None,
+    targets: List[Tuple[str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
     dry_run=False,
-    manifest_folder=None,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball deletion process.
@@ -458,10 +457,10 @@ def handle_maven_del(
     logger.debug("Valid poms: %s", valid_poms)
     succeeded = True
     for target in targets:
-        prefix_ = remove_prefix(target[1], "/")
+        prefix_ = remove_prefix(target[2], "/")
         logger.info("Start deleting files from s3")
         s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-        bucket = target[0]
+        bucket = target[1]
         (_, failed_files) = s3_client.delete_files(
             valid_mvn_paths,
             target=(bucket, prefix_),
@@ -471,6 +470,7 @@ def handle_maven_del(
         logger.info("Files deletion done\n")
 
         # 4. Delete related manifest from s3
+        manifest_folder = target[0]
         logger.info("Start deleting manifest from s3")
         s3_client.delete_manifest(prod_key, manifest_folder, manifest_bucket_name)
         logger.info("Manifest deletion is done\n")

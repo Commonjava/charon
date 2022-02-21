@@ -41,10 +41,9 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_folder=TEST_TARGET,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
         uploaded_manifest = list(self.test_manifest_bucket.objects.all())
@@ -78,10 +77,9 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_folder=TEST_TARGET,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
 

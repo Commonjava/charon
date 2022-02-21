@@ -28,7 +28,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -44,7 +44,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -88,7 +88,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir
         )
 
@@ -96,7 +96,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            targets=[(TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None)],
             dir_=self.tempdir
         )
 
