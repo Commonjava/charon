@@ -78,7 +78,9 @@ def handle_npm_uploading(
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * bucket_name is the s3 bucket name to store the artifacts
+        * targets contains the target name with its bucket name and prefix
+          for the bucket, which will be used to store artifacts with the
+          prefix. See target definition in Charon configuration for details
         * dir_ is base dir for extracting the tarball, will use system
           tmp dir if None.
 
@@ -93,19 +95,19 @@ def handle_npm_uploading(
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
 
-    main_target = targets[0]
+    # main_target = targets[0]
     logger.info("Start uploading files to s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    bucket = main_target[1]
-    prefix_ = remove_prefix(main_target[2], "/")
+    targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     failed_files = client.upload_files(
         file_paths=valid_paths,
-        target=(bucket, prefix_),
+        targets=targets_,
         product=product,
         root=target_dir
     )
     logger.info("Files uploading done\n")
 
+    succeeded = True
     for target in targets:
         manifest_folder = target[0]
         logger.info("Start uploading manifest to s3")
@@ -162,8 +164,9 @@ def handle_npm_uploading(
             logger.info("Bypass indexing\n")
 
         upload_post_process(failed_files, failed_metas, product, bucket_)
-        succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
-        return (target_dir, succeeded)
+        succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
+
+    return (target_dir, succeeded)
 
 
 def handle_npm_del(
@@ -180,7 +183,9 @@ def handle_npm_del(
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * bucket_name is the s3 bucket name to store the artifacts
+        * targets contains the target name with its bucket name and prefix
+          for the bucket, which will be used to store artifacts with the
+          prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
           tmp dir if None.
 
@@ -194,10 +199,11 @@ def handle_npm_del(
 
     logger.info("Start deleting files from s3")
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
+    succeeded = True
     for target in targets:
         bucket = target[1]
         prefix_ = remove_prefix(target[2], "/")
-        manifest_folder = target[0]
+        
         _, failed_files = client.delete_files(
             file_paths=valid_paths,
             target=(bucket, prefix_),
@@ -205,6 +211,7 @@ def handle_npm_del(
         )
         logger.info("Files deletion done\n")
 
+        manifest_folder = target[0]
         logger.info("Start deleting manifest from s3")
         client.delete_manifest(product, manifest_folder, manifest_bucket_name)
         logger.info("Manifest deletion is done\n")
@@ -255,8 +262,9 @@ def handle_npm_del(
             logger.info("Bypassing indexing\n")
 
         rollback_post_process(failed_files, failed_metas, product, bucket)
-        succeeded = len(failed_files) <= 0 and len(failed_metas) <= 0
-        return (target_dir, succeeded)
+        succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
+
+    return (target_dir, succeeded)
 
 
 def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:
@@ -326,7 +334,8 @@ def _gen_npm_package_metadata_for_del(
         logger.warning("Error to get remote metadata files "
                        "for %s when deletion", path_prefix)
     # ensure the metas only contain version package.json
-    existed_version_metas.remove(prefix_meta_key)
+    if prefix_meta_key in existed_version_metas:
+        existed_version_metas.remove(prefix_meta_key)
     # Still have versions in S3 and need to maintain the package metadata
     if len(existed_version_metas) > 0:
         logger.debug("Read all version package.json content from S3")

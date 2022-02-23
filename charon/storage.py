@@ -105,7 +105,7 @@ class S3Client(object):
 
     def upload_files(
         self, file_paths: List[str],
-        target: Tuple[str, str],
+        targets: List[Tuple[str, str]],
         product: str, root="/"
     ) -> List[str]:
         """ Upload a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
@@ -125,10 +125,15 @@ class S3Client(object):
             Note that if file name match
             * Return all failed to upload files due to any exceptions.
         """
-        bucket_name = target[0]
-        key_prefix = target[1]
-        bucket = self.__get_bucket(bucket_name)
-        uploaded_files = []
+        main_target = targets[0]
+        main_bucket_name = main_target[0]
+        main_bucket = self.__get_bucket(main_bucket_name)
+        key_prefix = main_target[1]
+        extra_targets = targets[1:] if len(targets) > 1 else []
+        extra_prefixed_buckets: List[Tuple[s3.Bucket, str]] = []
+        if len(extra_targets) > 0:
+            for target in extra_targets:
+                extra_prefixed_buckets.append((self.__get_bucket(target[0]), target[1]))
 
         async def path_upload_handler(
             full_file_path: str, path: str, index: int,
@@ -145,11 +150,10 @@ class S3Client(object):
 
                 logger.debug(
                     '(%d/%d) Uploading %s to bucket %s',
-                    index, total, full_file_path, bucket_name
+                    index, total, full_file_path, main_bucket_name
                 )
-
-                path_key = os.path.join(key_prefix, path) if key_prefix else path
-                file_object: s3.Object = bucket.Object(path_key)
+                main_path_key = os.path.join(key_prefix, path) if key_prefix else path
+                main_file_object: s3.Object = main_bucket.Object(main_path_key)
                 existed = False
                 try:
                     existed = await self.__run_async(self.__file_exists, file_object)
@@ -172,7 +176,7 @@ class S3Client(object):
                             if len(f_meta) > 0:
                                 await self.__run_async(
                                     functools.partial(
-                                        file_object.put,
+                                        main_file_object.put,
                                         Body=open(full_file_path, "rb"),
                                         Metadata=f_meta,
                                         ContentType=content_type
@@ -181,62 +185,135 @@ class S3Client(object):
                             else:
                                 await self.__run_async(
                                     functools.partial(
-                                        file_object.upload_file,
+                                        main_file_object.upload_file,
                                         Filename=full_file_path,
                                         ExtraArgs={'ContentType': content_type}
                                     )
                                 )
                             if product:
-                                await self.__update_prod_info(path_key, bucket_name, [product])
+                                await self.__update_prod_info(
+                                    main_path_key, main_bucket_name, [product]
+                                )
 
-                        logger.debug('Uploaded %s to bucket %s', path, bucket_name)
-                        uploaded_files.append(path_key)
+                        logger.debug('Uploaded %s to bucket %s', path, main_bucket_name)
                     except (ClientError, HTTPClientError) as e:
-                        logger.error(
-                            "ERROR: file %s not uploaded to bucket"
-                            " %s due to error: %s ",
-                            full_file_path, bucket_name, e
-                        )
+                        logger.error("ERROR: file %s not uploaded to bucket"
+                                     " %s due to error: %s ", full_file_path,
+                                     main_bucket_name, e)
                         failed.append(full_file_path)
                         return
                 else:
-                    logger.debug(
-                        "File %s already exists, check if need to update product.",
-                        full_file_path,
+                    succeeded = await handle_existed(
+                        full_file_path, sha1, main_path_key,
+                        main_bucket_name, main_file_object, failed
                     )
-                    f_meta = file_object.metadata
-                    checksum = (
-                        f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
-                    )
-                    if checksum != "" and checksum.strip() != sha1:
-                        logger.error(
-                            'Error: checksum check failed. The file %s is '
-                            'different from the one in S3. Product: %s',
-                            path_key, product
-                        )
-                        failed.append(full_file_path)
+                    if not succeeded:
                         return
-                    (prods, no_error) = await self.__run_async(
-                        self.__get_prod_info,
-                        path_key, bucket_name
+
+                # do copy:
+                for target_ in extra_prefixed_buckets:
+                    extra_bucket = target_[0]
+                    extra_bucket_name = extra_bucket.name
+                    extra_prefix = target_[1]
+                    extra_path_key = os.path.join(extra_prefix, path) if extra_prefix else path
+                    logger.debug(
+                        'Copyinging %s from bucket %s to bucket %s',
+                        full_file_path, main_bucket_name, extra_bucket
                     )
-                    if not self.__dry_run and no_error and product not in prods:
-                        logger.debug(
-                            "File %s has new product, updating the product %s",
-                            full_file_path,
-                            product,
+                    file_object: s3.Object = extra_bucket.Object(extra_path_key)
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                    if not existed:
+                        if not self.__dry_run:
+                            try:
+                                await self.__copy_between_bucket(
+                                    main_bucket_name, main_path_key,
+                                    extra_bucket, extra_path_key
+                                )
+                                if product:
+                                    await self.__update_prod_info(
+                                        extra_path_key, extra_bucket_name, [product]
+                                    )
+                            except (ClientError, HTTPClientError) as e:
+                                logger.error("ERROR: copying failure happend for file %s to bucket"
+                                             " %s due to error: %s ", full_file_path,
+                                             extra_bucket_name, e)
+                                failed.append(full_file_path)
+                    else:
+                        await handle_existed(
+                            full_file_path, sha1, extra_path_key,
+                            extra_bucket_name, file_object, failed
                         )
-                        prods.append(product)
-                        result = await self.__update_prod_info(path_key, bucket_name, prods)
-                        if not result:
-                            failed.append(full_file_path)
-                            return
+
+        async def handle_existed(
+            file_path, file_sha1, path_key,
+            bucket_name, file_object, failed_paths
+        ) -> bool:
+            logger.debug(
+                "File %s already exists in bucket %s, check if need to update product.",
+                path_key, bucket_name
+            )
+            f_meta = file_object.metadata
+            checksum = (
+                f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
+            )
+            if checksum != "" and checksum.strip() != file_sha1:
+                logger.warning('Error: checksum check failed. The file %s is '
+                             'different from the one in S3 bucket %s. Product: %s',
+                             path_key, bucket_name, product)
+                failed_paths.append(file_path)
+                return False
+            (prods, no_error) = await self.__run_async(
+                self.__get_prod_info,
+                path_key, bucket_name
+            )
+            if not self.__dry_run and no_error and product not in prods:
+                logger.debug(
+                    "File %s has new product, updating the product %s",
+                    file_path,
+                    product,
+                )
+                prods.append(product)
+                result = await self.__update_prod_info(
+                    path_key, bucket_name, prods
+                )
+                if not result:
+                    failed_paths.append(file_path)
+                    return False
+                return True
 
         return self.__do_path_cut_and(
             file_paths=file_paths,
             path_handler=self.__path_handler_count_wrapper(path_upload_handler),
             root=root
         )
+
+    async def __copy_between_bucket(
+        self, source: str, source_key: str,
+        target: s3.Bucket, target_key: str
+    ) -> bool:
+        logger.info(
+            "Copying file %s from bucket %s to target %s as %s",
+            source_key, source, target, target_key)
+        copy_source = {
+            'Bucket': source,
+            'Key': source_key
+        }
+        try:
+            await self.__run_async(
+                functools.partial(
+                    target.copy,
+                    CopySource=copy_source,
+                    Key=target_key
+                )
+            )
+            logger.info('Copy done')
+            return True
+        except (ClientError, HTTPClientError) as e:
+            logger.error(
+                "ERROR: Can not copy file %s to bucket %s due to error: %s",
+                source_key, target.name, e
+            )
+            return False
 
     def upload_metadatas(
         self, meta_file_paths: List[str],

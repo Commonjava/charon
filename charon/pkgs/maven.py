@@ -267,7 +267,6 @@ def handle_maven_uploading(
         * repo is the location of the tarball in filesystem
         * prod_key is used to identify which product this repo
           tar belongs to
-        * ga is used to identify if this is a GA product release
         * ignore_patterns is used to filter out paths which don't
           need to upload in the tarball
         * root is a prefix in the tarball to identify which path is
@@ -303,22 +302,19 @@ def handle_maven_uploading(
         _handle_error(err_msgs)
         # Question: should we exit here?
 
-    main_target = targets[0]
-    main_bucket_prefix = remove_prefix(main_target[2], "/")
-    succeeded = True
     # 4. Do uploading
     logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    bucket = main_target[1]
+    targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
-        target=(bucket, main_bucket_prefix),
+        targets=targets_,
         product=prod_key,
         root=top_level
     )
     logger.info("Files uploading done\n")
 
-    all_failed_metas: Dict[str, List[str]] = {}
+    succeeded = True
     for target in targets:
         # 5. Do manifest uploading
         logger.info("Start uploading manifest to s3")
@@ -411,7 +407,6 @@ def handle_maven_uploading(
 
         upload_post_process(failed_files, failed_metas, prod_key, bucket_)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
-        all_failed_metas[target] = failed_metas
 
     return (tmp_root, succeeded)
 
@@ -432,12 +427,13 @@ def handle_maven_del(
         * repo is the location of the tarball in filesystem
         * prod_key is used to identify which product this repo
           tar belongs to
-        * ga is used to identify if this is a GA product release
         * ignore_patterns is used to filter out paths which don't
           need to upload in the tarball
         * root is a prefix in the tarball to identify which path is
           the beginning of the maven GAV path
-        * bucket_name is the s3 bucket name to store the artifacts
+        * targets contains the target name with its bucket name and prefix
+          for the bucket, which will be used to store artifacts with the
+          prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
           tmp dir if None.
 
@@ -505,7 +501,8 @@ def handle_maven_del(
                 product=None,
                 root=top_level
             )
-            failed_metas.extend(_failed_metas)
+            if len(_failed_metas) > 0:
+                failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
 
         # 7. Determine refreshment of archetype-catalog.xml
@@ -529,7 +526,8 @@ def handle_maven_del(
                     product=None,
                     root=top_level
                 )
-                failed_metas.extend(_failed_metas)
+                if len(_failed_metas) > 0:
+                    failed_metas.extend(_failed_metas)
             elif archetype_action > 0:
                 (_, _failed_metas) = s3_client.upload_metadatas(
                     meta_file_paths=archetype_files,
@@ -537,7 +535,8 @@ def handle_maven_del(
                     product=None,
                     root=top_level
                 )
-                failed_metas.extend(_failed_metas)
+                if len(_failed_metas) > 0:
+                    failed_metas.extend(_failed_metas)
             logger.info("archetype-catalog.xml updating done\n")
 
         if do_index:
@@ -554,13 +553,14 @@ def handle_maven_del(
                 product=None,
                 root=top_level
             )
-            failed_metas.extend(_failed_index_files)
+            if len(_failed_index_files) > 0:
+                failed_metas.extend(_failed_index_files)
             logger.info("Index files updating done.\n")
         else:
             logger.info("Bypassing indexing")
 
         rollback_post_process(failed_files, failed_metas, prod_key, bucket)
-        succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
+        succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
 
     return (tmp_root, succeeded)
 
@@ -661,14 +661,21 @@ def _generate_rollback_archetype_catalog(
          - -1 - DELETE the (now empty) bucket catalog
          - 0  - take no action
     """
-    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     if prefix:
         remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
     else:
         remote = ARCHETYPE_CATALOG_FILENAME
+    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
+    # As the local archetype will be overwrittern later, we must keep
+    # a cache of the original local for multi-targets support
+    local_bak = os.path.join(root, ARCHETYPE_CATALOG_FILENAME + ".charon.bak")
+    if os.path.exists(local) and not os.path.exists(local_bak):
+        with open(local, "rb") as f:
+            with open(local_bak, "w+", encoding="utf-8") as fl:
+                fl.write(str(f.read(), encoding="utf-8"))
 
     # If there is no local catalog, this is a NO-OP
-    if os.path.exists(local):
+    if os.path.exists(local_bak):
         existed = False
         try:
             existed = s3.file_exists_in_bucket(bucket, remote)
@@ -682,7 +689,7 @@ def _generate_rollback_archetype_catalog(
             return 0
         else:
             # If there IS a catalog in the bucket, we need to merge or un-merge it.
-            with open(local, "rb") as f:
+            with open(local_bak, "rb") as f:
                 try:
                     local_archetypes = _parse_archetypes(f.read())
                 except ElementTree.ParseError:
@@ -769,14 +776,21 @@ def _generate_upload_archetype_catalog(
        available in the bucket. Merge (or unmerge) these catalogs and
        return a boolean indicating whether the local file should be uploaded.
     """
-    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     if prefix:
         remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
     else:
         remote = ARCHETYPE_CATALOG_FILENAME
+    local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
+    # As the local archetype will be overwrittern later, we must keep
+    # a cache of the original local for multi-targets support
+    local_bak = os.path.join(root, ARCHETYPE_CATALOG_FILENAME + ".charon.bak")
+    if os.path.exists(local) and not os.path.exists(local_bak):
+        with open(local, "rb") as f:
+            with open(local_bak, "w+", encoding="utf-8") as fl:
+                fl.write(str(f.read(), encoding="utf-8"))
 
     # If there is no local catalog, this is a NO-OP
-    if os.path.exists(local):
+    if os.path.exists(local_bak):
         existed = False
         try:
             existed = s3.file_exists_in_bucket(bucket, remote)
@@ -785,7 +799,7 @@ def _generate_upload_archetype_catalog(
                 "Error: Can not generate archtype-catalog.xml due to: %s", e
             )
             return 0
-        if not existed:
+        if not existed
             __gen_all_digest_files(local)
             # If there is no catalog in the bucket, just upload what we have locally
             return True
