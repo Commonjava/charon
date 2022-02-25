@@ -303,9 +303,12 @@ def handle_maven_uploading(
         # Question: should we exit here?
 
     # 4. Do uploading
-    logger.info("Start uploading files to s3")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
+    logger.info(
+        "Start uploading files to s3 buckets: %s",
+        [target[0] for target in targets_]
+    )
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
         targets=targets_,
@@ -317,8 +320,8 @@ def handle_maven_uploading(
     succeeded = True
     for target in targets:
         # 5. Do manifest uploading
-        logger.info("Start uploading manifest to s3")
         manifest_folder = target[0]
+        logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
         if not manifest_bucket_name:
             logger.warning(
                 'Warning: No manifest bucket is provided, will ignore the process of manifest '
@@ -347,7 +350,7 @@ def handle_maven_uploading(
         # 7. Upload all maven-metadata.xml
         if META_FILE_GEN_KEY in meta_files:
             logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket_)
-            (_, _failed_metas) = s3_client.upload_metadatas(
+            _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=meta_files[META_FILE_GEN_KEY],
                 target=(bucket_, prefix__),
                 product=None,
@@ -373,7 +376,7 @@ def handle_maven_uploading(
                     __hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME)
                 )
                 logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket_)
-                (_, _failed_metas) = s3_client.upload_metadatas(
+                _failed_metas = s3_client.upload_metadatas(
                     meta_file_paths=archetype_files,
                     target=(bucket_, prefix__),
                     product=None,
@@ -394,7 +397,7 @@ def handle_maven_uploading(
             logger.info("Index files generation done.\n")
 
             logger.info("Start updating index files to s3 bucket %s", bucket_)
-            (_, _failed_metas) = s3_client.upload_metadatas(
+            _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=created_indexes,
                 target=(bucket_, prefix__),
                 product=None,
@@ -454,10 +457,10 @@ def handle_maven_del(
     succeeded = True
     for target in targets:
         prefix_ = remove_prefix(target[2], "/")
-        logger.info("Start deleting files from s3")
         s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
         bucket = target[1]
-        (_, failed_files) = s3_client.delete_files(
+        logger.info("Start deleting files from s3 bucket %s", bucket)
+        failed_files = s3_client.delete_files(
             valid_mvn_paths,
             target=(bucket, prefix_),
             product=prod_key,
@@ -467,12 +470,18 @@ def handle_maven_del(
 
         # 4. Delete related manifest from s3
         manifest_folder = target[0]
-        logger.info("Start deleting manifest from s3")
+        logger.info(
+            "Start deleting manifest from s3 bucket %s in folder %s",
+            manifest_bucket_name, manifest_folder
+        )
         s3_client.delete_manifest(prod_key, manifest_folder, manifest_bucket_name)
         logger.info("Manifest deletion is done\n")
 
         # 5. Use changed GA to scan s3 for metadata refreshment
-        logger.info("Start generating maven-metadata.xml files for all changed GAs")
+        logger.info(
+            "Start generating maven-metadata.xml files for all changed GAs in s3 bucket %s",
+            bucket
+        )
         meta_files = _generate_metadatas(
             s3=s3_client, bucket=bucket,
             poms=valid_poms, root=top_level,
@@ -483,7 +492,7 @@ def handle_maven_del(
 
         # 6. Upload all maven-metadata.xml. We need to delete metadata files
         # firstly for all affected GA, and then replace the theirs content.
-        logger.info("Start updating maven-metadata.xml to s3")
+        logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket)
         all_meta_files = []
         for _, files in meta_files.items():
             all_meta_files.extend(files)
@@ -495,7 +504,7 @@ def handle_maven_del(
         )
         failed_metas = meta_files.get(META_FILE_FAILED, [])
         if META_FILE_GEN_KEY in meta_files:
-            (_, _failed_metas) = s3_client.upload_metadatas(
+            _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=meta_files[META_FILE_GEN_KEY],
                 target=(bucket, prefix_),
                 product=None,
@@ -519,8 +528,8 @@ def handle_maven_del(
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
             archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
             if archetype_action < 0:
-                logger.info("Start updating archetype-catalog.xml to s3")
-                (_, _failed_metas) = s3_client.delete_files(
+                logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket)
+                _failed_metas = s3_client.delete_files(
                     file_paths=archetype_files,
                     target=(bucket, prefix_),
                     product=None,
@@ -529,7 +538,7 @@ def handle_maven_del(
                 if len(_failed_metas) > 0:
                     failed_metas.extend(_failed_metas)
             elif archetype_action > 0:
-                (_, _failed_metas) = s3_client.upload_metadatas(
+                _failed_metas = s3_client.upload_metadatas(
                     meta_file_paths=archetype_files,
                     target=(bucket, prefix_),
                     product=None,
@@ -546,8 +555,8 @@ def handle_maven_del(
             )
             logger.info("Index files generation done.\n")
 
-            logger.info("Start updating index to s3")
-            (_, _failed_index_files) = s3_client.upload_metadatas(
+            logger.info("Start updating index to s3 bucket %s", bucket)
+            _failed_index_files = s3_client.upload_metadatas(
                 meta_file_paths=created_indexes,
                 target=(bucket, prefix_),
                 product=None,
@@ -799,7 +808,7 @@ def _generate_upload_archetype_catalog(
                 "Error: Can not generate archtype-catalog.xml due to: %s", e
             )
             return 0
-        if not existed
+        if not existed:
             __gen_all_digest_files(local)
             # If there is no catalog in the bucket, just upload what we have locally
             return True

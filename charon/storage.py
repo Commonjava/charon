@@ -156,7 +156,7 @@ class S3Client(object):
                 main_file_object: s3.Object = main_bucket.Object(main_path_key)
                 existed = False
                 try:
-                    existed = await self.__run_async(self.__file_exists, file_object)
+                    existed = await self.__run_async(self.__file_exists, main_file_object)
                 except (ClientError, HTTPClientError) as e:
                     logger.error(
                         "Error: file existence check failed due to error: %s", e
@@ -258,8 +258,8 @@ class S3Client(object):
             )
             if checksum != "" and checksum.strip() != file_sha1:
                 logger.warning('Error: checksum check failed. The file %s is '
-                             'different from the one in S3 bucket %s. Product: %s',
-                             path_key, bucket_name, product)
+                               'different from the one in S3 bucket %s. Product: %s',
+                               path_key, bucket_name, product)
                 failed_paths.append(file_path)
                 return False
             (prods, no_error) = await self.__run_async(
@@ -293,7 +293,7 @@ class S3Client(object):
     ) -> bool:
         logger.info(
             "Copying file %s from bucket %s to target %s as %s",
-            source_key, source, target, target_key)
+            source_key, source, target.name, target_key)
         copy_source = {
             'Bucket': source,
             'Key': source_key
@@ -319,7 +319,7 @@ class S3Client(object):
         self, meta_file_paths: List[str],
         target: Tuple[str, str],
         product: Optional[str] = None, root="/"
-    ) -> Tuple[List[str], List[str]]:
+    ) -> List[str]:
         """ Upload a list of metadata files to s3 bucket. This function is very similar to
         upload_files, except:
             * The metadata files will always be overwritten for each uploading
@@ -328,7 +328,6 @@ class S3Client(object):
         """
         bucket_name = target[0]
         bucket = self.__get_bucket(bucket_name)
-        uploaded_files = []
 
         async def path_upload_handler(
             full_file_path: str, path: str, index: int,
@@ -404,7 +403,6 @@ class S3Client(object):
                                 failed.append(full_file_path)
                                 return
                     logger.debug('Updated metadata %s to bucket %s', path, bucket_name)
-                    uploaded_files.append(path_key)
                 except (ClientError, HTTPClientError) as e:
                     logger.error(
                         "ERROR: file %s not uploaded to bucket"
@@ -413,11 +411,11 @@ class S3Client(object):
                     )
                     failed.append(full_file_path)
 
-        return (uploaded_files, self.__do_path_cut_and(
+        return self.__do_path_cut_and(
             file_paths=meta_file_paths,
             path_handler=self.__path_handler_count_wrapper(path_upload_handler),
             root=root
-        ))
+        )
 
     def upload_manifest(
             self, manifest_name: str, manifest_full_path: str, target: str,
@@ -441,7 +439,7 @@ class S3Client(object):
     def delete_files(
         self, file_paths: List[str], target: Tuple[str, str],
         product: Optional[str], root="/"
-    ) -> Tuple[List[str], List[str]]:
+    ) -> List[str]:
         """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
         down way is move root from the file path if it starts with root. Example: if file_path is
         /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
@@ -454,8 +452,6 @@ class S3Client(object):
         """
         bucket_name = target[0]
         bucket = self.__get_bucket(bucket_name)
-
-        deleted_files = []
 
         async def path_delete_handler(
             full_file_path: str, path: str, index: int,
@@ -527,7 +523,6 @@ class S3Client(object):
                                     failed.append(full_file_path)
                                     return
                             logger.info("Deleted %s from bucket %s", path, bucket_name)
-                            deleted_files.append(path)
                             return
                         except (ClientError, HTTPClientError) as e:
                             logger.error(
@@ -550,7 +545,7 @@ class S3Client(object):
             root=root
         )
 
-        return (deleted_files, failed_files)
+        return failed_files
 
     def delete_manifest(self, product_key: str, target: str, manifest_bucket_name: str):
         if not manifest_bucket_name:
