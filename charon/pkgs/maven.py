@@ -320,7 +320,7 @@ def handle_maven_uploading(
     if not manifest_bucket_name:
         logger.warning(
             'Warning: No manifest bucket is provided, will ignore the process of manifest '
-            'uploading')
+            'uploading\n')
     else:
         manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
         s3_client.upload_manifest(manifest_name, manifest_full_path, target, manifest_bucket_name)
