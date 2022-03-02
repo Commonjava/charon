@@ -658,7 +658,15 @@ def _generate_rollback_archetype_catalog(
 
     # If there is no local catalog, this is a NO-OP
     if os.path.exists(local):
-        if not s3.file_exists_in_bucket(bucket, remote):
+        existed = False
+        try:
+            existed = s3.file_exists_in_bucket(bucket, remote)
+        except ValueError as e:
+            logger.error(
+                "Error: Can not generate archtype-catalog.xml due to: %s", e
+            )
+            return 0
+        if not existed:
             # If there is no catalog in the bucket...this is a NO-OP
             return 0
         else:
@@ -758,7 +766,15 @@ def _generate_upload_archetype_catalog(
 
     # If there is no local catalog, this is a NO-OP
     if os.path.exists(local):
-        if not s3.file_exists_in_bucket(bucket, remote):
+        existed = False
+        try:
+            existed = s3.file_exists_in_bucket(bucket, remote)
+        except ValueError as e:
+            logger.error(
+                "Error: Can not generate archtype-catalog.xml due to: %s", e
+            )
+            return 0
+        if not existed:
             __gen_all_digest_files(local)
             # If there is no catalog in the bucket, just upload what we have locally
             return True
