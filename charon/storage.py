@@ -148,7 +148,15 @@ class S3Client(object):
 
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
                 file_object: s3.Object = bucket.Object(path_key)
-                existed = await self.__run_async(self.__file_exists, file_object)
+                existed = False
+                try:
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "Error: file existence check failed due to error: %s", e
+                    )
+                    failed.append(full_file_path)
+                    return
                 sha1 = read_sha1(full_file_path)
                 (content_type, _) = mimetypes.guess_type(full_file_path)
                 if not content_type:
@@ -262,7 +270,15 @@ class S3Client(object):
 
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
                 file_object: s3.Object = bucket.Object(path_key)
-                existed = await self.__run_async(self.__file_exists, file_object)
+                existed = False
+                try:
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "Error: file existence check failed due to error: %s", e
+                    )
+                    failed.append(full_file_path)
+                    return
                 f_meta = {}
                 need_overwritten = True
                 sha1 = read_sha1(full_file_path)
@@ -367,7 +383,15 @@ class S3Client(object):
                 logger.debug('(%d/%d) Deleting %s from bucket %s', index, total, path, bucket_name)
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
                 file_object = bucket.Object(path_key)
-                existed = await self.__run_async(self.__file_exists, file_object)
+                existed = False
+                try:
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "Error: file existence check failed due to error: %s", e
+                    )
+                    failed.append(full_file_path)
+                    return
                 if existed:
                     # NOTE: If we're NOT using the product key to track collisions
                     # (in the case of metadata), then this prods array will remain
@@ -458,7 +482,15 @@ class S3Client(object):
 
         manifest_bucket = self.__get_bucket(manifest_bucket_name)
         file_object: s3.Object = manifest_bucket.Object(path_key)
-        if self.__file_exists(file_object):
+        existed = False
+        try:
+            existed = self.__file_exists(file_object)
+        except (ClientError, HTTPClientError) as e:
+            logger.error(
+                "Error: file existence check failed due to error: %s", e
+            )
+            return
+        if existed:
             manifest_bucket.delete_objects(Delete={"Objects": [{"Key": path_key}]})
         else:
             logger.warning(
@@ -555,8 +587,7 @@ class S3Client(object):
             if isinstance(e, ClientError) and e.response["Error"]["Code"] == "404":
                 return False
             else:
-                logger.error("Error: file existence check failed due "
-                             "to error: %s", e)
+                raise e
 
     def __get_prod_info(
         self, file: str, bucket_name: str
