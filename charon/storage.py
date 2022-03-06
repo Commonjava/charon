@@ -678,8 +678,8 @@ class S3Client(object):
             logger.debug("Got product information as below %s", prods)
             return (prods, True)
         except (ClientError, HTTPClientError) as e:
-            logger.error("ERROR: Can not get product info for file %s "
-                         "due to error: %s", file, e)
+            logger.warning("WARN: Can not get product info for file %s "
+                           "due to error: %s", file, e)
             return ([], False)
 
     async def __update_prod_info(

@@ -994,7 +994,7 @@ def __hash_decorate_metadata(path: str, metadata: str) -> List[str]:
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
     for ignored_name in STANDARD_GENERATED_IGNORES:
         if ignored_name in filename:
-            logger.warning("Ignoring standard generated Maven path: %s", filename)
+            logger.info("Ignoring standard generated Maven path: %s", filename)
             return True
 
     if ignore_patterns:
