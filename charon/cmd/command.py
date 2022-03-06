@@ -13,7 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from typing import List
+from typing import List, Tuple
+
 from charon.config import CharonConfig, get_config
 from charon.utils.logs import set_logging
 from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
@@ -62,9 +63,10 @@ logger = logging.getLogger(__name__)
     help="""
     The target to do the uploading, which will decide which s3 bucket
     and what root path where all files will be uploaded to.
+    Can accept more than one target.
     """,
     required=True,
-    multiple=False,
+    multiple=True,
 )
 @option(
     "--root_path",
@@ -112,7 +114,7 @@ def upload(
     repo: str,
     product: str,
     version: str,
-    target: str,
+    target: List[str],
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
@@ -140,28 +142,24 @@ def upload(
         if not aws_profile:
             logger.warning("No AWS profile specified!")
 
-        aws_bucket = conf.get_aws_bucket(target)
-        if not aws_bucket:
-            sys.exit(1)
-
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
-        prefix_ = conf.get_bucket_prefix(target)
         manifest_bucket_name = conf.get_manifest_bucket()
+        targets_ = __get_targets(target, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            tmp_dir = handle_npm_uploading(
+            tmp_dir, succeeded = handle_npm_uploading(
                 archive_path,
                 product_key,
-                bucket_name=aws_bucket,
-                prefix=prefix_,
+                targets=targets_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -169,19 +167,19 @@ def upload(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            tmp_dir = handle_maven_uploading(
+            tmp_dir, succeeded = handle_maven_uploading(
                 archive_path,
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                bucket_name=aws_bucket,
+                targets=targets_,
                 aws_profile=aws_profile,
-                prefix=prefix_,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
@@ -221,9 +219,10 @@ def upload(
     help="""
     The target to do the deletion, which will decide which s3 bucket
     and what root path where all files will be deleted from.
+    Can accept more than one target.
     """,
     required=True,
-    multiple=False,
+    multiple=True,
 )
 @option(
     "--root_path",
@@ -270,7 +269,7 @@ def delete(
     repo: str,
     product: str,
     version: str,
-    target: str,
+    target: List[str],
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
@@ -298,28 +297,24 @@ def delete(
         if not aws_profile:
             logger.warning("No AWS profile specified!")
 
-        aws_bucket = conf.get_aws_bucket(target)
-        if not aws_bucket:
-            sys.exit(1)
-
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
-        prefix_ = conf.get_bucket_prefix(target)
         manifest_bucket_name = conf.get_manifest_bucket()
+        targets_ = __get_targets(target, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
-            tmp_dir = handle_npm_del(
+            tmp_dir, succeeded = handle_npm_del(
                 archive_path,
                 product_key,
-                bucket_name=aws_bucket,
-                prefix=prefix_,
+                targets=targets_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
         else:
             ignore_patterns_list = None
             if ignore_patterns:
@@ -327,25 +322,42 @@ def delete(
             else:
                 ignore_patterns_list = __get_ignore_patterns(conf)
             logger.info("This is a maven archive")
-            tmp_dir = handle_maven_del(
+            tmp_dir, succeeded = handle_maven_del(
                 archive_path,
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                bucket_name=aws_bucket,
+                targets=targets_,
                 aws_profile=aws_profile,
-                prefix=prefix_,
                 dir_=work_dir,
                 dry_run=dryrun,
-                target=target,
                 manifest_bucket_name=manifest_bucket_name
             )
+            if not succeeded:
+                sys.exit(1)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
     finally:
         if not debug:
             __safe_delete(tmp_dir)
+
+
+def __get_targets(target: List[str], conf: CharonConfig) -> List[Tuple[str, str, str]]:
+    targets_ = []
+    for tgt in target:
+        aws_bucket = conf.get_aws_bucket(tgt)
+        if not aws_bucket:
+            continue
+        prefix = conf.get_bucket_prefix(tgt)
+        targets_.append([tgt, aws_bucket, prefix])
+    if len(targets_) == 0:
+        logger.error(
+            "All targets are not valid or configured, "
+            "please check your charon configurations."
+        )
+        sys.exit(1)
+    return targets_
 
 
 def __safe_delete(tmp_dir: str):

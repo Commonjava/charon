@@ -95,39 +95,48 @@ class PackageBaseTest(BaseTest):
         self.test_manifest_bucket = self.mock_s3.Bucket(TEST_MANIFEST_BUCKET)
 
     def tearDown(self):
-        buckets = [self.mock_s3.Bucket(TEST_BUCKET), self.mock_s3.Bucket(TEST_MANIFEST_BUCKET)]
+        buckets = [TEST_BUCKET, TEST_MANIFEST_BUCKET]
+        self.cleanBuckets(buckets)
+        super().tearDown()
+
+    def cleanBuckets(self, buckets: List[str]):
         try:
-            for bucket in buckets:
+            for bucket_ in buckets:
+                bucket = self.mock_s3.Bucket(bucket_)
                 bucket.objects.all().delete()
                 bucket.delete()
         except ValueError:
             pass
-        super().tearDown()
 
     def __prepare_s3(self):
         return boto3.resource('s3')
 
-    def check_product(self, file: str, prods: List[str]):
+    def check_product(self, file: str, prods: List[str], bucket: s3.Bucket = None, msg=None):
         prod_file = file + PROD_INFO_SUFFIX
-        prod_f_obj = self.test_bucket.Object(prod_file)
+        test_bucket = bucket
+        if not test_bucket:
+            test_bucket = self.test_bucket
+        prod_f_obj = test_bucket.Object(prod_file)
         content = str(prod_f_obj.get()['Body'].read(), 'utf-8')
         self.assertEqual(
             set(prods),
-            set([f for f in content.split("\n") if f.strip() != ""])
+            set([f for f in content.split("\n") if f.strip() != ""]),
+            msg=msg
         )
 
-    def check_content(self, objs: List[s3.ObjectSummary], products: List[str]):
+    def check_content(self, objs: List[s3.ObjectSummary], products: List[str], msg=None):
         for obj in objs:
             file_obj = obj.Object()
+            test_bucket = self.mock_s3.Bucket(file_obj.bucket_name)
             if not file_obj.key.endswith(PROD_INFO_SUFFIX):
                 if not is_metadata(file_obj.key):
-                    self.check_product(file_obj.key, products)
+                    self.check_product(file_obj.key, products, test_bucket, msg)
                 else:
-                    self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata)
+                    self.assertNotIn(PRODUCT_META_KEY, file_obj.metadata, msg=msg)
                     if file_obj.key.endswith("maven-metadata.xml"):
                         sha1_checksum = file_obj.metadata[CHECKSUM_META_KEY].strip()
-                        sha1_obj = self.test_bucket.Object(file_obj.key + ".sha1")
+                        sha1_obj = test_bucket.Object(file_obj.key + ".sha1")
                         sha1_file_content = str(sha1_obj.get()['Body'].read(), 'utf-8')
-                        self.assertEqual(sha1_checksum, sha1_file_content)
-                self.assertIn(CHECKSUM_META_KEY, file_obj.metadata)
-                self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip())
+                        self.assertEqual(sha1_checksum, sha1_file_content, msg=msg)
+                self.assertIn(CHECKSUM_META_KEY, file_obj.metadata, msg=msg)
+                self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip(), msg=msg)

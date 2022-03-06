@@ -35,10 +35,9 @@ class ManifestUploadTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            bucket_name=TEST_BUCKET,
+            targets=[(TEST_TARGET, TEST_BUCKET, None)],
             dir_=self.tempdir,
             do_index=False,
-            target=TEST_TARGET,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
 
@@ -66,10 +65,9 @@ class ManifestUploadTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_zip, product,
-            bucket_name=TEST_BUCKET,
+            targets=[(TEST_TARGET, TEST_BUCKET, None)],
             dir_=self.tempdir,
             do_index=False,
-            target=TEST_TARGET,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
 
