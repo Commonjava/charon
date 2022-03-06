@@ -140,7 +140,8 @@ def upload(
 
         aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
         if not aws_profile:
-            logger.warning("No AWS profile specified!")
+            logger.error("No AWS profile specified!")
+            sys.exit(1)
 
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
@@ -295,7 +296,8 @@ def delete(
 
         aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
         if not aws_profile:
-            logger.warning("No AWS profile specified!")
+            logger.error("No AWS profile specified!")
+            sys.exit(1)
 
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
