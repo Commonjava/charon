@@ -203,12 +203,10 @@ class S3Client(object):
                         failed.append(full_file_path)
                         return
                 else:
-                    succeeded = await handle_existed(
+                    await handle_existed(
                         full_file_path, sha1, main_path_key,
-                        main_bucket_name, main_file_object, failed
+                        main_bucket_name, main_file_object
                     )
-                    if not succeeded:
-                        return
 
                 # do copy:
                 for target_ in extra_prefixed_buckets:
@@ -241,12 +239,12 @@ class S3Client(object):
                     else:
                         await handle_existed(
                             full_file_path, sha1, extra_path_key,
-                            extra_bucket_name, file_object, failed
+                            extra_bucket_name, file_object
                         )
 
         async def handle_existed(
             file_path, file_sha1, path_key,
-            bucket_name, file_object, failed_paths
+            bucket_name, file_object
         ) -> bool:
             logger.debug(
                 "File %s already exists in bucket %s, check if need to update product.",
@@ -257,10 +255,9 @@ class S3Client(object):
                 f_meta[CHECKSUM_META_KEY] if CHECKSUM_META_KEY in f_meta else ""
             )
             if checksum != "" and checksum.strip() != file_sha1:
-                logger.warning('Error: checksum check failed. The file %s is '
+                logger.warning('Warning: checksum check failed. The file %s is '
                                'different from the one in S3 bucket %s. Product: %s',
                                path_key, bucket_name, product)
-                failed_paths.append(file_path)
                 return False
             (prods, no_error) = await self.__run_async(
                 self.__get_prod_info,
@@ -277,7 +274,6 @@ class S3Client(object):
                     path_key, bucket_name, prods
                 )
                 if not result:
-                    failed_paths.append(file_path)
                     return False
                 return True
 
@@ -703,8 +699,8 @@ class S3Client(object):
                 logger.debug("Updated product infomation for file %s", file)
                 return True
             except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: Can not update product info for file %s "
-                             "due to error: %s", file, e)
+                logger.warning("WARNING: Can not update product info for file %s "
+                               "due to error: %s", file, e)
                 return False
         else:
             logger.debug("Removing product infomation file for file %s "
@@ -724,8 +720,8 @@ class S3Client(object):
                     logger.debug("Removed product infomation file for file %s", file)
                 return True
             except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: Can not delete product info file for file %s "
-                             "due to error: %s", file, e)
+                logger.warning("WARNING: Can not delete product info file for file %s "
+                               "due to error: %s", file, e)
                 return False
 
     def __path_handler_count_wrapper(

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-
 from boto3_type_annotations import s3
 from charon.storage import S3Client, CHECKSUM_META_KEY
 from charon.utils.archive import extract_zip_all
@@ -375,16 +374,21 @@ class S3ClientTest(BaseTest):
             product="apache-commons", root=temp_root
         )
         self.assertEqual(0, len(failed_paths))
+        sha1 = read_sha1(all_files[0])
+        path = all_files[0][len(temp_root) + 1:]
 
         # Change content to make hash changes
         with open(all_files[0], "w+", encoding="utf-8") as f:
             f.write("changed content")
+        sha1_changed = read_sha1(all_files[0])
+        self.assertNotEqual(sha1, sha1_changed)
         failed_paths = self.s3_client.upload_files(
             all_files, targets=[(MY_BUCKET, None)],
             product="apache-commons-2", root=temp_root
         )
-        self.assertEqual(1, len(failed_paths))
-        self.assertIn(failed_paths[0], all_files[0])
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+        file_obj = bucket.Object(path)
+        self.assertEqual(sha1, file_obj.metadata[CHECKSUM_META_KEY])
 
     def __prepare_files(self):
         test_zip = zipfile.ZipFile(
