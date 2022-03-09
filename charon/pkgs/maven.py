@@ -316,17 +316,16 @@ def handle_maven_uploading(
         root=top_level
     )
     logger.info("Files uploading done\n")
-
     succeeded = True
     for target in targets:
         # 5. Do manifest uploading
-        manifest_folder = target[0]
-        logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
         if not manifest_bucket_name:
             logger.warning(
                 'Warning: No manifest bucket is provided, will ignore the process of manifest '
                 'uploading\n')
         else:
+            logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
+            manifest_folder = target[0]
             manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
             s3_client.upload_manifest(
                 manifest_name, manifest_full_path,

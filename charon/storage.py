@@ -287,7 +287,7 @@ class S3Client(object):
         self, source: str, source_key: str,
         target: s3.Bucket, target_key: str
     ) -> bool:
-        logger.info(
+        logger.debug(
             "Copying file %s from bucket %s to target %s as %s",
             source_key, source, target.name, target_key)
         copy_source = {
