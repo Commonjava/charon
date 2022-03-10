@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021 Red Hat, Inc. (https://github.com/Commonjava/charon)
+Copyright (C) 2022 Red Hat, Inc. (https://github.com/Commonjava/charon)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -924,7 +924,7 @@ def __hash_decorate_metadata(path: str, metadata: str) -> List[str]:
 
 def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
     for ignored_name in STANDARD_GENERATED_IGNORES:
-        if ignored_name in filename:
+        if filename and filename.startswith(ignored_name.strip()):
             logger.warning("Ignoring standard generated Maven path: %s", filename)
             return True
 

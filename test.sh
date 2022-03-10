@@ -4,7 +4,7 @@ set -eux
 # Prepare env vars
 ENGINE=${ENGINE:="podman"}
 OS=${OS:="centos"}
-OS_VERSION=${OS_VERSION:="8"}
+OS_VERSION=${OS_VERSION:="7"}
 PYTHON_VERSION=${PYTHON_VERSION:="3"}
 ACTION=${ACTION:="test"}
 IMAGE="$OS:$OS_VERSION"
@@ -33,16 +33,22 @@ function setup_charon() {
   PKG_EXTRA=(dnf-plugins-core git "$PYTHON"-pylint)
   BUILDDEP=(dnf builddep)
   if [[ $OS == "centos" ]]; then
+    PKG="yum"
+    PKG_EXTRA=(yum-utils git "$PYTHON"-pylint)
+    BUILDDEP=(yum-builddep)
     ENABLE_REPO=
   else
     ENABLE_REPO="--enablerepo=updates-testing"
   fi
+  
 
   PIP_INST=("$PIP" install --index-url "${PYPI_INDEX:-https://pypi.org/simple}")
 
   if [[ $OS == "centos" ]]; then
     # Don't let builddep enable *-source repos since they give 404 errors
     $RUN rm -f /etc/yum.repos.d/CentOS-Sources.repo
+    # $RUN rm -f /etc/yum.repos.d/CentOS-Linux-AppStream.repo
+    # $RUN rm -f /etc/yum.repos.d/CentOS-Linux-BaseOS.repo
     # This has to run *before* we try installing anything from EPEL
     $RUN $PKG $ENABLE_REPO install -y epel-release
   fi
@@ -66,7 +72,7 @@ function setup_charon() {
   fi
 
   # install with RPM_PY_SYS=true to avoid error caused by installing on system python
-  $RUN sh -c "RPM_PY_SYS=true ${PIP_INST[*]} rpm-py-installer"
+  #$RUN sh -c "RPM_PY_SYS=true ${PIP_INST[*]} rpm-py-installer"
   # Setuptools install charon from source
   $RUN $PYTHON setup.py install
 
