@@ -418,8 +418,7 @@ class S3Client(object):
             manifest_bucket_name: str
     ):
         target = target if target else "default"
-        env_folder = "-".join([target, "charon-metadata"])
-        path_key = os.path.join(env_folder, manifest_name)
+        path_key = os.path.join(target, manifest_name)
         manifest_bucket = self.__get_bucket(manifest_bucket_name)
         try:
             file_object: s3.Object = manifest_bucket.Object(path_key)
@@ -551,8 +550,7 @@ class S3Client(object):
             return
         manifest_name = product_key + MANIFEST_SUFFIX
         target = target if target else "default"
-        env_folder = "-".join([target, "charon-metadata"])
-        path_key = os.path.join(env_folder, manifest_name)
+        path_key = os.path.join(target, manifest_name)
 
         manifest_bucket = self.__get_bucket(manifest_bucket_name)
         file_object: s3.Object = manifest_bucket.Object(path_key)

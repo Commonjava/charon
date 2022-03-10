@@ -307,7 +307,7 @@ def handle_maven_uploading(
     targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     logger.info(
         "Start uploading files to s3 buckets: %s",
-        [target[0] for target in targets_]
+        [target[1] for target in targets_]
     )
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
@@ -325,7 +325,7 @@ def handle_maven_uploading(
                 'uploading\n')
         else:
             logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
-            manifest_folder = target[0]
+            manifest_folder = target[1]
             manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
             s3_client.upload_manifest(
                 manifest_name, manifest_full_path,
@@ -468,7 +468,7 @@ def handle_maven_del(
         logger.info("Files deletion done\n")
 
         # 4. Delete related manifest from s3
-        manifest_folder = target[0]
+        manifest_folder = target[1]
         logger.info(
             "Start deleting manifest from s3 bucket %s in folder %s",
             manifest_bucket_name, manifest_folder
