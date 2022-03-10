@@ -100,7 +100,7 @@ def handle_npm_uploading(
     targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     logger.info(
         "Start uploading files to s3 buckets: %s",
-        [target[0] for target in targets_]
+        [target[1] for target in targets_]
     )
     failed_files = client.upload_files(
         file_paths=valid_paths,
@@ -112,13 +112,13 @@ def handle_npm_uploading(
 
     succeeded = True
     for target in targets:
-        manifest_folder = target[0]
         if not manifest_bucket_name:
             logger.warning(
                 'Warning: No manifest bucket is provided, will ignore the process of manifest '
                 'uploading\n')
         else:
             logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
+            manifest_folder = target[1]
             manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
             client.upload_manifest(
                 manifest_name, manifest_full_path,
@@ -217,7 +217,7 @@ def handle_npm_del(
         logger.info("Files deletion done\n")
 
         if manifest_bucket_name:
-            manifest_folder = target[0]
+            manifest_folder = target[1]
             logger.info(
                 "Start deleting manifest from s3 bucket %s in folder %s",
                 manifest_bucket_name, manifest_folder

@@ -118,8 +118,8 @@ COMMONS_ROOT_INDEX = "index.html"
 # For manifest
 TEST_MANIFEST_BUCKET = "test_manifest_bucket"
 TEST_TARGET = "stage"
-COMMONS_CLIENT_456_MANIFEST = "stage-charon-metadata/commons-client-4.5.6.txt"
-CODE_FRAME_7_14_5_MANIFEST = "stage-charon-metadata/code-frame-7.14.5.txt"
+COMMONS_CLIENT_456_MANIFEST = TEST_BUCKET + "/commons-client-4.5.6.txt"
+CODE_FRAME_7_14_5_MANIFEST = TEST_BUCKET + "/code-frame-7.14.5.txt"
 
 # For multi targets support
 TEST_BUCKET_2 = "test_bucket_2"
