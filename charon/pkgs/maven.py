@@ -307,7 +307,7 @@ def handle_maven_uploading(
     targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     logger.info(
         "Start uploading files to s3 buckets: %s",
-        [target[1] for target in targets_]
+        [target[1] for target in targets]
     )
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
