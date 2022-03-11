@@ -302,7 +302,7 @@ class S3Client(object):
                     Key=target_key
                 )
             )
-            logger.info('Copy done')
+            logger.debug('Copy done')
             return True
         except (ClientError, HTTPClientError) as e:
             logger.error(
