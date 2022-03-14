@@ -40,19 +40,19 @@ def __post_process(
 ):
     if len(failed_files) == 0 and len(failed_metas) == 0:
         logger.info("Product release %s is successfully %s "
-                    "Ronda service in bucket %s",
+                    "Ronda service in bucket %s\n",
                     product_key, operation, bucket)
     else:
         total = len(failed_files) + len(failed_metas)
         logger.error("%d file(s) occur errors/warnings in bucket %s, "
-                     "please see errors.log for details.",
+                     "please see errors.log for details.\n",
                      bucket, total)
         logger.error("Product release %s is %s Ronda service in bucket %s, "
                      "but has some failures as below:",
                      product_key, operation, bucket)
         if len(failed_files) > 0:
-            logger.error("Failed files: \n%s",
+            logger.error("Failed files: \n%s\n",
                          failed_files)
         if len(failed_metas) > 0:
-            logger.error("Failed metadata files: \n%s",
+            logger.error("Failed metadata files: \n%s\n",
                          failed_metas)

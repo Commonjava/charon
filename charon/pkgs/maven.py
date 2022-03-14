@@ -620,7 +620,6 @@ def _scan_paths(files_root: str, ignore_patterns: List[str],
                 valid_mvn_paths.append(path)
 
                 if name.strip().endswith(".pom"):
-                    logger.debug("Found pom %s", name)
                     valid_poms.append(path)
             else:
                 non_mvn_paths.append(path)
