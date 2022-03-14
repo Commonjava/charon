@@ -127,10 +127,9 @@ def __generate_index_html(
             removed_index = os.path.join(top_level, folder_, "index.html")
         s3_client.delete_files(
             file_paths=[removed_index],
-            bucket_name=bucket,
+            target=(bucket, prefix),
             product=None,
-            root=top_level,
-            key_prefix=prefix
+            root=top_level
         )
     elif len(contents) >= 1:
         real_contents = []
