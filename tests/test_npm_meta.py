@@ -61,19 +61,20 @@ class NPMMetadataOnS3Test(BaseTest):
         bucket.put_object(
             Key='@redhat/kogito-tooling-workspace/package.json',
             Body=str(original_version_0_5_8_package_json)
-            )
+        )
         tarball_test_path = os.path.join(
             os.getcwd(),
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
-            )
+        )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            targets=[(None, MY_BUCKET, None)],
             dir_=self.tempdir
-            )
+        )
         (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
             prefix='@redhat/kogito-tooling-workspace/package.json'
-            )
+        )
         self.assertEqual(1, len(files))
         self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
 
@@ -119,7 +120,8 @@ class NPMMetadataOnS3Test(BaseTest):
             'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
         )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3", bucket_name=MY_BUCKET,
+            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            targets=[(None, MY_BUCKET, None)],
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(

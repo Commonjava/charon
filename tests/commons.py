@@ -49,20 +49,20 @@ NON_MVN_FILES = [
     "commons-client-4.5.9/licenses/licenses.txt",
     "commons-client-4.5.9/README.md"
 ]
-COMMONS_CLIENT_456_MVN_NUM = (
-    len(COMMONS_CLIENT_456_FILES) +
-    len(COMMONS_LOGGING_FILES))
-COMMONS_CLIENT_459_MVN_NUM = (
-    len(COMMONS_CLIENT_459_FILES) +
-    len(COMMONS_LOGGING_FILES))
-COMMONS_CLIENT_MVN_NUM = (
-    len(COMMONS_CLIENT_456_FILES) +
-    len(COMMONS_CLIENT_459_FILES) +
-    len(COMMONS_LOGGING_FILES))
-COMMONS_CLIENT_META_NUM = (
-    len(COMMONS_CLIENT_METAS) +
-    len(COMMONS_LOGGING_METAS) +
-    len(ARCHETYPE_CATALOG_FILES))
+COMMONS_CLIENT_456_MVN_NUM = \
+    len(COMMONS_CLIENT_456_FILES) + \
+    len(COMMONS_LOGGING_FILES)
+COMMONS_CLIENT_459_MVN_NUM = \
+    len(COMMONS_CLIENT_459_FILES) + \
+    len(COMMONS_LOGGING_FILES)
+COMMONS_CLIENT_MVN_NUM = \
+    len(COMMONS_CLIENT_456_FILES) + \
+    len(COMMONS_CLIENT_459_FILES) + \
+    len(COMMONS_LOGGING_FILES)
+COMMONS_CLIENT_META_NUM = \
+    len(COMMONS_CLIENT_METAS) + \
+    len(COMMONS_LOGGING_METAS) + \
+    len(ARCHETYPE_CATALOG_FILES)
 # For maven indexes
 COMMONS_CLIENT_456_INDEXES = [
     "index.html",
@@ -92,7 +92,6 @@ COMMONS_ROOT_INDEX = "index.html"
 
 
 # For npm
-TEST_NPM_BUCKET = "npm_bucket"
 CODE_FRAME_7_14_5_FILES = [
     "@babel/code-frame/7.14.5/package.json",
     "@babel/code-frame/-/code-frame-7.14.5.tgz",
@@ -114,3 +113,13 @@ CODE_FRAME_7_15_8_INDEXES = [
 CODE_FRAME_7_14_5_INDEX = "@babel/code-frame/7.14.5/index.html"
 CODE_FRAME_INDEX = "@babel/code-frame/index.html"
 COMMONS_ROOT_INDEX = "index.html"
+
+
+# For manifest
+TEST_MANIFEST_BUCKET = "test_manifest_bucket"
+TEST_TARGET = "stage"
+COMMONS_CLIENT_456_MANIFEST = TEST_BUCKET + "/commons-client-4.5.6.txt"
+CODE_FRAME_7_14_5_MANIFEST = TEST_BUCKET + "/code-frame-7.14.5.txt"
+
+# For multi targets support
+TEST_BUCKET_2 = "test_bucket_2"

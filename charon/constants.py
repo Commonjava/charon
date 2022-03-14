@@ -133,10 +133,8 @@ body {
   </header>
   <hr/>
   <main>
-    <ul style="list-style: none outside;" id="contents">
-    {% for item in index.items %}
-        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
-    {% endfor%}
+    <ul style="list-style: none outside;" id="contents">{% for item in index.items %}
+        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>{% endfor%}
     </ul>
   </main>
   <hr/>
@@ -162,11 +160,9 @@ body {
   <hr/>
   <main>
     <ul style="list-style: none outside;" id="contents">
-    {% for item in index.items %}{% if item.startswith("@") or item.startswith("..") %}
-        <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>
-    {% else %}
-        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>
-    {% endif %}{% endfor%}
+        {% for item in index.items %}{% if item.startswith("@") or item.startswith("..") %}
+        <li><a href="{{ item }}index.html" title="{{ item }}">{{ item }}</a></li>{% else %}
+        <li><a href="{{ item }}" title="{{ item }}">{{ item }}</a></li>{% endif %}{% endfor%}
     </ul>
   </main>
   <hr/>
@@ -175,3 +171,5 @@ body {
 '''
 
 PROD_INFO_SUFFIX = ".prodinfo"
+MANIFEST_SUFFIX = ".txt"
+DEFAULT_ERRORS_LOG = "errors.log"

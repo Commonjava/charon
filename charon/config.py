@@ -38,6 +38,7 @@ class CharonConfig(object):
         self.__targets: Dict = data.get("targets", None)
         if not self.__targets or not isinstance(self.__targets, Dict):
             raise TypeError("Charon configuration is not correct: targets is invalid.")
+        self.__manifest_bucket: str = data.get("manifest_bucket", None)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -48,7 +49,7 @@ class CharonConfig(object):
     def get_aws_bucket(self, target: str) -> str:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
-            logger.error("The target %s is not found in charon configuration.")
+            logger.error("The target %s is not found in charon configuration.", target)
             return None
         bucket = target_.get("bucket", None)
         if not bucket:
@@ -71,6 +72,9 @@ class CharonConfig(object):
         # removing first slash as it is not needed.
         prefix = remove_prefix(prefix, "/")
         return prefix
+
+    def get_manifest_bucket(self) -> str:
+        return self.__manifest_bucket
 
 
 def get_config() -> CharonConfig:
