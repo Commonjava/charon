@@ -20,7 +20,7 @@ import re
 
 from setuptools import setup, find_packages
 
-version = "1.0.0"
+version = "1.0.1"
 
 # f = open('README.md')
 # long_description = f.read().strip()
