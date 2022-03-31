@@ -21,9 +21,11 @@ import requests
 import tempfile
 import shutil
 from enum import Enum
-from json import load, JSONDecodeError
+from json import load, JSONDecodeError, dump
 from typing import Tuple
 from zipfile import ZipFile, is_zipfile
+from charon.constants import NRRC_REGISTRY
+from charon.utils.files import digest, HashType
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,7 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
     tgz.extractall()
     for f in tgz:
         if f.name.endswith("package.json"):
-            parse_paths = __parse_npm_package_version_paths(f.path)
+            version_data, parse_paths = __parse_npm_package_version_paths(f.path)
             package_name_path = parse_paths[0]
             os.makedirs(os.path.join(target_dir, parse_paths[0]))
             tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
@@ -63,7 +65,11 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
                 target_dir, parse_paths[0], parse_paths[1]
             )
             valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
+
             if is_for_upload:
+                tgz_relative_path = "/".join([parse_paths[0], "-", _get_tgz_name(path)])
+                __write_npm_version_dist(path, f.path, version_data, tgz_relative_path)
+
                 os.makedirs(tarball_parent_path)
                 target = os.path.join(tarball_parent_path, os.path.basename(path))
                 shutil.copyfile(path, target)
@@ -81,12 +87,33 @@ def _get_tgz_name(path: str):
     return ""
 
 
-def __parse_npm_package_version_paths(path: str) -> list:
+def _del_none(d):
+    for key, value in list(d.items()):
+        if value is None:
+            del d[key]
+        elif isinstance(value, dict):
+            _del_none(value)
+    return d
+
+
+def __write_npm_version_dist(path: str, version_meta_extract_path: str, version_data: dict,
+                             tgz_relative_path: str):
+    tarball_link = "".join(["https://", NRRC_REGISTRY, "/", tgz_relative_path])
+    shasum = digest(path, HashType.SHA1)
+    dist = dict()
+    dist["tarball"] = tarball_link
+    dist["shasum"] = shasum
+    version_data["dist"] = dist
+    with open(version_meta_extract_path, mode='w', encoding='utf-8') as f:
+        dump(_del_none(version_data), f)
+
+
+def __parse_npm_package_version_paths(path: str) -> Tuple[dict, list]:
     try:
         with open(path, encoding='utf-8') as version_package:
             data = load(version_package)
         package_version_paths = [data['name'], data['version']]
-        return package_version_paths
+        return data, package_version_paths
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
 
