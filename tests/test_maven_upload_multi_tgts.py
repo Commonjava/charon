@@ -42,27 +42,27 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
 
     def test_fresh_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, ""), (None, TEST_BUCKET_2, "")]
+            [(None, TEST_BUCKET, ""), (None, TEST_BUCKET_2, "", None)]
         )
 
     def test_short_prefix_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, SHORT_TEST_PREFIX), (None, TEST_BUCKET_2, SHORT_TEST_PREFIX)]
+            [(None, TEST_BUCKET, SHORT_TEST_PREFIX), (None, TEST_BUCKET_2, SHORT_TEST_PREFIX, None)]
         )
 
     def test_long_prefix_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, LONG_TEST_PREFIX), (None, TEST_BUCKET_2, LONG_TEST_PREFIX)]
+            [(None, TEST_BUCKET, LONG_TEST_PREFIX), (None, TEST_BUCKET_2, LONG_TEST_PREFIX, None)]
         )
 
     def test_root_prefix_upload(self):
-        self.__test_prefix_upload([(None, TEST_BUCKET, "/"), (None, TEST_BUCKET_2, "/")])
+        self.__test_prefix_upload([(None, TEST_BUCKET, "/", None), (None, TEST_BUCKET_2, "/", None)])
 
     def test_overlap_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         targets_ = [
-            (None, TEST_BUCKET, None), (None, TEST_BUCKET_2, None)
+            (None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)
         ]
         handle_maven_uploading(
             test_zip, product_456,
@@ -180,7 +180,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         targets_ = [
-            (None, TEST_BUCKET, None), (None, TEST_BUCKET_2, None)
+            (None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)
         ]
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
@@ -214,7 +214,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
             for f in ignored_files:
                 self.assertNotIn(f, actual_files, msg=f'{bucket_name}')
 
-    def __test_prefix_upload(self, targets: List[Tuple[str, str, str]]):
+    def __test_prefix_upload(self, targets: List[Tuple[str, str, str, str]]):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(

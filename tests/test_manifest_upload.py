@@ -19,6 +19,7 @@ from moto import mock_s3
 
 from charon.pkgs.maven import handle_maven_uploading
 from charon.pkgs.npm import handle_npm_uploading
+from charon.constants import DEFAULT_REGISTRY
 from tests.base import PackageBaseTest
 from tests.commons import (
     TEST_BUCKET, TEST_MANIFEST_BUCKET, TEST_TARGET, COMMONS_CLIENT_456_MVN_NUM,
@@ -35,7 +36,7 @@ class ManifestUploadTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -65,7 +66,7 @@ class ManifestUploadTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
