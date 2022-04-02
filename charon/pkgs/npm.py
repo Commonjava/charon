@@ -87,6 +87,7 @@ def handle_npm_uploading(
 
         Returns the directory used for archive processing and if uploading is successful
     """
+    client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     for target in targets:
         bucket_ = target[1]
         prefix__ = remove_prefix(target[2], "/")
@@ -99,8 +100,6 @@ def handle_npm_uploading(
             sys.exit(1)
         valid_dirs = __get_path_tree(valid_paths, target_dir)
 
-        # main_target = targets[0]
-        client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
         logger.info("Start uploading files to s3 buckets: %s", bucket_)
         failed_files = client.upload_files(
             file_paths=valid_paths,
@@ -108,7 +107,6 @@ def handle_npm_uploading(
             product=product,
             root=target_dir
         )
-
         logger.info("Files uploading done\n")
 
         succeeded = True
