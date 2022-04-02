@@ -50,7 +50,7 @@ targets:
     ea:
         bucket: "charon-test-ea"
         prefix: earlyaccess/all
-        
+
     npm:
         bucket: "charon-test-npm"
         registry: "npm1.registry.redhat.com"

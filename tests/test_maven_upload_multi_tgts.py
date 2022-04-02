@@ -56,7 +56,8 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         )
 
     def test_root_prefix_upload(self):
-        self.__test_prefix_upload([(None, TEST_BUCKET, "/", None), (None, TEST_BUCKET_2, "/", None)])
+        self.__test_prefix_upload([(None, TEST_BUCKET, "/", None),
+                                   (None, TEST_BUCKET_2, "/", None)])
 
     def test_overlap_upload(self):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
