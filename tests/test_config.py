@@ -36,6 +36,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual('ga', conf.get_bucket_prefix("ga"))
         self.assertEqual('charon-test-ea', conf.get_aws_bucket("ea"))
         self.assertEqual('earlyaccess/all', conf.get_bucket_prefix("ea"))
+        self.assertEqual('npm1.registry.redhat.com', conf.get_bucket_registry("npm"))
 
     def test_no_config(self):
         self.__base.change_home()
@@ -83,6 +84,22 @@ targets:
         self.assertIsNotNone(conf)
         self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
         self.assertEqual("", conf.get_bucket_prefix("ga"))
+
+    def test_config_missing_registry(self):
+        content_missing_registry = """
+ignore_patterns:
+    - ".*^(redhat).*"
+    - ".*snapshot.*"
+
+targets:
+    npm:
+        bucket: charon-npm-test
+        """
+        self.__change_config_content(content_missing_registry)
+        conf = config.get_config()
+        self.assertIsNotNone(conf)
+        self.assertEqual("charon-npm-test", conf.get_aws_bucket("npm"))
+        self.assertEqual("localhost", conf.get_bucket_registry("npm"))
 
     def test_ignore_patterns(self):
         # pylint: disable=anomalous-backslash-in-string

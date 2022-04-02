@@ -174,4 +174,4 @@ PROD_INFO_SUFFIX = ".prodinfo"
 MANIFEST_SUFFIX = ".txt"
 DEFAULT_ERRORS_LOG = "errors.log"
 
-NRRC_REGISTRY = "npm.registry.redhat.com"
+DEFAULT_REGISTRY = "localhost"

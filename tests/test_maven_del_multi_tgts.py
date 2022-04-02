@@ -63,7 +63,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         handle_maven_del(
             test_zip, product_456,
             ignore_patterns=[".*.sha1"],
-            targets=[(None, TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False
         )
@@ -108,7 +108,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
     def __test_prefix_deletion(self, prefix: str):
         self.__prepare_content(prefix)
 
-        targets_ = [(None, TEST_BUCKET, prefix), (None, TEST_BUCKET_2, prefix)]
+        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
@@ -255,7 +255,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
     def __prepare_content(self, prefix=None):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
-        targets_ = [(None, TEST_BUCKET, prefix), (None, TEST_BUCKET_2, prefix)]
+        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
         handle_maven_uploading(
             test_zip, product_456,
             targets=targets_,

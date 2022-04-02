@@ -20,12 +20,14 @@ import tarfile
 import requests
 import tempfile
 import shutil
+import subresource_integrity
 from enum import Enum
 from json import load, JSONDecodeError, dump
 from typing import Tuple
 from zipfile import ZipFile, is_zipfile
-from charon.constants import NRRC_REGISTRY
+from charon.constants import DEFAULT_REGISTRY
 from charon.utils.files import digest, HashType
+from charon.utils.map import del_none
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,8 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
     zf.extractall(target_dir, members=filtered)
 
 
-def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tuple[str, list]:
+def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool, registry=DEFAULT_REGISTRY)\
+        -> Tuple[str, list]:
     """ Extract npm tarball will relocate the tgz file and metadata files.
         * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
         * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
@@ -68,7 +71,7 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool) -> Tupl
 
             if is_for_upload:
                 tgz_relative_path = "/".join([parse_paths[0], "-", _get_tgz_name(path)])
-                __write_npm_version_dist(path, f.path, version_data, tgz_relative_path)
+                __write_npm_version_dist(path, f.path, version_data, tgz_relative_path, registry)
 
                 os.makedirs(tarball_parent_path)
                 target = os.path.join(tarball_parent_path, os.path.basename(path))
@@ -87,25 +90,18 @@ def _get_tgz_name(path: str):
     return ""
 
 
-def _del_none(d):
-    for key, value in list(d.items()):
-        if value is None:
-            del d[key]
-        elif isinstance(value, dict):
-            _del_none(value)
-    return d
-
-
 def __write_npm_version_dist(path: str, version_meta_extract_path: str, version_data: dict,
-                             tgz_relative_path: str):
-    tarball_link = "".join(["https://", NRRC_REGISTRY, "/", tgz_relative_path])
-    shasum = digest(path, HashType.SHA1)
+                             tgz_relative_path: str, registry: str):
     dist = dict()
-    dist["tarball"] = tarball_link
-    dist["shasum"] = shasum
+    dist["tarball"] = "".join(["https://", registry, "/", tgz_relative_path])
+    dist["shasum"] = digest(path, HashType.SHA1)
+    with open(path, "rb") as tarball:
+        tarball_data = tarball.read()
+        integrity = subresource_integrity.render(tarball_data, ['sha512'])
+        dist["integrity"] = integrity
     version_data["dist"] = dist
     with open(version_meta_extract_path, mode='w', encoding='utf-8') as f:
-        dump(_del_none(version_data), f)
+        dump(del_none(version_data), f)
 
 
 def __parse_npm_package_version_paths(path: str) -> Tuple[dict, list]:

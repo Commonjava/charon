@@ -20,7 +20,7 @@ from moto import mock_s3
 from charon.pkgs.npm import handle_npm_uploading
 from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import CHECKSUM_META_KEY
-from charon.constants import PROD_INFO_SUFFIX
+from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
     TEST_BUCKET, CODE_FRAME_7_14_5_FILES,
@@ -48,14 +48,14 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=[(None, TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            targets=[(None, TEST_BUCKET, None)],
+            targets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -92,7 +92,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=[(None, TEST_BUCKET, prefix)],
+            targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
 

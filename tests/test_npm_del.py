@@ -15,7 +15,7 @@ limitations under the License.
 """
 import os
 from moto import mock_s3
-from charon.constants import PROD_INFO_SUFFIX
+from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
@@ -43,7 +43,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            targets=[(None, TEST_BUCKET, prefix)],
+            targets=[(None, TEST_BUCKET, prefix, None)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -87,7 +87,7 @@ class NPMDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            targets=[(None, TEST_BUCKET, prefix)],
+            targets=[(None, TEST_BUCKET, prefix, None)],
             dir_=self.tempdir, do_index=False
         )
         objs = list(test_bucket.objects.all())
@@ -98,7 +98,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=[(None, TEST_BUCKET, prefix)],
+            targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -106,6 +106,6 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            targets=[(None, TEST_BUCKET, prefix)],
+            targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
