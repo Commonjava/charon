@@ -173,3 +173,5 @@ body {
 PROD_INFO_SUFFIX = ".prodinfo"
 MANIFEST_SUFFIX = ".txt"
 DEFAULT_ERRORS_LOG = "errors.log"
+
+DEFAULT_REGISTRY = "localhost"
