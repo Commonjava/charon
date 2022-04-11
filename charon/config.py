@@ -20,6 +20,7 @@ import os
 import logging
 
 from charon.utils.strings import remove_prefix
+from charon.constants import DEFAULT_REGISTRY
 
 CONFIG_FILE = "charon.yaml"
 
@@ -53,8 +54,8 @@ class CharonConfig(object):
             return None
         bucket = target_.get("bucket", None)
         if not bucket:
-            logger.error("The bucket %s is not found for target %s "
-                         "in charon configuration.")
+            logger.error("The bucket is not found for target %s "
+                         "in charon configuration.", target)
         return bucket
 
     def get_bucket_prefix(self, target: str) -> str:
@@ -72,6 +73,19 @@ class CharonConfig(object):
         # removing first slash as it is not needed.
         prefix = remove_prefix(prefix, "/")
         return prefix
+
+    def get_bucket_registry(self, target: str) -> str:
+        target_: Dict = self.__targets.get(target, None)
+        if not target_ or not isinstance(target_, Dict):
+            logger.error("The target %s is not found in charon configuration.", target)
+            return None
+        registry = target_.get("registry", None)
+        if not registry:
+            registry = DEFAULT_REGISTRY
+            logger.error("The registry is not found for target %s "
+                         "in charon configuration, so DEFAULT_REGISTRY(localhost) will be used.",
+                         target)
+        return registry
 
     def get_manifest_bucket(self) -> str:
         return self.__manifest_bucket

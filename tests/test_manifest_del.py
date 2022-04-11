@@ -19,6 +19,7 @@ from moto import mock_s3
 
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
+from charon.constants import DEFAULT_REGISTRY
 from tests.base import PackageBaseTest
 from tests.commons import (
     TEST_BUCKET, TEST_MANIFEST_BUCKET, TEST_TARGET, COMMONS_CLIENT_456_MANIFEST,
@@ -41,7 +42,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -62,7 +63,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -76,7 +77,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -87,7 +88,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None)],
+            targets=[(TEST_TARGET, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET

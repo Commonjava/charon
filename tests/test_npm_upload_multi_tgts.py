@@ -20,7 +20,7 @@ from moto import mock_s3
 from charon.pkgs.npm import handle_npm_uploading
 from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import CHECKSUM_META_KEY
-from charon.constants import PROD_INFO_SUFFIX
+from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
     TEST_BUCKET, CODE_FRAME_7_14_5_FILES,
@@ -53,7 +53,8 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
         self.__test_prefix("/")
 
     def test_double_uploads(self):
-        targets_ = [(None, TEST_BUCKET, None), (None, TEST_BUCKET_2, None)]
+        targets_ = [(None, TEST_BUCKET, None, DEFAULT_REGISTRY),
+                    (None, TEST_BUCKET_2, None, DEFAULT_REGISTRY)]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
@@ -123,7 +124,8 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
             )
 
     def __test_prefix(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix), (None, TEST_BUCKET_2, prefix)]
+        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(

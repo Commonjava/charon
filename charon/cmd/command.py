@@ -345,14 +345,15 @@ def delete(
             __safe_delete(tmp_dir)
 
 
-def __get_targets(target: List[str], conf: CharonConfig) -> List[Tuple[str, str, str]]:
+def __get_targets(target: List[str], conf: CharonConfig) -> List[Tuple[str, str, str, str]]:
     targets_ = []
     for tgt in target:
         aws_bucket = conf.get_aws_bucket(tgt)
         if not aws_bucket:
             continue
         prefix = conf.get_bucket_prefix(tgt)
-        targets_.append([tgt, aws_bucket, prefix])
+        registry = conf.get_bucket_registry(tgt)
+        targets_.append([tgt, aws_bucket, prefix, registry])
     if len(targets_) == 0:
         logger.error(
             "All targets are not valid or configured, "
