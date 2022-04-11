@@ -30,6 +30,7 @@ from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
 from charon.utils.files import write_manifest
+from charon.utils.map import del_none
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class NPMPackageMetadata(object):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        targets: List[Tuple[str, str, str]] = None,
+        targets: List[Tuple[str, str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
@@ -86,48 +87,60 @@ def handle_npm_uploading(
 
         Returns the directory used for archive processing and if uploading is successful
     """
-    target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-        tarball_path, prod=product, dir__=dir_
-    )
-    if not os.path.isdir(target_dir):
-        logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
-        sys.exit(1)
-
-    valid_dirs = __get_path_tree(valid_paths, target_dir)
-
-    # main_target = targets[0]
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
-    logger.info(
-        "Start uploading files to s3 buckets: %s",
-        [target[1] for target in targets]
-    )
-    failed_files = client.upload_files(
-        file_paths=valid_paths,
-        targets=targets_,
-        product=product,
-        root=target_dir
-    )
-    logger.info("Files uploading done\n")
-
-    succeeded = True
     for target in targets:
+        bucket_ = target[1]
+        prefix__ = remove_prefix(target[2], "/")
+        registry__ = target[3]
+        target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
+            tarball_path, registry__, prod=product, dir__=dir_
+        )
+        if not os.path.isdir(target_dir):
+            logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
+            sys.exit(1)
+        valid_dirs = __get_path_tree(valid_paths, target_dir)
+
+        logger.info("Start uploading files to s3 buckets: %s", bucket_)
+        failed_files = client.upload_files(
+            file_paths=[valid_paths[0]],
+            targets=[(bucket_, prefix__)],
+            product=product,
+            root=target_dir
+        )
+        logger.info("Files uploading done\n")
+
+        succeeded = True
+
         if not manifest_bucket_name:
             logger.warning(
                 'Warning: No manifest bucket is provided, will ignore the process of manifest '
                 'uploading\n')
         else:
             logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
-            manifest_folder = target[1]
+            manifest_folder = bucket_
             manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
+
             client.upload_manifest(
                 manifest_name, manifest_full_path,
                 manifest_folder, manifest_bucket_name
             )
             logger.info("Manifest uploading is done\n")
 
-        bucket_ = target[1]
-        prefix__ = remove_prefix(target[2], "/")
+        logger.info(
+            "Start generating version-level package.json for package: %s in s3 bucket %s",
+            package_metadata.name, bucket_
+        )
+        failed_metas = []
+        _version_metadata_path = valid_paths[1]
+        _failed_metas = client.upload_metadatas(
+            meta_file_paths=[_version_metadata_path],
+            target=(bucket_, prefix__),
+            product=product,
+            root=target_dir
+        )
+        failed_metas.extend(_failed_metas)
+        logger.info("version-level package.json uploading done")
+
         logger.info(
             "Start generating package.json for package: %s in s3 bucket %s",
             package_metadata.name, bucket_
@@ -137,7 +150,6 @@ def handle_npm_uploading(
         )
         logger.info("package.json generation done\n")
 
-        failed_metas = []
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
                 meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
@@ -178,7 +190,7 @@ def handle_npm_uploading(
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        targets: List[Tuple[str, str, str]] = None,
+        targets: List[Tuple[str, str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
@@ -381,11 +393,11 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, list,
-                                                                               NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(path: str, registry: str, prod="", dir__=None) ->\
+        Tuple[str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
-        _, valid_paths = extract_npm_tarball(path, tmp_root, True)
+        _, valid_paths = extract_npm_tarball(path, tmp_root, True, registry)
         if len(valid_paths) > 1:
             version = _scan_for_version(valid_paths[1])
             package = NPMPackageMetadata(version, True)
@@ -502,21 +514,12 @@ def _write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='
     final_package_metadata_path = os.path.join(root, package_metadata.name, PACKAGE_JSON)
     try:
         with open(final_package_metadata_path, mode='w', encoding='utf-8') as f:
-            dump(_del_none(package_metadata.__dict__.copy()), f)
+            dump(del_none(package_metadata.__dict__.copy()), f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
             'Can not create file %s because of some missing folders', final_package_metadata_path
         )
-
-
-def _del_none(d):
-    for key, value in list(d.items()):
-        if value is None:
-            del d[key]
-        elif isinstance(value, dict):
-            _del_none(value)
-    return d
 
 
 def __get_path_tree(paths: str, prefix: str) -> Set[str]:

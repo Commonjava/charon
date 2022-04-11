@@ -101,6 +101,8 @@ CODE_FRAME_7_15_8_FILES = [
     "@babel/code-frame/-/code-frame-7.15.8.tgz",
 ]
 CODE_FRAME_META = "@babel/code-frame/package.json"
+
+CODE_FRAME_7_14_5_META = "@babel/code-frame/7.14.5/package.json"
 # For npm indexes
 CODE_FRAME_7_14_5_INDEXES = [
     "@babel/code-frame/7.14.5/index.html",
