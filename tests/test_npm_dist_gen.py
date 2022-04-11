@@ -109,3 +109,46 @@ class NPMUploadTest(PackageBaseTest):
         self.assertIn("\"dist\"", merged_meta_content_client)
         self.assertIn("\"tarball\": \"https://npm2.registry.redhat.com/@babel/code-frame/-/code"
                       "-frame-7.14.5.tgz\"", merged_meta_content_client)
+
+    def test_overlapping_registry_dist_gen(self):
+        targets_ = [(None, TEST_BUCKET, None, "npm1.registry.redhat.com")]
+        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        product_7_14_5 = "code-frame-7.14.5"
+        handle_npm_uploading(
+            test_tgz, product_7_14_5,
+            targets=targets_,
+            dir_=self.tempdir, do_index=False
+        )
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        meta_obj_client_7_14_5 = test_bucket.Object(CODE_FRAME_7_14_5_META)
+        meta_content_client_7_14_5 = str(meta_obj_client_7_14_5.get()["Body"].read(), "utf-8")
+        self.assertIn("\"dist\"", meta_content_client_7_14_5)
+        self.assertIn("\"tarball\": \"https://npm1.registry.redhat.com/@babel/code-frame/-/code"
+                      "-frame-7.14.5.tgz\"", meta_content_client_7_14_5)
+
+        merged_meta_obj_client = test_bucket.Object(CODE_FRAME_META)
+        merged_meta_content_client = str(merged_meta_obj_client.get()["Body"].read(), "utf-8")
+        self.assertIn("\"dist\"", merged_meta_content_client)
+        self.assertIn("\"tarball\": \"https://npm1.registry.redhat.com/@babel/code-frame/-/code"
+                      "-frame-7.14.5.tgz\"", merged_meta_content_client)
+
+        targets_overlapping_ = [(None, TEST_BUCKET, None, "npm1.overlapping.registry.redhat.com")]
+        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        product_7_14_5 = "code-frame-7.14.5"
+        handle_npm_uploading(
+            test_tgz, product_7_14_5,
+            targets=targets_overlapping_,
+            dir_=self.tempdir, do_index=False
+        )
+
+        meta_obj_client_7_14_5 = test_bucket.Object(CODE_FRAME_7_14_5_META)
+        meta_content_client_7_14_5 = str(meta_obj_client_7_14_5.get()["Body"].read(), "utf-8")
+        self.assertIn("\"dist\"", meta_content_client_7_14_5)
+        self.assertIn("\"tarball\": \"https://npm1.overlapping.registry.redhat.com/@babel/code"
+                      "-frame/-/code-frame-7.14.5.tgz\"", meta_content_client_7_14_5)
+
+        merged_meta_obj_client = test_bucket.Object(CODE_FRAME_META)
+        merged_meta_content_client = str(merged_meta_obj_client.get()["Body"].read(), "utf-8")
+        self.assertIn("\"dist\"", merged_meta_content_client)
+        self.assertIn("\"tarball\": \"https://npm1.overlapping.registry.redhat.com/@babel/code"
+                      "-frame/-/code-frame-7.14.5.tgz\"", merged_meta_content_client)

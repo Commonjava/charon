@@ -102,7 +102,7 @@ def handle_npm_uploading(
 
         logger.info("Start uploading files to s3 buckets: %s", bucket_)
         failed_files = client.upload_files(
-            file_paths=valid_paths,
+            file_paths=[valid_paths[0]],
             targets=[(bucket_, prefix__)],
             product=product,
             root=target_dir
@@ -127,6 +127,21 @@ def handle_npm_uploading(
             logger.info("Manifest uploading is done\n")
 
         logger.info(
+            "Start generating version-level package.json for package: %s in s3 bucket %s",
+            package_metadata.name, bucket_
+        )
+        failed_metas = []
+        _version_metadata_path = valid_paths[1]
+        _failed_metas = client.upload_metadatas(
+            meta_file_paths=[_version_metadata_path],
+            target=(bucket_, prefix__),
+            product=product,
+            root=target_dir
+        )
+        failed_metas.extend(_failed_metas)
+        logger.info("version-level package.json uploading done")
+
+        logger.info(
             "Start generating package.json for package: %s in s3 bucket %s",
             package_metadata.name, bucket_
         )
@@ -135,7 +150,6 @@ def handle_npm_uploading(
         )
         logger.info("package.json generation done\n")
 
-        failed_metas = []
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
                 meta_file_paths=[meta_files[META_FILE_GEN_KEY]],

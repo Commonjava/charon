@@ -383,15 +383,18 @@ class S3Client(object):
                             # NOTE: This should not happen for most cases, as most
                             # of the metadata file does not have product info. Just
                             # leave for requirement change in future
-                            (prods, no_error) = await self.__run_async(
-                                self.__get_prod_info,
-                                path_key, bucket_name
-                            )
-                            if not no_error:
-                                failed.append(full_file_path)
-                                return
-                            if no_error and product not in prods:
-                                prods.append(product)
+                            # This is now used for npm version-level package.json
+                            prods = [product]
+                            if existed:
+                                (prods, no_error) = await self.__run_async(
+                                    self.__get_prod_info,
+                                    path_key, bucket_name
+                                )
+                                if not no_error:
+                                    failed.append(full_file_path)
+                                    return
+                                if no_error and product not in prods:
+                                    prods.append(product)
                             updated = await self.__update_prod_info(
                                 path_key, bucket_name, prods
                             )
