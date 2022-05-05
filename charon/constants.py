@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 ARCHETYPE_CATALOG_FILENAME = "archetype-catalog.xml"
-ARCHETYPE_CATALOG_TEMPLATE = '''
+ARCHETYPE_CATALOG_TEMPLATE = """
 <archetype-catalog>
   <archetypes>
   {% for arch in archetypes %}
@@ -26,18 +26,18 @@ ARCHETYPE_CATALOG_TEMPLATE = '''
     </archetype>{% endfor %}
   </archetypes>
 </archetype-catalog>
-'''
+"""
 # Logging format used
-CHARON_LOGGING_FMT = '%(asctime)s - %(levelname)s - %(message)s'
+CHARON_LOGGING_FMT = "%(asctime)s - %(levelname)s - %(message)s"
 DESCRIPTION = "charon is a tool to synchronize several types of artifacts "
 "repository data to RedHat Ronda service (maven.repository.redhat.com)."
-PROG = 'charon'
+PROG = "charon"
 META_FILE_GEN_KEY = "Generate"
 META_FILE_DEL_KEY = "Delete"
 META_FILE_FAILED = "Fail"
 PACKAGE_TYPE_MAVEN = "maven"
 PACKAGE_TYPE_NPM = "npm"
-MAVEN_METADATA_TEMPLATE = '''
+MAVEN_METADATA_TEMPLATE = """
 <metadata>
   {%- if meta.group_id is defined %}
   <groupId>{{ meta.group_id }}</groupId>
@@ -114,8 +114,8 @@ MAVEN_METADATA_TEMPLATE = '''
   </plugins>
   {%- endif %}
 </metadata>
-'''
-INDEX_HTML_TEMPLATE = '''
+"""
+INDEX_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -140,8 +140,8 @@ body {
   <hr/>
 </body>
 </html>
-'''
-NPM_INDEX_HTML_TEMPLATE = '''
+"""
+NPM_INDEX_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -168,7 +168,7 @@ body {
   <hr/>
 </body>
 </html>
-'''
+"""
 
 PROD_INFO_SUFFIX = ".prodinfo"
 MANIFEST_SUFFIX = ".txt"

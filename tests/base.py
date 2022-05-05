@@ -63,12 +63,12 @@ targets:
 
     def change_home(self):
         self.old_environ = os.environ.copy()
-        self.tempdir = tempfile.mkdtemp(prefix='charon-test-')
+        self.tempdir = tempfile.mkdtemp(prefix="charon-test-")
         # Configure environment and copy templates
-        os.environ['HOME'] = self.tempdir
+        os.environ["HOME"] = self.tempdir
 
     def __prepare_template(self, config_base):
-        template_path = os.path.join(config_base, 'template')
+        template_path = os.path.join(config_base, "template")
         os.mkdir(config_base)
         shutil.copytree(os.path.join(os.getcwd(), "template"), template_path)
         if not os.path.isdir(template_path):
@@ -84,7 +84,7 @@ targets:
         return self.tempdir
 
     def get_config_base(self) -> str:
-        return os.path.join(self.get_temp_dir(), '.charon')
+        return os.path.join(self.get_temp_dir(), ".charon")
 
 
 @mock_s3
@@ -113,22 +113,26 @@ class PackageBaseTest(BaseTest):
             pass
 
     def __prepare_s3(self):
-        return boto3.resource('s3')
+        return boto3.resource("s3")
 
-    def check_product(self, file: str, prods: List[str], bucket: s3.Bucket = None, msg=None):
+    def check_product(
+        self, file: str, prods: List[str], bucket: s3.Bucket = None, msg=None
+    ):
         prod_file = file + PROD_INFO_SUFFIX
         test_bucket = bucket
         if not test_bucket:
             test_bucket = self.test_bucket
         prod_f_obj = test_bucket.Object(prod_file)
-        content = str(prod_f_obj.get()['Body'].read(), 'utf-8')
+        content = str(prod_f_obj.get()["Body"].read(), "utf-8")
         self.assertEqual(
             set(prods),
             set([f for f in content.split("\n") if f.strip() != ""]),
-            msg=msg
+            msg=msg,
         )
 
-    def check_content(self, objs: List[s3.ObjectSummary], products: List[str], msg=None):
+    def check_content(
+        self, objs: List[s3.ObjectSummary], products: List[str], msg=None
+    ):
         for obj in objs:
             file_obj = obj.Object()
             test_bucket = self.mock_s3.Bucket(file_obj.bucket_name)
@@ -140,7 +144,9 @@ class PackageBaseTest(BaseTest):
                     if file_obj.key.endswith("maven-metadata.xml"):
                         sha1_checksum = file_obj.metadata[CHECKSUM_META_KEY].strip()
                         sha1_obj = test_bucket.Object(file_obj.key + ".sha1")
-                        sha1_file_content = str(sha1_obj.get()['Body'].read(), 'utf-8')
+                        sha1_file_content = str(sha1_obj.get()["Body"].read(), "utf-8")
                         self.assertEqual(sha1_checksum, sha1_file_content, msg=msg)
                 self.assertIn(CHECKSUM_META_KEY, file_obj.metadata, msg=msg)
-                self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip(), msg=msg)
+                self.assertNotEqual(
+                    "", file_obj.metadata[CHECKSUM_META_KEY].strip(), msg=msg
+                )

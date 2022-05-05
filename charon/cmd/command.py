@@ -99,14 +99,14 @@ logger = logging.getLogger(__name__)
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option(
     "--quiet",
     "-q",
     help="Quiet mode, will shrink most of the logs except warning and errors.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
@@ -120,7 +120,7 @@ def upload(
     work_dir: str = None,
     debug=False,
     quiet=False,
-    dryrun=False
+    dryrun=False,
 ):
     """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
@@ -130,8 +130,7 @@ def upload(
     try:
         __decide_mode(product, version, is_quiet=quiet, is_debug=debug)
         if dryrun:
-            logger.info("Running in dry-run mode,"
-                        "no files will be uploaded.")
+            logger.info("Running in dry-run mode," "no files will be uploaded.")
         if not __validate_prod_key(product, version):
             return
         conf = get_config()
@@ -157,7 +156,7 @@ def upload(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
+                manifest_bucket_name=manifest_bucket_name,
             )
             if not succeeded:
                 sys.exit(1)
@@ -177,7 +176,7 @@ def upload(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
+                manifest_bucket_name=manifest_bucket_name,
             )
             if not succeeded:
                 sys.exit(1)
@@ -255,14 +254,14 @@ def upload(
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option(
     "--quiet",
     "-q",
     help="Quiet mode, will shrink most of the logs except warning and errors.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
 @command()
@@ -276,7 +275,7 @@ def delete(
     work_dir: str = None,
     debug=False,
     quiet=False,
-    dryrun=False
+    dryrun=False,
 ):
     """Roll back all files in a released product REPO from
     Ronda Service. The REPO points to a product released
@@ -286,8 +285,7 @@ def delete(
     try:
         __decide_mode(product, version, is_quiet=quiet, is_debug=debug)
         if dryrun:
-            logger.info("Running in dry-run mode,"
-                        "no files will be deleted.")
+            logger.info("Running in dry-run mode," "no files will be deleted.")
         if not __validate_prod_key(product, version):
             return
         conf = get_config()
@@ -313,7 +311,7 @@ def delete(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
+                manifest_bucket_name=manifest_bucket_name,
             )
             if not succeeded:
                 sys.exit(1)
@@ -333,7 +331,7 @@ def delete(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
+                manifest_bucket_name=manifest_bucket_name,
             )
             if not succeeded:
                 sys.exit(1)
@@ -345,7 +343,9 @@ def delete(
             __safe_delete(tmp_dir)
 
 
-def __get_targets(target: List[str], conf: CharonConfig) -> List[Tuple[str, str, str, str]]:
+def __get_targets(
+    target: List[str], conf: CharonConfig
+) -> List[Tuple[str, str, str, str]]:
     targets_ = []
     for tgt in target:
         aws_bucket = conf.get_aws_bucket(tgt)
@@ -378,9 +378,12 @@ def __get_ignore_patterns(conf: CharonConfig) -> List[str]:
         try:
             return loads(ignore_patterns)
         except (ValueError, TypeError):
-            logger.warning("Warning: ignore_patterns %s specified in "
-                           "system environment, but not a valid json "
-                           "style array. Will skip it.", ignore_patterns)
+            logger.warning(
+                "Warning: ignore_patterns %s specified in "
+                "system environment, but not a valid json "
+                "style array. Will skip it.",
+                ignore_patterns,
+            )
     if conf:
         return conf.get_ignore_patterns()
     return None
@@ -413,12 +416,10 @@ def __validate_prod_key(product: str, version: str) -> bool:
 
 def __decide_mode(product: str, version: str, is_quiet: bool, is_debug: bool):
     if is_quiet:
-        logger.info("Quiet mode enabled, "
-                    "will only give warning and error logs.")
+        logger.info("Quiet mode enabled, " "will only give warning and error logs.")
         set_logging(product, version, level=logging.WARNING)
     elif is_debug:
-        logger.info("Debug mode enabled, "
-                    "will give all debug logs for tracing.")
+        logger.info("Debug mode enabled, " "will give all debug logs for tracing.")
         set_logging(product, version, level=logging.DEBUG)
     else:
         set_logging(product, version, level=logging.INFO)
@@ -427,6 +428,6 @@ def __decide_mode(product: str, version: str, is_quiet: bool, is_debug: bool):
 @group()
 def cli():
     """Charon is a tool to synchronize several types of
-       artifacts repository data to Red Hat Ronda
-       service (maven.repository.redhat.com).
+    artifacts repository data to Red Hat Ronda
+    service (maven.repository.redhat.com).
     """

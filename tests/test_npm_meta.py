@@ -60,28 +60,27 @@ class NPMMetadataOnS3Test(BaseTest):
         "bugs": "0.5.8bugs", "license": "Apache-2.0.1"}"""
 
         bucket.put_object(
-            Key='@redhat/kogito-tooling-workspace/package.json',
-            Body=str(original_version_0_5_8_package_json)
+            Key="@redhat/kogito-tooling-workspace/package.json",
+            Body=str(original_version_0_5_8_package_json),
         )
         tarball_test_path = os.path.join(
-            os.getcwd(),
-            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
+            os.getcwd(), "tests/input/kogito-tooling-workspace-0.9.0-3.tgz"
         )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            tarball_test_path,
+            "kogito-tooling-workspace-0.9.0-3",
             targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
         (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
-            prefix='@redhat/kogito-tooling-workspace/package.json'
+            prefix="@redhat/kogito-tooling-workspace/package.json",
         )
         self.assertEqual(1, len(files))
-        self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
+        self.assertIn("@redhat/kogito-tooling-workspace/package.json", files)
 
         content = self.s3_client.read_file_content(
-            MY_BUCKET,
-            '@redhat/kogito-tooling-workspace/package.json'
+            MY_BUCKET, "@redhat/kogito-tooling-workspace/package.json"
         )
         merged = read_package_metadata_from_content(content, False)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)
@@ -91,7 +90,9 @@ class NPMMetadataOnS3Test(BaseTest):
         self.assertEqual("0.9.0-3", merged.dist_tags["latest"])
         self.assertIn("0.5.8maintainer", merged.maintainers)
         self.assertIn("0.5.8users", merged.users.keys())
-        self.assertEqual("https://github.com/kiegroup/kogito-tooling.git", merged.repository["url"])
+        self.assertEqual(
+            "https://github.com/kiegroup/kogito-tooling.git", merged.repository["url"]
+        )
         self.assertEqual("0.5.8homepage", merged.homepage)
         self.assertIn("0.5.8", merged.keywords)
         self.assertEqual("0.5.8bugs", merged.bugs)
@@ -113,28 +114,27 @@ class NPMMetadataOnS3Test(BaseTest):
         "bugs": "1.0.1bugs", "license": "Apache-2.0.1"}
         """
         bucket.put_object(
-            Key='@redhat/kogito-tooling-workspace/package.json',
-            Body=str(original_version_1_0_1_package_json)
+            Key="@redhat/kogito-tooling-workspace/package.json",
+            Body=str(original_version_1_0_1_package_json),
         )
         tarball_test_path = os.path.join(
-            os.getcwd(),
-            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
+            os.getcwd(), "tests/input/kogito-tooling-workspace-0.9.0-3.tgz"
         )
         handle_npm_uploading(
-            tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
+            tarball_test_path,
+            "kogito-tooling-workspace-0.9.0-3",
             targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
         (files, _) = self.s3_client.get_files(
             bucket_name=MY_BUCKET,
-            prefix='@redhat/kogito-tooling-workspace/package.json'
+            prefix="@redhat/kogito-tooling-workspace/package.json",
         )
         self.assertEqual(1, len(files))
-        self.assertIn('@redhat/kogito-tooling-workspace/package.json', files)
+        self.assertIn("@redhat/kogito-tooling-workspace/package.json", files)
 
         content = self.s3_client.read_file_content(
-            MY_BUCKET,
-            '@redhat/kogito-tooling-workspace/package.json'
+            MY_BUCKET, "@redhat/kogito-tooling-workspace/package.json"
         )
         merged = read_package_metadata_from_content(content, False)
         self.assertEqual("@redhat/kogito-tooling-workspace", merged.name)

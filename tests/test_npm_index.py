@@ -18,8 +18,10 @@ from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_BUCKET, CODE_FRAME_7_14_5_INDEXES,
-    CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX
+    TEST_BUCKET,
+    CODE_FRAME_7_14_5_INDEXES,
+    CODE_FRAME_7_15_8_INDEXES,
+    COMMONS_ROOT_INDEX,
 )
 from moto import mock_s3
 import os
@@ -45,7 +47,8 @@ class NpmFileIndexTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
         )
@@ -71,19 +74,24 @@ class NpmFileIndexTest(PackageBaseTest):
         for obj in objs:
             if not obj.key.endswith(PROD_INFO_SUFFIX):
                 self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+                self.assertNotEqual(
+                    "", obj.Object().metadata[CHECKSUM_META_KEY].strip()
+                )
 
         indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
-                      index_content)
-        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertIn(
+            '<a href="code-frame/" title="code-frame/">code-frame/</a>', index_content
+        )
+        self.assertIn('<a href="../index.html" title="../">../</a>', index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         indedx_obj = test_bucket.Object(PREFIXED_ROOT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"@babel/index.html\" title=\"@babel/\">@babel/</a>", index_content)
-        self.assertNotIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertIn(
+            '<a href="@babel/index.html" title="@babel/">@babel/</a>', index_content
+        )
+        self.assertNotIn('<a href="../index.html" title="../">../</a>', index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_overlap_upload_index(self):
@@ -102,9 +110,10 @@ class NpmFileIndexTest(PackageBaseTest):
 
         indedx_obj = test_bucket.Object(NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
-                      index_content)
-        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertIn(
+            '<a href="code-frame/" title="code-frame/">code-frame/</a>', index_content
+        )
+        self.assertIn('<a href="../index.html" title="../">../</a>', index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_deletion_index(self):
@@ -125,9 +134,10 @@ class NpmFileIndexTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, prefix, None)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -144,21 +154,25 @@ class NpmFileIndexTest(PackageBaseTest):
         for obj in objs:
             if not obj.key.endswith(PROD_INFO_SUFFIX):
                 self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+                self.assertNotEqual(
+                    "", obj.Object().metadata[CHECKSUM_META_KEY].strip()
+                )
 
         indedx_obj = test_bucket.Object(PREFIXED_NAMESPACE_BABEL_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("<a href=\"code-frame/\" title=\"code-frame/\">code-frame/</a>",
-                      index_content)
-        self.assertIn("<a href=\"../index.html\" title=\"../\">../</a>", index_content)
+        self.assertIn(
+            '<a href="code-frame/" title="code-frame/">code-frame/</a>', index_content
+        )
+        self.assertIn('<a href="../index.html" title="../">../</a>', index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_7_15_8 = "code-frame-7.15.8"
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=[(None, TEST_BUCKET, prefix, None)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
         objs = list(test_bucket.objects.all())
@@ -168,15 +182,17 @@ class NpmFileIndexTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )

@@ -55,7 +55,7 @@ class S3ClientTest(BaseTest):
         super().tearDown()
 
     def __prepare_s3(self):
-        return boto3.resource('s3')
+        return boto3.resource("s3")
 
     def test_get_files(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
@@ -82,7 +82,9 @@ class S3ClientTest(BaseTest):
         self.assertIn("org/x/y/1.0/x-y-1.0.pom", files)
         self.assertNotIn("org/x/y/1.0/x-y-1.0.jar", files)
 
-        (files, _) = self.s3_client.get_files(bucket_name=MY_BUCKET, prefix="org/foo/bar")
+        (files, _) = self.s3_client.get_files(
+            bucket_name=MY_BUCKET, prefix="org/foo/bar"
+        )
         self.assertEqual(2, len(files))
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.pom", files)
         self.assertIn("org/foo/bar/1.0/foo-bar-1.0.jar", files)
@@ -100,12 +102,8 @@ class S3ClientTest(BaseTest):
 
     def test_list_folder_content(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
-        bucket.put_object(
-            Key="index.html", Body="test content html"
-        )
-        bucket.put_object(
-            Key="org/index.html", Body="test content html"
-        )
+        bucket.put_object(Key="index.html", Body="test content html")
+        bucket.put_object(Key="org/index.html", Body="test content html")
         bucket.put_object(
             Key="org/foo/bar/1.0/foo-bar-1.0.pom", Body="test content pom"
         )
@@ -149,8 +147,7 @@ class S3ClientTest(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         # test upload existed files with the product. The product will be added to metadata
         self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
-            product="apache-commons", root=root
+            all_files, targets=[(MY_BUCKET, None)], product="apache-commons", root=root
         )
 
         def content_check(products: List[str], objs: List[s3.ObjectSummary]):
@@ -158,10 +155,10 @@ class S3ClientTest(BaseTest):
             for o in objs:
                 obj = o.Object()
                 if obj.key.endswith(PROD_INFO_SUFFIX):
-                    content = str(obj.get()['Body'].read(), 'utf-8')
+                    content = str(obj.get()["Body"].read(), "utf-8")
                     self.assertEqual(
                         set(products),
-                        set([f for f in content.split("\n") if f.strip() != ""])
+                        set([f for f in content.split("\n") if f.strip() != ""]),
                     )
                 else:
                     self.assertNotEqual("", obj.metadata[CHECKSUM_META_KEY])
@@ -171,23 +168,24 @@ class S3ClientTest(BaseTest):
 
         # test upload existed files with extra product. The extra product will be added to metadata
         self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
-            product="commons-lang3", root=root
+            all_files, targets=[(MY_BUCKET, None)], product="commons-lang3", root=root
         )
         objects = list(bucket.objects.all())
         content_check(set(["apache-commons", "commons-lang3"]), objects)
 
         # test delete files with one product. The file will not be deleted, but the product will
         # be removed from metadata.
-        self.s3_client.delete_files(all_files, target=(MY_BUCKET, None), product="apache-commons",
-                                    root=root)
+        self.s3_client.delete_files(
+            all_files, target=(MY_BUCKET, None), product="apache-commons", root=root
+        )
         objects = list(bucket.objects.all())
         content_check(["commons-lang3"], objects)
 
         # test delete files with left product. The file will be deleted, because all products
         # have been removed from metadata.
-        self.s3_client.delete_files(all_files, target=(MY_BUCKET, None), product="commons-lang3",
-                                    root=root)
+        self.s3_client.delete_files(
+            all_files, target=(MY_BUCKET, None), product="commons-lang3", root=root
+        )
         self.assertEqual(0, len(list(bucket.objects.all())))
 
         shutil.rmtree(temp_root)
@@ -202,7 +200,8 @@ class S3ClientTest(BaseTest):
             test_files,
             targets=[(MY_BUCKET, SHORT_TEST_PREFIX)],
             product="apache-commons",
-            root=root)
+            root=root,
+        )
         objects = list(bucket.objects.all())
         self.assertEqual(COMMONS_LANG3_ZIP_MVN_ENTRY * 2, len(objects))
         for obj in objects:
@@ -212,7 +211,7 @@ class S3ClientTest(BaseTest):
             file_paths=test_files,
             target=(MY_BUCKET, SHORT_TEST_PREFIX),
             product="apache-commons",
-            root=root
+            root=root,
         )
         objects = list(bucket.objects.all())
         self.assertEqual(0, len(list(bucket.objects.all())))
@@ -231,8 +230,7 @@ class S3ClientTest(BaseTest):
         overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_files(
-            [file], targets=[(MY_BUCKET, None)],
-            product="foo-bar-1.0", root=temp_root
+            [file], targets=[(MY_BUCKET, None)], product="foo-bar-1.0", root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(2, len(objects))
@@ -242,7 +240,7 @@ class S3ClientTest(BaseTest):
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
         )
         obj = objects[1].Object()
-        content = str(obj.get()['Body'].read(), 'utf-8')
+        content = str(obj.get()["Body"].read(), "utf-8")
         self.assertEqual("foo-bar-1.0", content.strip())
 
         os.remove(file)
@@ -252,8 +250,7 @@ class S3ClientTest(BaseTest):
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_files(
-            [file], targets=[(MY_BUCKET, None)],
-            product="foo-bar-1.0-2", root=temp_root
+            [file], targets=[(MY_BUCKET, None)], product="foo-bar-1.0-2", root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(2, len(objects))
@@ -263,7 +260,7 @@ class S3ClientTest(BaseTest):
             content1, str(obj.get()["Body"].read(), sys.getdefaultencoding())
         )
         obj = objects[1].Object()
-        content = str(obj.get()['Body'].read(), 'utf-8')
+        content = str(obj.get()["Body"].read(), "utf-8")
         self.assertEqual("foo-bar-1.0", content.strip())
 
         shutil.rmtree(temp_root)
@@ -351,9 +348,7 @@ class S3ClientTest(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         path = "org/foo/bar/1.0/foo-bar-1.0.pom"
         self.assertFalse(self.s3_client.file_exists_in_bucket(MY_BUCKET, path))
-        bucket.put_object(
-            Key=path, Body="test content pom"
-        )
+        bucket.put_object(Key=path, Body="test content pom")
         self.assertTrue(self.s3_client.file_exists_in_bucket(MY_BUCKET, path))
 
     def test_failed_paths(self):
@@ -361,8 +356,10 @@ class S3ClientTest(BaseTest):
         shutil.rmtree(root)
 
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
-            product="apache-commons", root=temp_root
+            all_files,
+            targets=[(MY_BUCKET, None)],
+            product="apache-commons",
+            root=temp_root,
         )
 
         self.assertEqual(COMMONS_LANG3_ZIP_MVN_ENTRY, len(failed_paths))
@@ -370,12 +367,14 @@ class S3ClientTest(BaseTest):
     def test_exists_override_failing(self):
         (temp_root, _, all_files) = self.__prepare_files()
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
-            product="apache-commons", root=temp_root
+            all_files,
+            targets=[(MY_BUCKET, None)],
+            product="apache-commons",
+            root=temp_root,
         )
         self.assertEqual(0, len(failed_paths))
         sha1 = read_sha1(all_files[0])
-        path = all_files[0][len(temp_root) + 1:]
+        path = all_files[0][len(temp_root) + 1 :]
 
         # Change content to make hash changes
         with open(all_files[0], "w+", encoding="utf-8") as f:
@@ -383,8 +382,10 @@ class S3ClientTest(BaseTest):
         sha1_changed = read_sha1(all_files[0])
         self.assertNotEqual(sha1, sha1_changed)
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
-            product="apache-commons-2", root=temp_root
+            all_files,
+            targets=[(MY_BUCKET, None)],
+            product="apache-commons-2",
+            root=temp_root,
         )
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         file_obj = bucket.Object(path)

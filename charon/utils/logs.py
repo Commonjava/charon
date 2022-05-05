@@ -26,7 +26,7 @@ class EncodedStream(object):
     # over stderr.  Normal techniques were not working, so we dup
     # the file handler and force it UTF-8.  :-(
     def __init__(self, fileno, encoding):
-        self.binarystream = os.fdopen(os.dup(fileno), 'wb')
+        self.binarystream = os.fdopen(os.dup(fileno), "wb")
         self.encoding = encoding
 
     def write(self, text):
@@ -45,7 +45,9 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(product: str, version: str, name="charon", level=logging.DEBUG, handler=None):
+def set_logging(
+    product: str, version: str, name="charon", level=logging.DEBUG, handler=None
+):
     # create logger
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
@@ -71,7 +73,7 @@ def set_logging(product: str, version: str, name="charon", level=logging.DEBUG, 
 
     set_log_file_handler(product, version, logger)
 
-    logger = logging.getLogger('charon')
+    logger = logging.getLogger("charon")
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
         hdlr.setFormatter(formatter)
 

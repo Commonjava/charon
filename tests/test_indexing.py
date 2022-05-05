@@ -19,20 +19,19 @@ from tests.base import BaseTest
 
 
 class IndexingTest(BaseTest):
-
     def test_folder_len_compare(self):
         comp_class = FolderLenCompareKey
-        self.assertGreater(comp_class("org"), comp_class('org/apache'))
-        self.assertGreater(comp_class("org/"), comp_class('org/apache/'))
-        self.assertLess(comp_class("org/commons"), comp_class('org'))
-        self.assertEqual(comp_class("org/"), comp_class('org/'))
-        self.assertEqual(comp_class("org"), comp_class('commons-io'))
-        self.assertEqual(comp_class("com/redhat"), comp_class('org/commons'))
+        self.assertGreater(comp_class("org"), comp_class("org/apache"))
+        self.assertGreater(comp_class("org/"), comp_class("org/apache/"))
+        self.assertLess(comp_class("org/commons"), comp_class("org"))
+        self.assertEqual(comp_class("org/"), comp_class("org/"))
+        self.assertEqual(comp_class("org"), comp_class("commons-io"))
+        self.assertEqual(comp_class("com/redhat"), comp_class("org/commons"))
 
     def test_index_items_compare(self):
         comp_class = IndexedItemsCompareKey
-        self.assertLess(comp_class("apache"), comp_class('beacon'))
-        self.assertGreater(comp_class("apache"), comp_class('beacon/'))
+        self.assertLess(comp_class("apache"), comp_class("beacon"))
+        self.assertGreater(comp_class("apache"), comp_class("beacon/"))
         self.assertEqual(comp_class("apache"), comp_class("apache"))
         self.assertEqual(comp_class("apache/"), comp_class("apache/"))
         self.assertLess(comp_class("apache/"), comp_class("apache"))

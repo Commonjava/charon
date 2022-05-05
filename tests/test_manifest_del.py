@@ -22,14 +22,16 @@ from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.constants import DEFAULT_REGISTRY
 from tests.base import PackageBaseTest
 from tests.commons import (
-    TEST_BUCKET, TEST_MANIFEST_BUCKET, TEST_TARGET, COMMONS_CLIENT_456_MANIFEST,
-    CODE_FRAME_7_14_5_MANIFEST
+    TEST_BUCKET,
+    TEST_MANIFEST_BUCKET,
+    TEST_TARGET,
+    COMMONS_CLIENT_456_MANIFEST,
+    CODE_FRAME_7_14_5_MANIFEST,
 )
 
 
 @mock_s3
 class ManifestDeleteTest(PackageBaseTest):
-
     def test_maven_manifest_delete(self):
         self.__prepare_maven_content()
 
@@ -41,11 +43,12 @@ class ManifestDeleteTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_del(
-            test_zip, product,
+            test_zip,
+            product,
             targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_bucket_name=TEST_MANIFEST_BUCKET
+            manifest_bucket_name=TEST_MANIFEST_BUCKET,
         )
         uploaded_manifest = list(self.test_manifest_bucket.objects.all())
         manifests = [obj.key for obj in uploaded_manifest]
@@ -62,11 +65,12 @@ class ManifestDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product,
+            test_tgz,
+            product,
             targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_bucket_name=TEST_MANIFEST_BUCKET
+            manifest_bucket_name=TEST_MANIFEST_BUCKET,
         )
         uploaded_manifest = list(self.test_manifest_bucket.objects.all())
         manifests = [obj.key for obj in uploaded_manifest]
@@ -76,20 +80,22 @@ class ManifestDeleteTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            test_zip,
+            product,
             targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_bucket_name=TEST_MANIFEST_BUCKET
+            manifest_bucket_name=TEST_MANIFEST_BUCKET,
         )
 
     def __prepare_npm_content(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product,
+            test_tgz,
+            product,
             targets=[(TEST_TARGET, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
-            manifest_bucket_name=TEST_MANIFEST_BUCKET
+            manifest_bucket_name=TEST_MANIFEST_BUCKET,
         )

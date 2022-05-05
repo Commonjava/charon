@@ -17,11 +17,18 @@ from charon.pkgs.maven import handle_maven_uploading
 from charon.utils.strings import remove_prefix
 from tests.base import SHORT_TEST_PREFIX, LONG_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_BUCKET, COMMONS_CLIENT_456_FILES, COMMONS_CLIENT_459_FILES,
-    COMMONS_CLIENT_METAS, COMMONS_LOGGING_FILES, COMMONS_LOGGING_METAS,
-    NON_MVN_FILES, ARCHETYPE_CATALOG, ARCHETYPE_CATALOG_FILES,
-    COMMONS_CLIENT_456_MVN_NUM, COMMONS_CLIENT_MVN_NUM,
-    COMMONS_CLIENT_META_NUM
+    TEST_BUCKET,
+    COMMONS_CLIENT_456_FILES,
+    COMMONS_CLIENT_459_FILES,
+    COMMONS_CLIENT_METAS,
+    COMMONS_LOGGING_FILES,
+    COMMONS_LOGGING_METAS,
+    NON_MVN_FILES,
+    ARCHETYPE_CATALOG,
+    ARCHETYPE_CATALOG_FILES,
+    COMMONS_CLIENT_456_MVN_NUM,
+    COMMONS_CLIENT_MVN_NUM,
+    COMMONS_CLIENT_META_NUM,
 )
 from moto import mock_s3
 import os
@@ -45,31 +52,35 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            test_zip,
+            product_456,
             targets=[(None, TEST_BUCKET, None, None)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459,
+            test_zip,
+            product_459,
             targets=[(None, TEST_BUCKET, None, None)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         # need to double mvn num because of .prodinfo files
         self.assertEqual(
-            COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
-            len(actual_files)
+            COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM, len(actual_files)
         )
 
         filesets = [
-            COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
+            COMMONS_CLIENT_METAS,
+            COMMONS_CLIENT_456_FILES,
             COMMONS_CLIENT_459_FILES,
-            ARCHETYPE_CATALOG_FILES
+            ARCHETYPE_CATALOG_FILES,
         ]
         for fileset in filesets:
             for f in fileset:
@@ -112,9 +123,12 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, [".*.sha1"],
+            test_zip,
+            product_456,
+            [".*.sha1"],
             targets=[(None, TEST_BUCKET, None, None)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         objs = list(self.test_bucket.objects.all())
@@ -124,14 +138,14 @@ class MavenUploadTest(PackageBaseTest):
             "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.sha1",
             "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.sha1",
-            "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1"
+            "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.sha1",
         ]
         not_ignored = [e for e in COMMONS_CLIENT_456_FILES if e not in ignored_files]
-        not_ignored.extend(
-            [e for e in COMMONS_LOGGING_FILES if e not in ignored_files])
+        not_ignored.extend([e for e in COMMONS_LOGGING_FILES if e not in ignored_files])
         # need to double mvn num because of .prodinfo files
         self.assertEqual(
-            len(not_ignored) * 2 + COMMONS_CLIENT_META_NUM, len(actual_files))
+            len(not_ignored) * 2 + COMMONS_CLIENT_META_NUM, len(actual_files)
+        )
         for f in not_ignored:
             self.assertIn(f, actual_files)
         for f in ignored_files:
@@ -141,41 +155,47 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            test_zip,
+            product,
             targets=[(None, TEST_BUCKET, prefix, None)],
             dir_=self.tempdir,
-            do_index=False
+            do_index=False,
         )
 
         objs = list(self.test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         # need to double mvn num because of .prodinfo files
         self.assertEqual(
-            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
-            len(actual_files)
+            COMMONS_CLIENT_456_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM, len(actual_files)
         )
 
         prefix_ = remove_prefix(prefix, "/")
         PREFIXED_COMMONS_CLIENT_456_FILES = [
-            os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES]
+            os.path.join(prefix_, f) for f in COMMONS_CLIENT_456_FILES
+        ]
         PREFIXED_COMMONS_CLIENT_METAS = [
-            os.path.join(prefix_, f) for f in COMMONS_CLIENT_METAS]
+            os.path.join(prefix_, f) for f in COMMONS_CLIENT_METAS
+        ]
         PREFIXED_COMMONS_LOGGING_FILES = [
-            os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES]
+            os.path.join(prefix_, f) for f in COMMONS_LOGGING_FILES
+        ]
         PREFIXED_COMMONS_LOGGING_METAS = [
-            os.path.join(prefix_, f) for f in COMMONS_LOGGING_METAS]
+            os.path.join(prefix_, f) for f in COMMONS_LOGGING_METAS
+        ]
         PREFIXED_ARCHETYPE_CATALOG_FILES = [
-            os.path.join(prefix_, f) for f in ARCHETYPE_CATALOG_FILES]
+            os.path.join(prefix_, f) for f in ARCHETYPE_CATALOG_FILES
+        ]
         file_set = [
-            *PREFIXED_COMMONS_CLIENT_456_FILES, *PREFIXED_COMMONS_CLIENT_METAS,
-            *PREFIXED_COMMONS_LOGGING_FILES, *PREFIXED_COMMONS_LOGGING_METAS,
-            *PREFIXED_ARCHETYPE_CATALOG_FILES
+            *PREFIXED_COMMONS_CLIENT_456_FILES,
+            *PREFIXED_COMMONS_CLIENT_METAS,
+            *PREFIXED_COMMONS_LOGGING_FILES,
+            *PREFIXED_COMMONS_LOGGING_METAS,
+            *PREFIXED_ARCHETYPE_CATALOG_FILES,
         ]
         for f in file_set:
             self.assertIn(f, actual_files)
 
-        PREFIXED_NON_MVN_FILES = [
-            os.path.join(prefix_, f) for f in NON_MVN_FILES]
+        PREFIXED_NON_MVN_FILES = [os.path.join(prefix_, f) for f in NON_MVN_FILES]
         for f in PREFIXED_NON_MVN_FILES:
             self.assertNotIn(f, actual_files)
 

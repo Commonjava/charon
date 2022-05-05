@@ -32,11 +32,11 @@ class ConfigTest(unittest.TestCase):
         self.__base.setUp()
         conf = config.get_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
-        self.assertEqual('charon-test', conf.get_aws_bucket("ga"))
-        self.assertEqual('ga', conf.get_bucket_prefix("ga"))
-        self.assertEqual('charon-test-ea', conf.get_aws_bucket("ea"))
-        self.assertEqual('earlyaccess/all', conf.get_bucket_prefix("ea"))
-        self.assertEqual('npm1.registry.redhat.com', conf.get_bucket_registry("npm"))
+        self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
+        self.assertEqual("ga", conf.get_bucket_prefix("ga"))
+        self.assertEqual("charon-test-ea", conf.get_aws_bucket("ea"))
+        self.assertEqual("earlyaccess/all", conf.get_bucket_prefix("ea"))
+        self.assertEqual("npm1.registry.redhat.com", conf.get_bucket_registry("npm"))
 
     def test_no_config(self):
         self.__base.change_home()
@@ -125,7 +125,9 @@ targets:
         self.assertTrue(self.__is_ignored(".nexuxabc", conf.get_ignore_patterns()))
         self.assertFalse(self.__is_ignored("abcxyz.jar", conf.get_ignore_patterns()))
         self.assertFalse(self.__is_ignored("abcxyz.pom", conf.get_ignore_patterns()))
-        self.assertFalse(self.__is_ignored("abcxyz.jar.md5", conf.get_ignore_patterns()))
+        self.assertFalse(
+            self.__is_ignored("abcxyz.jar.md5", conf.get_ignore_patterns())
+        )
 
     def __change_config_content(self, content: str):
         self.__base.change_home()
@@ -133,7 +135,7 @@ targets:
         os.mkdir(config_base)
         self.__base.prepare_config(config_base, content)
 
-    def __is_ignored(self, filename: str, ignore_patterns:  List[str]) -> bool:
+    def __is_ignored(self, filename: str, ignore_patterns: List[str]) -> bool:
         if ignore_patterns:
             for dirs in ignore_patterns:
                 if re.match(dirs, filename):

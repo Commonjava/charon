@@ -42,9 +42,11 @@ class NPMDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, prefix, None)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -66,29 +68,39 @@ class NPMDeleteTest(PackageBaseTest):
         for obj in objs:
             if not obj.key.endswith(PROD_INFO_SUFFIX):
                 self.assertIn(CHECKSUM_META_KEY, obj.Object().metadata)
-                self.assertNotEqual("", obj.Object().metadata[CHECKSUM_META_KEY].strip())
+                self.assertNotEqual(
+                    "", obj.Object().metadata[CHECKSUM_META_KEY].strip()
+                )
 
         product_7_15_8 = "code-frame-7.15.8"
         meta_obj = test_bucket.Object(PREFIXED_FRAME_META)
         # self.check_product(meta_obj.key, [product_7_15_8])
         meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
-        self.assertIn("\"name\": \"@babel/code-frame\"", meta_content_client)
-        self.assertIn("\"description\": \"Generate errors that contain a code frame that point to "
-                      "source locations.\"", meta_content_client)
-        self.assertIn("\"repository\": {\"type\": \"git\", \"url\": "
-                      "\"https://github.com/babel/babel.git\"", meta_content_client)
-        self.assertIn("\"version\": \"7.15.8\"", meta_content_client)
-        self.assertNotIn("\"version\": \"7.14.5\"", meta_content_client)
-        self.assertIn("\"versions\": {\"7.15.8\":", meta_content_client)
-        self.assertNotIn("\"7.14.5\": {\"name\":", meta_content_client)
-        self.assertIn("\"license\": \"MIT\"", meta_content_client)
-        self.assertIn("\"dist_tags\": {\"latest\": \"7.15.8\"}", meta_content_client)
+        self.assertIn('"name": "@babel/code-frame"', meta_content_client)
+        self.assertIn(
+            '"description": "Generate errors that contain a code frame that point to '
+            'source locations."',
+            meta_content_client,
+        )
+        self.assertIn(
+            '"repository": {"type": "git", "url": '
+            '"https://github.com/babel/babel.git"',
+            meta_content_client,
+        )
+        self.assertIn('"version": "7.15.8"', meta_content_client)
+        self.assertNotIn('"version": "7.14.5"', meta_content_client)
+        self.assertIn('"versions": {"7.15.8":', meta_content_client)
+        self.assertNotIn('"7.14.5": {"name":', meta_content_client)
+        self.assertIn('"license": "MIT"', meta_content_client)
+        self.assertIn('"dist_tags": {"latest": "7.15.8"}', meta_content_client)
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=[(None, TEST_BUCKET, prefix, None)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
         objs = list(test_bucket.objects.all())
         self.assertEqual(0, len(objs))
@@ -97,15 +109,19 @@ class NPMDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
