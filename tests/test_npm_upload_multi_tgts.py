@@ -23,8 +23,11 @@ from charon.storage import CHECKSUM_META_KEY
 from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
-    TEST_BUCKET, CODE_FRAME_7_14_5_FILES,
-    CODE_FRAME_7_15_8_FILES, CODE_FRAME_META, TEST_BUCKET_2
+    TEST_BUCKET,
+    CODE_FRAME_7_14_5_FILES,
+    CODE_FRAME_7_15_8_FILES,
+    CODE_FRAME_META,
+    TEST_BUCKET_2,
 )
 
 
@@ -53,21 +56,27 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
         self.__test_prefix("/")
 
     def test_double_uploads(self):
-        targets_ = [(None, TEST_BUCKET, None, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, None, DEFAULT_REGISTRY)]
+        targets_ = [
+            (None, TEST_BUCKET, None, DEFAULT_REGISTRY),
+            (None, TEST_BUCKET_2, None, DEFAULT_REGISTRY),
+        ]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         for target in targets_:
@@ -75,63 +84,67 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
             bucket = self.mock_s3.Bucket(bucket_name)
             objs = list(bucket.objects.all())
             actual_files = [obj.key for obj in objs]
-            self.assertEqual(9, len(actual_files), msg=f'{bucket_name}')
+            self.assertEqual(9, len(actual_files), msg=f"{bucket_name}")
 
             for f in CODE_FRAME_7_14_5_FILES:
-                self.assertIn(f, actual_files, msg=f'{bucket_name}')
-                self.check_product(f, [product_7_14_5], msg=f'{bucket_name}')
+                self.assertIn(f, actual_files, msg=f"{bucket_name}")
+                self.check_product(f, [product_7_14_5], msg=f"{bucket_name}")
             for f in CODE_FRAME_7_15_8_FILES:
-                self.assertIn(f, actual_files, msg=f'{bucket_name}')
-                self.check_product(f, [product_7_15_8], msg=f'{bucket_name}')
-            self.assertIn(CODE_FRAME_META, actual_files, msg=f'{bucket_name}')
+                self.assertIn(f, actual_files, msg=f"{bucket_name}")
+                self.check_product(f, [product_7_15_8], msg=f"{bucket_name}")
+            self.assertIn(CODE_FRAME_META, actual_files, msg=f"{bucket_name}")
             # self.check_product(CODE_FRAME_META, product_mix)
 
             meta_obj_client = bucket.Object(CODE_FRAME_META)
             meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
             self.assertIn(
-                "\"name\": \"@babel/code-frame\"",
-                meta_content_client, msg=f'{bucket_name}'
+                '"name": "@babel/code-frame"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"description\": \"Generate errors that contain a code frame that point to "
-                "source locations.\"", meta_content_client, msg=f'{bucket_name}'
+                '"description": "Generate errors that contain a code frame that point to '
+                'source locations."',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"repository\": {\"type\": \"git\", \"url\": "
-                "\"https://github.com/babel/babel.git\"",
-                meta_content_client, msg=f'{bucket_name}'
+                '"repository": {"type": "git", "url": '
+                '"https://github.com/babel/babel.git"',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"version\": \"7.15.8\"", meta_content_client, msg=f'{bucket_name}'
+                '"version": "7.15.8"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"version\": \"7.14.5\"", meta_content_client, msg=f'{bucket_name}'
+                '"version": "7.14.5"', meta_content_client, msg=f"{bucket_name}"
+            )
+            self.assertIn('"versions": {', meta_content_client, msg=f"{bucket_name}")
+            self.assertIn(
+                '"7.15.8": {"name":', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"versions\": {", meta_content_client, msg=f'{bucket_name}'
+                '"7.14.5": {"name":', meta_content_client, msg=f"{bucket_name}"
             )
+            self.assertIn('"license": "MIT"', meta_content_client, msg=f"{bucket_name}")
             self.assertIn(
-                "\"7.15.8\": {\"name\":", meta_content_client, msg=f'{bucket_name}'
-            )
-            self.assertIn(
-                "\"7.14.5\": {\"name\":", meta_content_client, msg=f'{bucket_name}'
-            )
-            self.assertIn(
-                "\"license\": \"MIT\"", meta_content_client, msg=f'{bucket_name}'
-            )
-            self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.15.8\"}", meta_content_client, msg=f'{bucket_name}'
+                '"dist_tags": {"latest": "7.15.8"}',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
 
     def __test_prefix(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        targets_ = [
+            (None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+            (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY),
+        ]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         for target in targets_:
@@ -139,7 +152,7 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
             bucket = self.mock_s3.Bucket(bucket_name)
             objs = list(bucket.objects.all())
             actual_files = [obj.key for obj in objs]
-            self.assertEqual(5, len(actual_files), msg=f'{bucket_name}')
+            self.assertEqual(5, len(actual_files), msg=f"{bucket_name}")
 
             PREFIXED_7145_FILES = CODE_FRAME_7_14_5_FILES
             PREFIXED_FRAME_META = CODE_FRAME_META
@@ -149,48 +162,49 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
                 ]
                 PREFIXED_FRAME_META = os.path.join(prefix, CODE_FRAME_META)
             for f in PREFIXED_7145_FILES:
-                self.assertIn(f, actual_files, msg=f'{bucket_name}')
-            self.assertIn(PREFIXED_FRAME_META, actual_files, msg=f'{bucket_name}')
+                self.assertIn(f, actual_files, msg=f"{bucket_name}")
+            self.assertIn(PREFIXED_FRAME_META, actual_files, msg=f"{bucket_name}")
 
             for o in objs:
                 if not o.key.endswith(PROD_INFO_SUFFIX):
                     obj = o.Object()
                     if not is_metadata(o.key):
-                        self.check_product(o.key, [product_7_14_5], msg=f'{bucket_name}')
-                    self.assertIn(CHECKSUM_META_KEY, obj.metadata, msg=f'{bucket_name}')
+                        self.check_product(
+                            o.key, [product_7_14_5], msg=f"{bucket_name}"
+                        )
+                    self.assertIn(CHECKSUM_META_KEY, obj.metadata, msg=f"{bucket_name}")
                     self.assertNotEqual(
-                        "", obj.metadata[CHECKSUM_META_KEY].strip(),
-                        msg=f'{bucket_name}'
+                        "",
+                        obj.metadata[CHECKSUM_META_KEY].strip(),
+                        msg=f"{bucket_name}",
                     )
 
             meta_obj_client = bucket.Object(PREFIXED_FRAME_META)
             meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
             self.assertIn(
-                "\"name\": \"@babel/code-frame\"", meta_content_client,
-                msg=f'{bucket_name}'
+                '"name": "@babel/code-frame"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"description\": \"Generate errors that contain a code frame that point to "
-                "source locations.\"", meta_content_client, msg=f'{bucket_name}'
+                '"description": "Generate errors that contain a code frame that point to '
+                'source locations."',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"repository\": {\"type\": \"git\", \"url\": "
-                "\"https://github.com/babel/babel.git\"",
-                meta_content_client, msg=f'{bucket_name}'
+                '"repository": {"type": "git", "url": '
+                '"https://github.com/babel/babel.git"',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"version\": \"7.14.5\"", meta_content_client,
-                msg=f'{bucket_name}'
+                '"version": "7.14.5"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"versions\": {\"7.14.5\":", meta_content_client,
-                msg=f'{bucket_name}'
+                '"versions": {"7.14.5":', meta_content_client, msg=f"{bucket_name}"
             )
+            self.assertIn('"license": "MIT"', meta_content_client, msg=f"{bucket_name}")
             self.assertIn(
-                "\"license\": \"MIT\"", meta_content_client,
-                msg=f'{bucket_name}'
-            )
-            self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.14.5\"}",
-                meta_content_client, msg=f'{bucket_name}'
+                '"dist_tags": {"latest": "7.14.5"}',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )

@@ -87,7 +87,7 @@ def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, 
     artifacts = []
     for path in paths:
         if path.startswith(root):
-            path = path[len(root):]
+            path = path[len(root) :]
         if path.startswith("/"):
             path = path[1:]
         artifacts.append(path)
@@ -96,5 +96,5 @@ def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, 
         with open(manifest_path, mode="a", encoding="utf-8"):
             pass
     with open(manifest_path, mode="w", encoding="utf-8") as f:
-        f.write('\n'.join(artifacts))
+        f.write("\n".join(artifacts))
     return manifest_name, manifest_path

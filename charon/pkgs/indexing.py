@@ -15,8 +15,13 @@ limitations under the License.
 """
 from charon.config import get_template
 from charon.storage import S3Client
-from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
-                              PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
+from charon.constants import (
+    INDEX_HTML_TEMPLATE,
+    NPM_INDEX_HTML_TEMPLATE,
+    PACKAGE_TYPE_MAVEN,
+    PACKAGE_TYPE_NPM,
+    PROD_INFO_SUFFIX,
+)
 from jinja2 import Template
 import os
 import logging
@@ -32,8 +37,7 @@ def __get_index_template(package_type: str) -> str:
     try:
         return get_template("index.html.j2")
     except FileNotFoundError:
-        logger.info("index template file not defined,"
-                    " will use default template.")
+        logger.info("index template file not defined," " will use default template.")
         if package_type == PACKAGE_TYPE_MAVEN:
             return INDEX_HTML_TEMPLATE
         elif package_type == PACKAGE_TYPE_NPM:
@@ -65,16 +69,16 @@ def generate_indexes(
     changed_dirs: List[str],
     s3_client: S3Client,
     bucket: str,
-    prefix: str = None
+    prefix: str = None,
 ) -> List[str]:
-    if top_level[-1] != '/':
-        top_level += '/'
+    if top_level[-1] != "/":
+        top_level += "/"
 
     s3_folders = set()
 
     # chopp down every lines, left s3 client key format
     for path in changed_dirs:
-        path = path.replace(top_level, '')
+        path = path.replace(top_level, "")
         if path.startswith("/"):
             path = path[1:]
         if not path.endswith("/"):
@@ -105,22 +109,20 @@ def __generate_index_html(
     bucket: str,
     folder_: str,
     top_level: str,
-    prefix: str = None
+    prefix: str = None,
 ) -> str:
     if folder_ != "/":
         search_folder = os.path.join(prefix, folder_) if prefix else folder_
     else:
         search_folder = prefix if prefix else "/"
-    contents = s3_client.list_folder_content(
-        bucket_name=bucket,
-        folder=search_folder
-    )
+    contents = s3_client.list_folder_content(bucket_name=bucket, folder=search_folder)
     # Should filter out the .prodinfo files
     contents = [c for c in contents if not c.endswith(PROD_INFO_SUFFIX)]
     index = None
     if len(contents) == 1 and contents[0].endswith("index.html"):
-        logger.info("The folder %s only contains index.html, "
-                    "will remove it.", folder_)
+        logger.info(
+            "The folder %s only contains index.html, " "will remove it.", folder_
+        )
         if folder_ == "/":
             removed_index = os.path.join(top_level, "index.html")
         else:
@@ -129,7 +131,7 @@ def __generate_index_html(
             file_paths=[removed_index],
             target=(bucket, prefix),
             product=None,
-            root=top_level
+            root=top_level,
         )
     elif len(contents) >= 1:
         real_contents = []
@@ -148,14 +150,16 @@ def __generate_index_html(
     return index
 
 
-def __to_html(package_type: str, contents: List[str], folder: str, top_level: str) -> str:
+def __to_html(
+    package_type: str, contents: List[str], folder: str, top_level: str
+) -> str:
     items = []
     if folder != "/":
         items.append("../")
         for c in contents:
             # index.html does not need to be included in html content.
             if not c.endswith("index.html"):
-                items.append(c[len(folder):])
+                items.append(c[len(folder) :])
     else:
         items.extend(contents)
     items = __sort_index_items(items)
@@ -164,7 +168,7 @@ def __to_html(package_type: str, contents: List[str], folder: str, top_level: st
     if folder == "/":
         html_path = os.path.join(top_level, "index.html")
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
-    with open(html_path, 'w', encoding='utf-8') as html:
+    with open(html_path, "w", encoding="utf-8") as html:
         html.write(index.generate_index_file_content(package_type))
     return html_path
 
@@ -172,16 +176,16 @@ def __to_html(package_type: str, contents: List[str], folder: str, top_level: st
 def __sort_index_items(items):
     sorted_items = sorted(items, key=IndexedItemsCompareKey)
     # make sure metadata is the last element
-    if 'maven-metadata.xml' in sorted_items:
-        sorted_items.remove('maven-metadata.xml')
-        sorted_items.append('maven-metadata.xml')
+    if "maven-metadata.xml" in sorted_items:
+        sorted_items.remove("maven-metadata.xml")
+        sorted_items.append("maven-metadata.xml")
     return sorted_items
 
 
 class FolderLenCompareKey:
     """Used as key function for folder sorting, will give DESC order
-       based on the length of the parts splitted by slash of the folder
-       path
+    based on the length of the parts splitted by slash of the folder
+    path
     """
 
     def __init__(self, obj):
@@ -213,7 +217,7 @@ class FolderLenCompareKey:
 
 class IndexedItemsCompareKey:
     """Used as key function for indexed items sorting in index.html,
-       will make all folder listed before files.
+    will make all folder listed before files.
     """
 
     def __init__(self, obj):

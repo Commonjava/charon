@@ -28,10 +28,11 @@ class PkgsDryRunTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            test_zip,
+            product,
             targets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
-            dry_run=True
+            dry_run=True,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -44,10 +45,11 @@ class PkgsDryRunTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
-            test_zip, product_456,
+            test_zip,
+            product_456,
             targets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
-            dry_run=True
+            dry_run=True,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -58,10 +60,11 @@ class PkgsDryRunTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
-            dry_run=True
+            dry_run=True,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -74,10 +77,11 @@ class PkgsDryRunTest(PackageBaseTest):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir,
-            dry_run=True
+            dry_run=True,
         )
 
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -88,32 +92,36 @@ class PkgsDryRunTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            test_zip,
+            product_456,
             targets=[(None, TEST_BUCKET, None, None)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459,
+            test_zip,
+            product_459,
             targets=[(None, TEST_BUCKET, None, None)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
     def __prepare_npm_content(self):
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
-            dir_=self.tempdir
+            dir_=self.tempdir,
         )

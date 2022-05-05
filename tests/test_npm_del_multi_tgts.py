@@ -19,7 +19,12 @@ from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
-from tests.commons import TEST_BUCKET, CODE_FRAME_7_14_5_FILES, CODE_FRAME_META, TEST_BUCKET_2
+from tests.commons import (
+    TEST_BUCKET,
+    CODE_FRAME_7_14_5_FILES,
+    CODE_FRAME_META,
+    TEST_BUCKET_2,
+)
 
 
 @mock_s3
@@ -48,13 +53,18 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
 
     def __test_prefix(self, prefix: str = None):
         self.__prepare_content(prefix)
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
+        targets_ = [
+            (None, TEST_BUCKET, prefix, None),
+            (None, TEST_BUCKET_2, prefix, None),
+        ]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         for target in targets_:
@@ -62,7 +72,7 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
             bucket = self.mock_s3.Bucket(bucket_name)
             objs = list(bucket.objects.all())
             actual_files = [obj.key for obj in objs]
-            self.assertEqual(5, len(actual_files), msg=f'{bucket_name}')
+            self.assertEqual(5, len(actual_files), msg=f"{bucket_name}")
 
             PREFIXED_7145_FILES = CODE_FRAME_7_14_5_FILES
             PREFIXED_FRAME_META = CODE_FRAME_META
@@ -72,16 +82,18 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
                 ]
                 PREFIXED_FRAME_META = os.path.join(prefix, CODE_FRAME_META)
             for f in PREFIXED_7145_FILES:
-                self.assertNotIn(f, actual_files, msg=f'{bucket_name}')
-            self.assertIn(PREFIXED_FRAME_META, actual_files, msg=f'{bucket_name}')
+                self.assertNotIn(f, actual_files, msg=f"{bucket_name}")
+            self.assertIn(PREFIXED_FRAME_META, actual_files, msg=f"{bucket_name}")
 
             for obj in objs:
                 if not obj.key.endswith(PROD_INFO_SUFFIX):
                     self.assertIn(
-                        CHECKSUM_META_KEY, obj.Object().metadata, msg=f'{bucket_name}'
+                        CHECKSUM_META_KEY, obj.Object().metadata, msg=f"{bucket_name}"
                     )
                     self.assertNotEqual(
-                        "", obj.Object().metadata[CHECKSUM_META_KEY].strip(), msg=f'{bucket_name}'
+                        "",
+                        obj.Object().metadata[CHECKSUM_META_KEY].strip(),
+                        msg=f"{bucket_name}",
                     )
 
             product_7_15_8 = "code-frame-7.15.8"
@@ -89,42 +101,46 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
             # self.check_product(meta_obj.key, [product_7_15_8])
             meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
             self.assertIn(
-                "\"name\": \"@babel/code-frame\"", meta_content_client, msg=f'{bucket_name}'
+                '"name": "@babel/code-frame"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"description\": \"Generate errors that contain a code frame that point to "
-                "source locations.\"", meta_content_client, msg=f'{bucket_name}'
+                '"description": "Generate errors that contain a code frame that point to '
+                'source locations."',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"repository\": {\"type\": \"git\", \"url\": "
-                "\"https://github.com/babel/babel.git\"",
-                meta_content_client, msg=f'{bucket_name}'
+                '"repository": {"type": "git", "url": '
+                '"https://github.com/babel/babel.git"',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
             self.assertIn(
-                "\"version\": \"7.15.8\"", meta_content_client, msg=f'{bucket_name}'
+                '"version": "7.15.8"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertNotIn(
-                "\"version\": \"7.14.5\"", meta_content_client, msg=f'{bucket_name}'
+                '"version": "7.14.5"', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertIn(
-                "\"versions\": {\"7.15.8\":", meta_content_client, msg=f'{bucket_name}'
+                '"versions": {"7.15.8":', meta_content_client, msg=f"{bucket_name}"
             )
             self.assertNotIn(
-                "\"7.14.5\": {\"name\":", meta_content_client, msg=f'{bucket_name}'
+                '"7.14.5": {"name":', meta_content_client, msg=f"{bucket_name}"
             )
+            self.assertIn('"license": "MIT"', meta_content_client, msg=f"{bucket_name}")
             self.assertIn(
-                "\"license\": \"MIT\"", meta_content_client, msg=f'{bucket_name}'
-            )
-            self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.15.8\"}",
-                meta_content_client, msg=f'{bucket_name}'
+                '"dist_tags": {"latest": "7.15.8"}',
+                meta_content_client,
+                msg=f"{bucket_name}",
             )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         handle_npm_del(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
         for target in targets_:
             bucket_name = target[1]
@@ -133,20 +149,26 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
             self.assertEqual(0, len(objs))
 
     def __prepare_content(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        targets_ = [
+            (None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+            (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY),
+        ]
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
-            test_tgz, product_7_14_5,
+            test_tgz,
+            product_7_14_5,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )
 
         test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
-            test_tgz, product_7_15_8,
+            test_tgz,
+            product_7_15_8,
             targets=targets_,
-            dir_=self.tempdir, do_index=False
+            dir_=self.tempdir,
+            do_index=False,
         )

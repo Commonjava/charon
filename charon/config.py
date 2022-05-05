@@ -33,6 +33,7 @@ class CharonConfig(object):
     The configuration file will be named as charon.yaml, and will be stored
     in $HOME/.charon/ folder by default.
     """
+
     def __init__(self, data: Dict):
         self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
         self.__aws_profile: str = data.get("aws_profile", None)
@@ -54,21 +55,27 @@ class CharonConfig(object):
             return None
         bucket = target_.get("bucket", None)
         if not bucket:
-            logger.error("The bucket is not found for target %s "
-                         "in charon configuration.", target)
+            logger.error(
+                "The bucket is not found for target %s " "in charon configuration.",
+                target,
+            )
         return bucket
 
     def get_bucket_prefix(self, target: str) -> str:
         target_: Dict = self.__targets.get(target, None)
         if not target_ or not isinstance(target_, Dict):
-            logger.error("The target %s is not found in charon "
-                         "configuration.", target)
+            logger.error(
+                "The target %s is not found in charon " "configuration.", target
+            )
             return None
         prefix = target_.get("prefix", None)
         if not prefix:
-            logger.warning("The prefix is not found for target %s "
-                           "in charon configuration, so no prefix will "
-                           "be used", target)
+            logger.warning(
+                "The prefix is not found for target %s "
+                "in charon configuration, so no prefix will "
+                "be used",
+                target,
+            )
             prefix = ""
         # removing first slash as it is not needed.
         prefix = remove_prefix(prefix, "/")
@@ -82,9 +89,11 @@ class CharonConfig(object):
         registry = target_.get("registry", None)
         if not registry:
             registry = DEFAULT_REGISTRY
-            logger.error("The registry is not found for target %s "
-                         "in charon configuration, so DEFAULT_REGISTRY(localhost) will be used.",
-                         target)
+            logger.error(
+                "The registry is not found for target %s "
+                "in charon configuration, so DEFAULT_REGISTRY(localhost) will be used.",
+                target,
+            )
         return registry
 
     def get_manifest_bucket(self) -> str:
@@ -94,7 +103,7 @@ class CharonConfig(object):
 def get_config() -> CharonConfig:
     config_file = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
     try:
-        yaml = YAML(typ='safe')
+        yaml = YAML(typ="safe")
         data = yaml.load(stream=Path(config_file))
     except Exception as e:
         logger.error("Can not load charon config file due to error: %s", e)
@@ -107,9 +116,7 @@ def get_config() -> CharonConfig:
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME"), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME"), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()

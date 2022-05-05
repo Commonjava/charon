@@ -5,14 +5,11 @@ logger = logging.getLogger(__name__)
 
 
 def is_metadata(file: str) -> bool:
-    return is_mvn_metadata(file) or \
-           is_npm_metadata(file) or \
-           file.endswith("index.html")
+    return is_mvn_metadata(file) or is_npm_metadata(file) or file.endswith("index.html")
 
 
 def is_mvn_metadata(file: str) -> bool:
-    return "maven-metadata.xml" in file or \
-           "archetype-catalog.xml" in file
+    return "maven-metadata.xml" in file or "archetype-catalog.xml" in file
 
 
 def is_npm_metadata(file: str) -> bool:
@@ -36,23 +33,31 @@ def __post_process(
     failed_metas: List[str],
     product_key: str,
     operation: str,
-    bucket: str = None
+    bucket: str = None,
 ):
     if len(failed_files) == 0 and len(failed_metas) == 0:
-        logger.info("Product release %s is successfully %s "
-                    "Ronda service in bucket %s\n",
-                    product_key, operation, bucket)
+        logger.info(
+            "Product release %s is successfully %s " "Ronda service in bucket %s\n",
+            product_key,
+            operation,
+            bucket,
+        )
     else:
         total = len(failed_files) + len(failed_metas)
-        logger.error("%d file(s) occur errors/warnings in bucket %s, "
-                     "please see errors.log for details.\n",
-                     bucket, total)
-        logger.error("Product release %s is %s Ronda service in bucket %s, "
-                     "but has some failures as below:",
-                     product_key, operation, bucket)
+        logger.error(
+            "%d file(s) occur errors/warnings in bucket %s, "
+            "please see errors.log for details.\n",
+            bucket,
+            total,
+        )
+        logger.error(
+            "Product release %s is %s Ronda service in bucket %s, "
+            "but has some failures as below:",
+            product_key,
+            operation,
+            bucket,
+        )
         if len(failed_files) > 0:
-            logger.error("Failed files: \n%s\n",
-                         failed_files)
+            logger.error("Failed files: \n%s\n", failed_files)
         if len(failed_metas) > 0:
-            logger.error("Failed metadata files: \n%s\n",
-                         failed_metas)
+            logger.error("Failed metadata files: \n%s\n", failed_metas)
