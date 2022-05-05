@@ -74,7 +74,7 @@ function setup_charon() {
   # install with RPM_PY_SYS=true to avoid error caused by installing on system python
   #$RUN sh -c "RPM_PY_SYS=true ${PIP_INST[*]} rpm-py-installer"
   # Setuptools install charon from source
-  $RUN $PYTHON setup.py install
+  $RUN $PIP install .
 
   # Pip install packages for unit tests
   $RUN "${PIP_INST[@]}" -r tests/requirements.txt
