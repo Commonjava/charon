@@ -15,10 +15,12 @@ Source0:        https://github.com/%{owner}/%{project}/archive/%{version}.tar.gz
 BuildArch:      noarch
 
 Requires:       python3-charon = %{version}-%{release}
-Requires:       git >= 1.7.10
 
+BuildRequires:  git-core
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
+
+Provides:       charon = %{version}-%{release}
 
 %description
 Simple Python tool with command line interface for charon init,
@@ -30,7 +32,8 @@ Group:          Development/Tools
 License:        APLv2
 Requires:       python3-requests
 Requires:       python3-setuptools
-Requires:       python3-rpm
+
+Provides:       python3-charon = %{version}-%{release}
 %{?python_provide:%python_provide python3-charon}
 
 %description -n python3-charon
@@ -47,21 +50,11 @@ Simple Python 3 library for CHARON functions.
 %py3_install
 mv %{buildroot}%{_bindir}/charon %{buildroot}%{_bindir}/charon-%{python3_version}
 ln -s %{_bindir}/charon-%{python3_version} %{buildroot}%{_bindir}/charon-3
-
 ln -s %{_bindir}/charon-%{binaries_py_version} %{buildroot}%{_bindir}/charon
-
-# ship charon in form of tarball so it can be installed within build image
-mkdir -p %{buildroot}/%{_datadir}/%{name}/
-cp -a %{sources} %{buildroot}/%{_datadir}/%{name}/charon.tar.gz
-
-# setup docs
-#mkdir -p %{buildroot}%{_mandir}/man1
-#cp -a docs/manpage/charon.1 %{buildroot}%{_mandir}/man1/
 
 
 %files
 %doc README.md
-#%{_mandir}/man1/charon.1*
 %{!?_licensedir:%global license %doc}
 %license LICENSE
 %{_bindir}/charon
@@ -72,18 +65,6 @@ cp -a %{sources} %{buildroot}/%{_datadir}/%{name}/charon.tar.gz
 %license LICENSE
 %{_bindir}/charon-%{python3_version}
 %{_bindir}/charon-3
-#%{_mandir}/man1/charon.1*
-%dir %{python3_sitelib}/charon
-%dir %{python3_sitelib}/charon/__pycache__
-%{python3_sitelib}/charon/*.*
-%{python3_sitelib}/charon/cmd
-%{python3_sitelib}/charon/pkgs
-%{python3_sitelib}/charon/utils
-%{python3_sitelib}/charon/__pycache__/*.py*
-%{python3_sitelib}/charon_*.egg-info
-%dir %{_datadir}/%{name}
-# ship charon in form of tarball so it can be installed within build image
-%{_datadir}/%{name}/charon.tar.gz
-
+%{python3_sitelib}/charon*
 
 %changelog
