@@ -31,6 +31,15 @@ pip install -r requirements-dev.txt
 python setup.py install 
 ```
 
+### From RPM
+
+Charon can also be installed from an existing RPM or you can build your own rpm
+using `tito`
+
+```bash
+tito build --test --rpm
+```
+
 ## Command guide
 
 These commands will upload and distribute files in AWS via AWS CDK. Please
