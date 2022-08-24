@@ -13,11 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-# !/usr/bin/env python
-
-import re
-
 from setuptools import setup, find_packages
 
 version = "1.2.1"
@@ -32,18 +27,6 @@ artifacts repository data to RedHat Ronda service (maven.repository.redhat.com).
 These repositories including types of maven, npm or some others like python
 in future. And Ronda service will be hosted in AWS S3.
 """
-
-
-def _get_requirements(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            packages = f.read().splitlines()
-    except (IOError, OSError) as ex:
-        raise RuntimeError(f"Can't open file with requirements: {ex}") from ex
-    packages = (p.strip() for p in packages if not re.match(r'^\s*#', p))
-    packages = list(filter(None, packages))
-    return packages
-
 
 setup(
     zip_safe=True,
@@ -62,7 +45,6 @@ setup(
     author="RedHat EXD SPMM",
     license="APLv2",
     packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
-    install_requires=_get_requirements('requirements.txt'),
     package_data={'charon': ['schemas/*.json']},
     test_suite="tests",
     entry_points={
