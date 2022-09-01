@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "charon configuration",
+  "type": "object",
+  "properties": {
+    "ignore_patterns": {
+      "type": "array",
+      "description": "Filename patterns to ignore",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "description": "pattern to ignore"
+      }
+    },
+    "targets": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z].*$": {
+          "type": "array",
+          "description": "charon targets",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "description": "target bucket",
+            "properties": {
+              "bucket": {
+                "description": "bucket name",
+                "type": "string"
+              },
+              "prefix": {
+                "description": "prefix for destination path inside the bucket",
+                "type": "string"
+              },
+              "registry": {
+                "description": "npm registry",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bucket"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "aws_profile": {
+      "type": "string",
+      "description": "aws profile to use with S3"
+    },
+    "manifest_bucket": {
+      "type": "string",
+      "description": "which bucket to use for storing manifests"
+    },
+    "additionalProperties": false
+  },
+  "additionalProperties": false,
+  "required": [
+    "ignore_patterns",
+    "targets"
+  ]
+}
+

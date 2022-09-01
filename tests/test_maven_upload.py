@@ -46,7 +46,7 @@ class MavenUploadTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -54,7 +54,7 @@ class MavenUploadTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -113,7 +113,7 @@ class MavenUploadTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -142,7 +142,7 @@ class MavenUploadTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[(None, TEST_BUCKET, prefix, None)],
             dir_=self.tempdir,
             do_index=False
         )

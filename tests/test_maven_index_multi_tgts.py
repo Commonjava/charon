@@ -45,7 +45,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -105,7 +105,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -113,7 +113,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -193,7 +193,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -260,7 +260,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir
         )
 
@@ -308,7 +308,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[(None, TEST_BUCKET, None, None)],
             dir_=self.tempdir
         )
 
@@ -331,7 +331,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -400,7 +400,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -416,7 +416,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
 
@@ -424,6 +424,6 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir
         )
