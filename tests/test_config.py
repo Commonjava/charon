@@ -16,8 +16,14 @@ limitations under the License.
 from typing import List
 import unittest
 import os
+
+import pytest
+from jsonschema.exceptions import ValidationError
+
 import charon.config as config
 import re
+
+from charon.constants import DEFAULT_REGISTRY
 from tests.base import BaseTest
 
 
@@ -32,16 +38,16 @@ class ConfigTest(unittest.TestCase):
         self.__base.setUp()
         conf = config.get_config()
         self.assertEqual([".*^(redhat).*", ".*snapshot.*"], conf.get_ignore_patterns())
-        self.assertEqual('charon-test', conf.get_aws_bucket("ga"))
-        self.assertEqual('ga', conf.get_bucket_prefix("ga"))
-        self.assertEqual('charon-test-ea', conf.get_aws_bucket("ea"))
-        self.assertEqual('earlyaccess/all', conf.get_bucket_prefix("ea"))
-        self.assertEqual('npm1.registry.redhat.com', conf.get_bucket_registry("npm"))
+        self.assertEqual([{'bucket': 'charon-test', 'prefix': 'ga'}], conf.get_target('ga'))
+        self.assertEqual([{'bucket': 'charon-test-ea', 'prefix': 'earlyaccess/all'}],
+                         conf.get_target('ea'))
+        self.assertEqual([{'bucket': 'charon-test-npm', 'registry': 'npm1.registry.redhat.com'}],
+                         conf.get_target('npm'))
 
     def test_no_config(self):
         self.__base.change_home()
-        conf = config.get_config()
-        self.assertIsNone(conf)
+        with pytest.raises(FileNotFoundError):
+            config.get_config()
 
     def test_config_missing_targets(self):
         content_missing_targets = """
@@ -50,8 +56,9 @@ ignore_patterns:
     - ".*snapshot.*"
         """
         self.__change_config_content(content_missing_targets)
-        conf = config.get_config()
-        self.assertIsNone(conf)
+        msg = "'targets' is a required property"
+        with pytest.raises(ValidationError, match=msg):
+            config.get_config()
 
     def test_config_missing_bucket(self):
         content_missing_targets = """
@@ -61,13 +68,12 @@ ignore_patterns:
 
 targets:
     ga:
-        prefix: ga
+    - prefix: ga
         """
         self.__change_config_content(content_missing_targets)
-        conf = config.get_config()
-        self.assertIsNotNone(conf)
-        self.assertEqual("ga", conf.get_bucket_prefix("ga"))
-        self.assertIsNone(conf.get_aws_bucket("ga"))
+        msg = "'bucket' is a required property"
+        with pytest.raises(ValidationError, match=msg):
+            config.get_config()
 
     def test_config_missing_prefix(self):
         content_missing_targets = """
@@ -77,13 +83,13 @@ ignore_patterns:
 
 targets:
     ga:
-        bucket: charon-test
+    - bucket: charon-test
         """
         self.__change_config_content(content_missing_targets)
         conf = config.get_config()
         self.assertIsNotNone(conf)
-        self.assertEqual("charon-test", conf.get_aws_bucket("ga"))
-        self.assertEqual("", conf.get_bucket_prefix("ga"))
+        self.assertEqual("charon-test", conf.get_target("ga")[0].get('bucket', ''))
+        self.assertEqual("", conf.get_target("ga")[0].get('prefix', ''))
 
     def test_config_missing_registry(self):
         content_missing_registry = """
@@ -93,13 +99,13 @@ ignore_patterns:
 
 targets:
     npm:
-        bucket: charon-npm-test
+    - bucket: charon-npm-test
         """
         self.__change_config_content(content_missing_registry)
         conf = config.get_config()
         self.assertIsNotNone(conf)
-        self.assertEqual("charon-npm-test", conf.get_aws_bucket("npm"))
-        self.assertEqual("localhost", conf.get_bucket_registry("npm"))
+        self.assertEqual("charon-npm-test", conf.get_target("npm")[0].get('bucket', ''))
+        self.assertEqual("localhost", conf.get_target("npm")[0].get('registry', DEFAULT_REGISTRY))
 
     def test_ignore_patterns(self):
         # pylint: disable=anomalous-backslash-in-string
@@ -113,7 +119,7 @@ ignore_patterns:
 
 targets:
     ga:
-        bucket: charon-test
+    - bucket: charon-test
         """
         self.__change_config_content(content_missing_targets)
         conf = config.get_config()

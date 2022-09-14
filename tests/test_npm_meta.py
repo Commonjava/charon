@@ -69,7 +69,7 @@ class NPMMetadataOnS3Test(BaseTest):
         )
         handle_npm_uploading(
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
-            targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(
@@ -122,7 +122,7 @@ class NPMMetadataOnS3Test(BaseTest):
         )
         handle_npm_uploading(
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
-            targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(

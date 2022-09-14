@@ -44,16 +44,18 @@ ignore_patterns:
 
 targets:
     ga:
-        bucket: "charon-test"
-        prefix: ga
+    - bucket: "charon-test"
+      prefix: ga
     ea:
-        bucket: "charon-test-ea"
-        prefix: earlyaccess/all
+    - bucket: "charon-test-ea"
+      prefix: earlyaccess/all
 
     npm:
-        bucket: "charon-test-npm"
-        registry: "npm1.registry.redhat.com"
-        """
+    - bucket: "charon-test-npm"
+      registry: "npm1.registry.redhat.com"
+aws_profile: "test"
+manifest_bucket: "manifest"
+      """
         self.prepare_config(config_base, default_config_content)
 
     def tearDown(self):

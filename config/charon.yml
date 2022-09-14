@@ -3,12 +3,18 @@ ignore_patterns:
   - ".*snapshot.*"
 
 targets:
-  ga:
-    bucket: "maven-prod-ga"
+  stage-ga:
+  - bucket: "stage-maven-ga"
     prefix: ga
-  ea:
-    bucket: "maven-prod-ea"
+  stage-ea:
+  - bucket: "stage-maven-ea"
     prefix: earlyaccess/all
-  npm:
-    bucket: "npm-prod"
-    prefix: npmjs
+  stage-maven: # collection of stage-ea and stage-ga
+  - bucket: "stage-maven-ga"
+    prefix: ga
+  - bucket: "stage-maven-ea"
+    prefix: earlyaccess/all
+  stage-npm:
+  - bucket: "stage-npm-npmjs"
+    prefix: /
+    registry: "npm.stage.registry.redhat.com"

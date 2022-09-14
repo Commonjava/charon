@@ -16,6 +16,7 @@ limitations under the License.
 from typing import List, Tuple
 
 from charon.config import CharonConfig, get_config
+from charon.constants import DEFAULT_REGISTRY
 from charon.utils.logs import set_logging
 from charon.utils.archive import detect_npm_archive, download_archive, NpmArchiveType
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
@@ -60,6 +61,7 @@ logger = logging.getLogger(__name__)
 @option(
     "--target",
     "-t",
+    'targets',
     help="""
     The target to do the uploading, which will decide which s3 bucket
     and what root path where all files will be uploaded to.
@@ -114,7 +116,7 @@ def upload(
     repo: str,
     product: str,
     version: str,
-    target: List[str],
+    targets: List[str],
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
@@ -147,13 +149,13 @@ def upload(
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
         manifest_bucket_name = conf.get_manifest_bucket()
-        targets_ = __get_targets(target, conf)
+        buckets = __get_buckets(targets, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir, succeeded = handle_npm_uploading(
                 archive_path,
                 product_key,
-                targets=targets_,
+                buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
@@ -173,7 +175,7 @@ def upload(
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                targets=targets_,
+                buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
@@ -217,6 +219,7 @@ def upload(
 @option(
     "--target",
     "-t",
+    'targets',
     help="""
     The target to do the deletion, which will decide which s3 bucket
     and what root path where all files will be deleted from.
@@ -270,7 +273,7 @@ def delete(
     repo: str,
     product: str,
     version: str,
-    target: List[str],
+    targets: List[str],
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
@@ -303,13 +306,13 @@ def delete(
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
         manifest_bucket_name = conf.get_manifest_bucket()
-        targets_ = __get_targets(target, conf)
+        buckets = __get_buckets(targets, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir, succeeded = handle_npm_del(
                 archive_path,
                 product_key,
-                targets=targets_,
+                buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
@@ -329,7 +332,7 @@ def delete(
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                targets=targets_,
+                buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 dry_run=dryrun,
@@ -345,22 +348,15 @@ def delete(
             __safe_delete(tmp_dir)
 
 
-def __get_targets(target: List[str], conf: CharonConfig) -> List[Tuple[str, str, str, str]]:
-    targets_ = []
-    for tgt in target:
-        aws_bucket = conf.get_aws_bucket(tgt)
-        if not aws_bucket:
-            continue
-        prefix = conf.get_bucket_prefix(tgt)
-        registry = conf.get_bucket_registry(tgt)
-        targets_.append([tgt, aws_bucket, prefix, registry])
-    if len(targets_) == 0:
-        logger.error(
-            "All targets are not valid or configured, "
-            "please check your charon configurations."
-        )
-        sys.exit(1)
-    return targets_
+def __get_buckets(targets: List[str], conf: CharonConfig) -> List[Tuple[str, str, str, str]]:
+    buckets = []
+    for target in targets:
+        for bucket in conf.get_target(target):
+            aws_bucket = bucket.get('bucket')
+            prefix = bucket.get('prefix', '')
+            registry = bucket.get('registry', DEFAULT_REGISTRY)
+            buckets.append((target, aws_bucket, prefix, registry))
+    return buckets
 
 
 def __safe_delete(tmp_dir: str):
