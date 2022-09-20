@@ -63,6 +63,7 @@ setup(
     license="APLv2",
     packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
     install_requires=_get_requirements('requirements.txt'),
+    package_data={'charon': ['schemas/*.json']},
     test_suite="tests",
     entry_points={
         "console_scripts": ["charon = charon:cli"],

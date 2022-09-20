@@ -13,15 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import json
+import logging
+import os
 from typing import Dict, List, Optional
 
-import jsonschema
-from jsonschema.exceptions import ValidationError
-from ruamel.yaml import YAML
-from pathlib import Path
-import os
-import logging
+from charon.utils.yaml import read_yaml_from_file_path
 
 CONFIG_FILE = "charon.yaml"
 
@@ -34,6 +30,7 @@ class CharonConfig(object):
     The configuration file will be named as charon.yaml, and will be stored
     in $HOME/.charon/ folder by default.
     """
+
     def __init__(self, data: Dict):
         self.__ignore_patterns: List[str] = data.get("ignore_patterns", None)
         self.__aws_profile: str = data.get("aws_profile", None)
@@ -57,18 +54,8 @@ class CharonConfig(object):
 
 
 def get_config() -> Optional[CharonConfig]:
-    config_file = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
-    try:
-        yaml = YAML(typ='safe')
-        data = yaml.load(stream=Path(config_file))
-        with open(os.path.join(os.getcwd(), 'charon', 'schemas', 'charon.json'), 'r') as f:
-            schema = json.load(f)
-        validator = jsonschema.Draft7Validator(schema=schema)
-        jsonschema.Draft7Validator.check_schema(schema)
-        validator.validate(data)
-    except ValidationError as e:
-        logger.error("Invalid configuration: %s", e)
-        raise e
+    config_file_path = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
+    data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
     return CharonConfig(data)
 
 
