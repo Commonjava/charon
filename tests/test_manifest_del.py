@@ -25,6 +25,7 @@ from tests.commons import (
     TEST_BUCKET, TEST_MANIFEST_BUCKET, TEST_TARGET, COMMONS_CLIENT_456_MANIFEST,
     CODE_FRAME_7_14_5_MANIFEST
 )
+from tests.constants import INPUTS
 
 
 @mock_s3
@@ -38,11 +39,11 @@ class ManifestDeleteTest(PackageBaseTest):
         self.assertEqual(1, len(manifests))
         self.assertIn(COMMONS_CLIENT_456_MANIFEST, manifests)
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, None, None)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -59,11 +60,11 @@ class ManifestDeleteTest(PackageBaseTest):
         self.assertEqual(1, len(manifests))
         self.assertIn(CODE_FRAME_7_14_5_MANIFEST, manifests)
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, None, None)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -73,22 +74,22 @@ class ManifestDeleteTest(PackageBaseTest):
         self.assertEqual(0, len(manifests))
 
     def __prepare_maven_content(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, None, None)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
         )
 
     def __prepare_npm_content(self):
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET

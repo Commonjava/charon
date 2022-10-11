@@ -21,15 +21,17 @@ from tests.commons import TEST_BUCKET
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class PkgsDryRunTest(PackageBaseTest):
     def test_maven_upload_dry_run(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -41,11 +43,11 @@ class PkgsDryRunTest(PackageBaseTest):
     def test_maven_delete_dry_run(self):
         self.__prepare_maven_content()
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -55,11 +57,11 @@ class PkgsDryRunTest(PackageBaseTest):
         self.assertEqual(50, len(objs))
 
     def test_npm_upload_dry_run(self):
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -71,11 +73,11 @@ class PkgsDryRunTest(PackageBaseTest):
     def test_npm_deletion_dry_run(self):
         self.__prepare_npm_content()
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -85,35 +87,35 @@ class PkgsDryRunTest(PackageBaseTest):
         self.assertEqual(11, len(objs))
 
     def __prepare_maven_content(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
     def __prepare_npm_content(self):
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=[(None, TEST_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )

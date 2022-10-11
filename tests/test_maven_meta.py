@@ -21,6 +21,7 @@ from xml.dom import minidom
 import charon.pkgs.maven as mvn
 import charon.utils.archive as archive
 from tests.base import BaseTest
+from tests.constants import INPUTS
 
 
 class MavenMetadataTest(BaseTest):
@@ -58,7 +59,7 @@ class MavenMetadataTest(BaseTest):
 
     def test_gen_meta_file(self):
         test_zip = zipfile.ZipFile(
-            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+            os.path.join(INPUTS, "commons-lang3.zip")
         )
         temp_root = os.path.join(self.tempdir, "tmp_zip")
         os.mkdir(temp_root)

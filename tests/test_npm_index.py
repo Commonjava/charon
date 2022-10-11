@@ -24,6 +24,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
@@ -42,11 +44,11 @@ class NpmFileIndexTest(PackageBaseTest):
         self.__test_upload_prefix("/")
 
     def __test_upload_prefix(self, prefix: str = None):
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
         )
 
@@ -122,11 +124,11 @@ class NpmFileIndexTest(PackageBaseTest):
     def __test_deletion_prefix(self, prefix: str = None):
         self.__prepare_content(prefix)
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -154,10 +156,10 @@ class NpmFileIndexTest(PackageBaseTest):
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_7_15_8 = "code-frame-7.15.8"
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -165,18 +167,18 @@ class NpmFileIndexTest(PackageBaseTest):
         self.assertEqual(0, len(objs))
 
     def __prepare_content(self, prefix: str = None):
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=[(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )

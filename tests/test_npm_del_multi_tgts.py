@@ -20,6 +20,7 @@ from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import TEST_BUCKET, CODE_FRAME_7_14_5_FILES, CODE_FRAME_META, TEST_BUCKET_2
+from tests.constants import INPUTS
 
 
 @mock_s3
@@ -48,8 +49,8 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
 
     def __test_prefix(self, prefix: str = None):
         self.__prepare_content(prefix)
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
@@ -120,7 +121,7 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
                 meta_content_client, msg=f'{bucket_name}'
             )
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
             buckets=targets_,
@@ -133,9 +134,9 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
             self.assertEqual(0, len(objs))
 
     def __prepare_content(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+                    ('', TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
@@ -143,7 +144,7 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
             dir_=self.tempdir, do_index=False
         )
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
