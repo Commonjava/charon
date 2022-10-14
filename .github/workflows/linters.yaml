@@ -90,3 +90,23 @@ jobs:
 
       - name: Run mypy on python${{ matrix.python-version }}
         run: python -m tox -e mypy
+
+  bandit:
+    name: Bandit analyzer for Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
+
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools tox
+
+      - name: Run bandit analyzer on python${{ matrix.python-version }}
+        run: python -m tox -e bandit
