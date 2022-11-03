@@ -27,6 +27,7 @@ from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.commons import TEST_BUCKET, TEST_MANIFEST_BUCKET
 from moto import mock_s3
 
+from tests.constants import HERE
 
 SHORT_TEST_PREFIX = "ga"
 LONG_TEST_PREFIX = "earlyaccess/all"
@@ -71,7 +72,7 @@ manifest_bucket: "manifest"
     def __prepare_template(self, config_base):
         template_path = os.path.join(config_base, 'template')
         os.mkdir(config_base)
-        shutil.copytree(os.path.join(os.getcwd(), "template"), template_path)
+        shutil.copytree(os.path.join(HERE, "../template"), template_path)
         if not os.path.isdir(template_path):
             self.fail("Template initilization failed!")
 

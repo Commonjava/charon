@@ -61,7 +61,7 @@ def get_config() -> Optional[CharonConfig]:
 
 def get_template(template_file: str) -> str:
     template = os.path.join(
-        os.getenv("HOME"), ".charon/template", template_file
+        os.getenv("HOME", ''), ".charon/template", template_file
     )
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:

@@ -26,16 +26,18 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class MavenFileIndexTest(PackageBaseTest):
 
     def test_uploading_index(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -75,19 +77,19 @@ class MavenFileIndexTest(PackageBaseTest):
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_overlap_upload_index(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -135,11 +137,11 @@ class MavenFileIndexTest(PackageBaseTest):
         self.__test_upload_index_with_prefix("/")
 
     def __test_upload_index_with_prefix(self, prefix: str):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -187,11 +189,11 @@ class MavenFileIndexTest(PackageBaseTest):
     def test_deletion_index(self):
         self.__prepare_content()
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -236,10 +238,10 @@ class MavenFileIndexTest(PackageBaseTest):
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_459 = "commons-client-4.5.9"
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -258,11 +260,11 @@ class MavenFileIndexTest(PackageBaseTest):
     def __test_deletion_index_with_prefix(self, prefix: str):
         self.__prepare_content(prefix)
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -306,10 +308,10 @@ class MavenFileIndexTest(PackageBaseTest):
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -317,18 +319,18 @@ class MavenFileIndexTest(PackageBaseTest):
         self.assertEqual(0, len(objs))
 
     def __prepare_content(self, prefix=None):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )

@@ -17,10 +17,12 @@ from charon.utils.files import digest, read_sha1, HashType
 import os
 import unittest
 
+from tests.constants import INPUTS
+
 
 class UtilTest(unittest.TestCase):
     def test_digest(self):
-        test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+        test_file = os.path.join(INPUTS, "commons-lang3.zip")
         self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         self.assertEqual(
             "61ff1d38cfeb281b05fcd6b9a2318ed47cd62c7f99b8a9d3e819591c03fe6804",
@@ -28,7 +30,7 @@ class UtilTest(unittest.TestCase):
         )
 
     def test_read_sha1(self):
-        test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+        test_file = os.path.join(INPUTS, "commons-lang3.zip")
         # read the real sha1 hash
         self.assertEqual("bd4fe0a8111df64430b6b419a91e4218ddf44734", digest(test_file))
         # read hash from .sha1 file
@@ -37,5 +39,5 @@ class UtilTest(unittest.TestCase):
         )
 
         # For .sha1 file itself, will use digest directly
-        test_file = os.path.join(os.getcwd(), "tests/input/commons-lang3.zip.sha1")
+        test_file = os.path.join(INPUTS, "commons-lang3.zip.sha1")
         self.assertEqual(digest(test_file), read_sha1(test_file))

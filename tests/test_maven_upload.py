@@ -26,6 +26,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class MavenUploadTest(PackageBaseTest):
@@ -42,19 +44,19 @@ class MavenUploadTest(PackageBaseTest):
         self.__test_prefix_upload("/")
 
     def test_overlap_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
 
@@ -109,11 +111,11 @@ class MavenUploadTest(PackageBaseTest):
         self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
 
     def test_ignore_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
 
@@ -138,11 +140,11 @@ class MavenUploadTest(PackageBaseTest):
             self.assertNotIn(f, actual_files)
 
     def __test_prefix_upload(self, prefix: str):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(None, TEST_BUCKET, prefix, None)],
+            buckets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir,
             do_index=False
         )

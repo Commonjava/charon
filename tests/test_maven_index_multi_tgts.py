@@ -26,6 +26,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class MavenFileIndexMultiTgtsTest(PackageBaseTest):
@@ -40,8 +42,8 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         super().tearDown()
 
     def test_uploading_index(self):
-        targets_ = [(None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, '', ''), ('', TEST_BUCKET_2, '', '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
@@ -100,8 +102,8 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
             self.assertNotIn(PROD_INFO_SUFFIX, index_content, msg=f'{bucket_name}')
 
     def test_overlap_upload_index(self):
-        targets_ = [(None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, '', ''), ('', TEST_BUCKET_2, '', '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
@@ -109,7 +111,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
             dir_=self.tempdir
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
@@ -188,8 +190,8 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         self.__test_upload_index_with_prefix("/")
 
     def __test_upload_index_with_prefix(self, prefix: str):
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
@@ -256,11 +258,11 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
     def test_deletion_index(self):
         self.__prepare_content()
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -305,10 +307,10 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
         product_459 = "commons-client-4.5.9"
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            buckets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -326,8 +328,8 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
 
     def __test_deletion_index_with_prefix(self, prefix: str):
         self.__prepare_content(prefix)
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
@@ -397,7 +399,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
             )
             self.assertNotIn(PROD_INFO_SUFFIX, index_content, msg=f'{bucket_name}')
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
             buckets=targets_,
@@ -411,8 +413,8 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
             self.assertEqual(0, len(objs), msg=f'{bucket_name}')
 
     def __prepare_content(self, prefix=None):
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
@@ -420,7 +422,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
             dir_=self.tempdir
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,

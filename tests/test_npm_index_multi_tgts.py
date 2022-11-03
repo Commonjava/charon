@@ -25,6 +25,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
@@ -53,9 +55,9 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
         self.__test_upload_prefix("/")
 
     def __test_upload_prefix(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+                    ('', TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
@@ -118,7 +120,7 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
 
     def test_overlap_upload_index(self):
         self.__prepare_content()
-        targets_ = [(None, TEST_BUCKET, None), (None, TEST_BUCKET_2, None)]
+        targets_ = [('', TEST_BUCKET, ''), ('', TEST_BUCKET_2, '')]
         for target in targets_:
             bucket_name = target[1]
             bucket = self.mock_s3.Bucket(bucket_name)
@@ -162,8 +164,8 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
 
     def __test_deletion_prefix(self, prefix: str = None):
         self.__prepare_content(prefix)
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
@@ -206,7 +208,7 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
             self.assertNotIn(PROD_INFO_SUFFIX, index_content, msg=f'{bucket_name}')
 
         product_7_15_8 = "code-frame-7.15.8"
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
             buckets=targets_,
@@ -220,9 +222,9 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
             self.assertEqual(0, len(objs), msg=f'{bucket_name}')
 
     def __prepare_content(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+                    ('', TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
@@ -230,7 +232,7 @@ class NpmFileIndexMultiTgtsTest(PackageBaseTest):
             dir_=self.tempdir
         )
 
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,

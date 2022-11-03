@@ -27,6 +27,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class MavenUploadMultiTgtsTest(PackageBaseTest):
@@ -42,28 +44,28 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
 
     def test_fresh_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, ""), (None, TEST_BUCKET_2, "", None)]
+            [('', TEST_BUCKET, ""), ('', TEST_BUCKET_2, "", '')]
         )
 
     def test_short_prefix_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, SHORT_TEST_PREFIX), (None, TEST_BUCKET_2, SHORT_TEST_PREFIX, None)]
+            [('', TEST_BUCKET, SHORT_TEST_PREFIX), ('', TEST_BUCKET_2, SHORT_TEST_PREFIX, '')]
         )
 
     def test_long_prefix_upload(self):
         self.__test_prefix_upload(
-            [(None, TEST_BUCKET, LONG_TEST_PREFIX), (None, TEST_BUCKET_2, LONG_TEST_PREFIX, None)]
+            [('', TEST_BUCKET, LONG_TEST_PREFIX), ('', TEST_BUCKET_2, LONG_TEST_PREFIX, '')]
         )
 
     def test_root_prefix_upload(self):
-        self.__test_prefix_upload([(None, TEST_BUCKET, "/", None),
-                                   (None, TEST_BUCKET_2, "/", None)])
+        self.__test_prefix_upload([('', TEST_BUCKET, "/", ''),
+                                   ('', TEST_BUCKET_2, "/", '')])
 
     def test_overlap_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         targets_ = [
-            (None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)
+            ('', TEST_BUCKET, '', ''), ('', TEST_BUCKET_2, '', '')
         ]
         handle_maven_uploading(
             test_zip, product_456,
@@ -71,7 +73,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
             dir_=self.tempdir, do_index=False
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
@@ -178,10 +180,10 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
             )
 
     def test_ignore_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         targets_ = [
-            (None, TEST_BUCKET, None, None), (None, TEST_BUCKET_2, None, None)
+            ('', TEST_BUCKET, '', ''), ('', TEST_BUCKET_2, '', '')
         ]
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
@@ -216,7 +218,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
                 self.assertNotIn(f, actual_files, msg=f'{bucket_name}')
 
     def __test_prefix_upload(self, targets: List[Tuple[str, str, str, str]]):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
