@@ -9,6 +9,7 @@ future. And Ronda service will be hosted in AWS S3.
 
 * python 3.5+
 * git
+* gnupg
 
 ### [Optional] Install AWS CLI tool
 

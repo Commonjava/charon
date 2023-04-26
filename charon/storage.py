@@ -414,6 +414,100 @@ class S3Client(object):
             root=root
         )
 
+    def upload_signatures(
+        self, meta_file_paths: List[str],
+        target: Tuple[str, str],
+        product: Optional[str] = None, root="/"
+    ) -> List[str]:
+        """ Upload a list of signature files to s3 bucket. This function is very similar to
+        upload_metadata, except:
+            * The signature files will not be overwritten if existed
+        """
+        bucket_name = target[0]
+        bucket = self.__get_bucket(bucket_name)
+
+        async def path_upload_handler(
+            full_file_path: str, path: str, index: int,
+            total: int, failed: List[str]
+        ):
+            async with self.__con_sem:
+                if not os.path.isfile(full_file_path):
+                    logger.warning(
+                        'Warning: file %s does not exist during uploading. Product: %s',
+                        full_file_path, product
+                    )
+                    failed.append(full_file_path)
+                    return
+
+                logger.debug(
+                    '(%d/%d) Updating sginature %s to bucket %s',
+                    index, total, path, bucket_name
+                )
+
+                key_prefix = target[1]
+                path_key = os.path.join(key_prefix, path) if key_prefix else path
+                file_object = bucket.Object(path_key)
+                existed = False
+                try:
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "Error: file existence check failed due to error: %s", e
+                    )
+                    failed.append(full_file_path)
+                    return
+                (content_type, _) = mimetypes.guess_type(full_file_path)
+                if not content_type:
+                    content_type = DEFAULT_MIME_TYPE
+
+                try:
+                    if not self.__dry_run:
+                        if not existed:
+                            await self.__run_async(
+                                functools.partial(
+                                    file_object.put,
+                                    Body=open(full_file_path, "rb"),
+                                    Metadata={},
+                                    ContentType=content_type
+                                )
+                            )
+                        elif product:
+                            # NOTE: This should not happen for most cases, as most
+                            # of the metadata file does not have product info. Just
+                            # leave for requirement change in future
+                            # This is now used for npm version-level package.json
+                            prods = [product]
+                            if existed:
+                                (prods, no_error) = await self.__run_async(
+                                    self.__get_prod_info,
+                                    path_key, bucket_name
+                                )
+                                if not no_error:
+                                    failed.append(full_file_path)
+                                    return
+                                if no_error and product not in prods:
+                                    prods.append(product)
+                            updated = await self.__update_prod_info(
+                                path_key, bucket_name, prods
+                            )
+                            if not updated:
+                                failed.append(full_file_path)
+                                return
+                    logger.debug('Updated signature %s to bucket %s', path, bucket_name)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "ERROR: file %s not uploaded to bucket"
+                        " %s due to error: %s ",
+                        full_file_path, bucket_name, e
+                    )
+                    failed.append(full_file_path)
+
+        return self.__do_path_cut_and(
+            file_paths=meta_file_paths,
+            path_handler=self.__path_handler_count_wrapper(path_upload_handler),
+            root=root
+        )
+
     def upload_manifest(
             self, manifest_name: str, manifest_full_path: str, target: str,
             manifest_bucket_name: str

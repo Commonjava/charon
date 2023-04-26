@@ -24,6 +24,7 @@ from typing import List, Set, Tuple
 from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
+import charon.pkgs.signature as signature
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
@@ -70,6 +71,9 @@ def handle_npm_uploading(
         aws_profile=None,
         dir_=None,
         do_index=True,
+        key_id=None,
+        key_file=None,
+        passphrase=None,
         dry_run=False,
         manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -88,6 +92,7 @@ def handle_npm_uploading(
         Returns the directory used for archive processing and if uploading is successful
     """
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
+    generated_signs = []
     for bucket in buckets:
         bucket_name = bucket[1]
         prefix = remove_prefix(bucket[2], "/")
@@ -159,6 +164,31 @@ def handle_npm_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("package.json uploading done")
+
+        if (key_id is not None or key_file is not None) and passphrase is not None:
+            artifacts = [s for s in valid_paths if s.endswith(".json") or s.endswith(".js")]
+            if META_FILE_GEN_KEY in meta_files:
+                artifacts.extend(meta_files[META_FILE_GEN_KEY])
+            logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
+            (_failed_metas, _generated_signs) = signature.generate_sign(
+                PACKAGE_TYPE_NPM, artifacts,
+                target_dir, prefix,
+                client, bucket_name,
+                key_id, key_file, passphrase
+            )
+            failed_metas.extend(_failed_metas)
+            generated_signs.extend(_generated_signs)
+            logger.info("Singature generation done.\n")
+
+            logger.info("Start upload singature files to s3 bucket %s\n", bucket_name)
+            _failed_metas = client.upload_signatures(
+                meta_file_paths=generated_signs,
+                target=(bucket_name, prefix),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Signature uploading done.\n")
 
         # this step generates index.html for each dir and add them to file list
         # index is similar to metadata, it will be overwritten everytime

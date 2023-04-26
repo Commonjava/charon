@@ -97,6 +97,27 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--sign_keyid",
+    "-k",
+    help="""
+    GPG key fingerprint to sign artifacts, cannot work with --sign_keyfile
+    requires key already imported with gpg command --passphrase is needed.
+    """,
+)
+@option(
+    "--sign_keyfile",
+    "-K",
+    help="""
+    GPG key file path to sign artifacts, --passphrase is needed.
+    """,
+)
+@option(
+    "--passphrase",
+    help="""
+    The passphrase for GPG key, will require input if this parameter is not set.
+    """,
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -120,6 +141,9 @@ def upload(
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
+    sign_keyid: str = None,
+    sign_keyfile: str = None,
+    passphrase: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -158,6 +182,9 @@ def upload(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                key_id=sign_keyid,
+                key_file=sign_keyfile,
+                passphrase=passphrase,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )
@@ -178,6 +205,9 @@ def upload(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                key_id=sign_keyid,
+                key_file=sign_keyfile,
+                passphrase=passphrase,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )

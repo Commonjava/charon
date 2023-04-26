@@ -15,6 +15,7 @@ limitations under the License.
 """
 from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
+import charon.pkgs.signature as signature
 from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
@@ -260,6 +261,9 @@ def handle_maven_uploading(
     aws_profile=None,
     dir_=None,
     do_index=True,
+    key_id=None,
+    key_file=None,
+    passphrase=None,
     dry_run=False,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -317,6 +321,7 @@ def handle_maven_uploading(
     )
     logger.info("Files uploading done\n")
     succeeded = True
+    generated_signs = []
     for bucket in buckets:
         # 5. Do manifest uploading
         if not manifest_bucket_name:
@@ -382,6 +387,30 @@ def handle_maven_uploading(
                 )
                 failed_metas.extend(_failed_metas)
                 logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_name)
+
+        # 10. Generate signature file if gpg ket is provided
+        if (key_id is not None or key_file is not None) and passphrase is not None:
+            artifacts = [s for s in valid_mvn_paths if s.endswith(".jar") or s.endswith(".pom")]
+            logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
+            (_failed_metas, _generated_signs) = signature.generate_sign(
+                PACKAGE_TYPE_MAVEN, artifacts,
+                top_level, prefix,
+                s3_client, bucket_name,
+                key_id, key_file, passphrase
+            )
+            failed_metas.extend(_failed_metas)
+            generated_signs.extend(_generated_signs)
+            logger.info("Singature generation done.\n")
+
+            logger.info("Start upload singature files to s3 bucket %s\n", bucket_name)
+            _failed_metas = s3_client.upload_signatures(
+                meta_file_paths=generated_signs,
+                target=(bucket_name, prefix),
+                product=None,
+                root=top_level
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Signature uploading done.\n")
 
         # this step generates index.html for each dir and add them to file list
         # index is similar to metadata, it will be overwritten everytime
