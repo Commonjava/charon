@@ -36,6 +36,19 @@ def generate_sign(
     key_file: str = None,
     passphrase: str = None
 ) -> Tuple[List[str], List[str]]:
+    """ This Python function generates a digital signature for a list of metadata files using
+    the GPG library for uploads to an Amazon S3 bucket.
+
+        * Does not regenerate the existing metadata files when existing
+        * Returning all failed to generate signature files due to exceptions
+        * key_id: A string representing the ID of the RSA key to use for signing,
+        GPG command line tool is required when this parameter is not None.
+        * key_file: A string representing the location of the private key file.
+        * passphrase: A string containing the passphrase for the RSA key for key_id or key_file.
+
+    It returns a tuple containing two lists: one with the successfully generated files
+    and another with the failed to generate files due to exceptions.
+    """
 
     if key_file is not None:
         gpg = gnupg.GPG(gnupghome='~/.gnupg')
