@@ -170,10 +170,10 @@ def handle_npm_uploading(
             conf = get_config()
             if not conf:
                 sys.exit(1)
-            suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
+            suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)
             artifacts = []
             for suffix in suffix_list:
-                artifacts += [s for s in valid_mvn_paths if s.endswith(suffix)]
+                artifacts.extend([s for s in valid_paths if s.endswith(suffix)])
             if META_FILE_GEN_KEY in meta_files:
                 artifacts.extend(meta_files[META_FILE_GEN_KEY])
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)

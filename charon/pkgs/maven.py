@@ -396,7 +396,7 @@ def handle_maven_uploading(
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
             artifacts = []
             for suffix in suffix_list:
-                artifacts += [s for s in valid_mvn_paths if s.endswith(suffix)]
+                artifacts.extend([s for s in valid_mvn_paths if s.endswith(suffix)])
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = signature.generate_sign(
                 PACKAGE_TYPE_MAVEN, artifacts,

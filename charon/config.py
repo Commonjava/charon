@@ -52,7 +52,7 @@ class CharonConfig(object):
 
     def get_manifest_bucket(self) -> str:
         return self.__manifest_bucket
-    
+
     def get_artifact_suffix(self, package_type: str) -> List[str]:
         artifact_list: List = self.__artifact_suffix.get(package_type)
         if not artifact_list:
