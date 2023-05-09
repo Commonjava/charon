@@ -25,6 +25,7 @@ from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
 import charon.pkgs.signature as signature
+from charon.config import CharonConfig, get_config
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
@@ -166,7 +167,13 @@ def handle_npm_uploading(
             logger.info("package.json uploading done")
 
         if (key_id is not None or key_file is not None) and passphrase is not None:
-            artifacts = [s for s in valid_paths if s.endswith(".json") or s.endswith(".js")]
+            conf = get_config()
+            if not conf:
+                sys.exit(1)
+            suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
+            artifacts = []
+            for suffix in suffix_list:
+                artifacts += [s for s in valid_mvn_paths if s.endswith(suffix)]
             if META_FILE_GEN_KEY in meta_files:
                 artifacts.extend(meta_files[META_FILE_GEN_KEY])
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
@@ -563,3 +570,9 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
         if dir_.startswith("@"):
             valid_dirs.add(dir_.split("/")[0])
     return valid_dirs
+
+
+def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
+    if package_type:
+        return conf.get_artifact_suffix(package_type)
+    return []

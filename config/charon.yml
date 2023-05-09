@@ -2,6 +2,15 @@ ignore_patterns:
   - ".*^(redhat).*"
   - ".*snapshot.*"
 
+artifact_suffix:
+  maven:
+    - ".jar"
+    - ".pom"
+    - ".xml"
+  npm:
+    - ".js"
+    - ".json"
+
 targets:
   stage-ga:
   - bucket: "stage-maven-ga"

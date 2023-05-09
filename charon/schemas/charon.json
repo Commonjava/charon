@@ -12,6 +12,20 @@
         "description": "pattern to ignore"
       }
     },
+    "artifact_suffix": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z].*$": {
+          "type": "array",
+          "description": "artifact type",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "description": "sign artifact suffixt"
+          }
+        }
+      }
+    },
     "targets": {
       "type": "object",
       "patternProperties": {

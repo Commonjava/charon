@@ -36,6 +36,7 @@ class CharonConfig(object):
         self.__aws_profile: str = data.get("aws_profile", None)
         self.__targets: Dict = data.get("targets", None)
         self.__manifest_bucket: str = data.get("manifest_bucket", None)
+        self.__artifact_suffix: Dict = data.get("artifact_suffix", None)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -51,6 +52,12 @@ class CharonConfig(object):
 
     def get_manifest_bucket(self) -> str:
         return self.__manifest_bucket
+    
+    def get_artifact_suffix(self, package_type: str) -> List[str]:
+        artifact_list: List = self.__artifact_suffix.get(package_type)
+        if not artifact_list:
+            logger.error("package type %s does not have artifact config.", package_type)
+        return artifact_list
 
 
 def get_config() -> Optional[CharonConfig]:

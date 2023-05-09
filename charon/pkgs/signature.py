@@ -51,7 +51,8 @@ def generate_sign(
     """
 
     if key_file is not None:
-        gpg = gnupg.GPG(gnupghome='~/.gnupg')
+        gnupg_home_path = os.path.join(os.getenv("HOME"), ".charon", ".gnupg")
+        gpg = gnupg.GPG(gnupghome=gnupg_home_path)
         gpg.import_keys_file(key_file)
 
     async def sign_file(
@@ -144,8 +145,10 @@ def __do_path_cut_and(
     failed_paths = []
     generated_signs = []
     tasks = []
+    logger.info(file_paths)
     for full_path in file_paths:
         path = full_path
+        logger.info(path)
         if path.startswith(slash_root):
             path = path[len(slash_root):]
         tasks.append(

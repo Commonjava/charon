@@ -21,7 +21,7 @@ from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
-from charon.config import get_template
+from charon.config import CharonConfig, get_template, get_config
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
@@ -390,7 +390,13 @@ def handle_maven_uploading(
 
         # 10. Generate signature file if gpg ket is provided
         if (key_id is not None or key_file is not None) and passphrase is not None:
-            artifacts = [s for s in valid_mvn_paths if s.endswith(".jar") or s.endswith(".pom")]
+            conf = get_config()
+            if not conf:
+                sys.exit(1)
+            suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
+            artifacts = []
+            for suffix in suffix_list:
+                artifacts += [s for s in valid_mvn_paths if s.endswith(suffix)]
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = signature.generate_sign(
                 PACKAGE_TYPE_MAVEN, artifacts,
@@ -1038,6 +1044,12 @@ def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
 def _handle_error(err_msgs: List[str]):
     # Reminder: will implement later
     pass
+
+
+def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
+    if package_type:
+        return conf.get_artifact_suffix(package_type)
+    return []
 
 
 class VersionCompareKey:
