@@ -14,6 +14,10 @@ future. And Ronda service will be hosted in AWS S3.
 
 See [AWS CLi V2 installation](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html#cliv2-linux-install)
 
+### [Optional] GnuPG CLI tool
+
+For artifact signing using keys already in GPG keystore, not required when using exported secret key file.
+
 ## Installation
 
 ### From git
@@ -49,7 +53,7 @@ to configure AWS access credentials.
 ### charon-upload: upload a repo to S3
 
 ```bash
-usage: charon upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug]
+usage: charon upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug] [--key_id] [--key_file] [--passphrase]
 ```
 
 This command will upload the repo in tarball to S3.

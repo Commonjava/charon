@@ -12,6 +12,20 @@
         "description": "pattern to ignore"
       }
     },
+    "ignore_signature_suffix": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z].*$": {
+          "type": "array",
+          "description": "artifact type",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "description": "sign artifact suffixt - exclude"
+          }
+        }
+      }
+    },
     "targets": {
       "type": "object",
       "patternProperties": {
