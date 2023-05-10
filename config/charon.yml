@@ -2,14 +2,15 @@ ignore_patterns:
   - ".*^(redhat).*"
   - ".*snapshot.*"
 
-artifact_suffix:
+ignore_artifact_suffix:
   maven:
-    - ".jar"
-    - ".pom"
-    - ".xml"
+    - ".sha1"
+    - ".sha256"
+    - ".md5"
+    - "maven-metadata.xml"
+    - "archtype-catalog.xml"
   npm:
-    - ".js"
-    - ".json"
+    - "package.json"
 
 targets:
   stage-ga:

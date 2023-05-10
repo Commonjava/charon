@@ -12,7 +12,7 @@
         "description": "pattern to ignore"
       }
     },
-    "artifact_suffix": {
+    "ignore_artifact_suffix": {
       "type": "object",
       "patternProperties": {
         "^[a-z].*$": {
@@ -21,7 +21,7 @@
           "minItems": 1,
           "items": {
             "type": "string",
-            "description": "sign artifact suffixt"
+            "description": "sign artifact suffixt - exclude"
           }
         }
       }

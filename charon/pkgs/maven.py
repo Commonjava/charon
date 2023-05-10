@@ -394,9 +394,7 @@ def handle_maven_uploading(
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
-            artifacts = []
-            for suffix in suffix_list:
-                artifacts.extend([s for s in valid_mvn_paths if s.endswith(suffix)])
+            artifacts = [s for s in valid_mvn_paths if not s.endswith(tuple(suffix_list))]
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = signature.generate_sign(
                 PACKAGE_TYPE_MAVEN, artifacts,
@@ -1048,7 +1046,7 @@ def _handle_error(err_msgs: List[str]):
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_artifact_suffix(package_type)
+        return conf.get_ignore_artifact_suffix(package_type)
     return []
 
 

@@ -171,9 +171,7 @@ def handle_npm_uploading(
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)
-            artifacts = []
-            for suffix in suffix_list:
-                artifacts.extend([s for s in valid_paths if s.endswith(suffix)])
+            artifacts = [s for s in valid_paths if not s.endswith(tuple(suffix))]
             if META_FILE_GEN_KEY in meta_files:
                 artifacts.extend(meta_files[META_FILE_GEN_KEY])
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
@@ -574,5 +572,5 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_artifact_suffix(package_type)
+        return conf.get_ignore_artifact_suffix(package_type)
     return []
