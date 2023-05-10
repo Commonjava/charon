@@ -171,7 +171,7 @@ def handle_npm_uploading(
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)
-            artifacts = [s for s in valid_paths if not s.endswith(tuple(suffix))]
+            artifacts = [s for s in valid_paths if not s.endswith(tuple(suffix_list))]
             if META_FILE_GEN_KEY in meta_files:
                 artifacts.extend(meta_files[META_FILE_GEN_KEY])
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
