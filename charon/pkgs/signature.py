@@ -145,10 +145,8 @@ def __do_path_cut_and(
     failed_paths = []
     generated_signs = []
     tasks = []
-    logger.info(file_paths)
     for full_path in file_paths:
         path = full_path
-        logger.info(path)
         if path.startswith(slash_root):
             path = path[len(slash_root):]
         tasks.append(
