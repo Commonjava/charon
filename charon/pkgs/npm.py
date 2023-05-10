@@ -572,5 +572,5 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_ignore_artifact_suffix(package_type)
+        return conf.get_ignore_signature_suffix(package_type)
     return []

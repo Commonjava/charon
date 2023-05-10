@@ -12,7 +12,7 @@
         "description": "pattern to ignore"
       }
     },
-    "ignore_artifact_suffix": {
+    "ignore_signature_suffix": {
       "type": "object",
       "patternProperties": {
         "^[a-z].*$": {

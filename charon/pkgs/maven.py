@@ -1046,7 +1046,7 @@ def _handle_error(err_msgs: List[str]):
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_ignore_artifact_suffix(package_type)
+        return conf.get_ignore_signature_suffix(package_type)
     return []
 
 

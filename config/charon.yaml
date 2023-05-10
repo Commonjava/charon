@@ -2,7 +2,7 @@ ignore_patterns:
   - ".*^(redhat).*"
   - ".*snapshot.*"
 
-ignore_artifact_suffix:
+ignore_signature_suffix:
   maven:
     - ".sha1"
     - ".sha256"
