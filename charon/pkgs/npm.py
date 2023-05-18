@@ -74,6 +74,7 @@ def handle_npm_uploading(
         do_index=True,
         key_id=None,
         key_file=None,
+        sign_method=None,
         passphrase=None,
         dry_run=False,
         manifest_bucket_name=None
@@ -166,7 +167,7 @@ def handle_npm_uploading(
             failed_metas.extend(_failed_metas)
             logger.info("package.json uploading done")
 
-        if (key_id is not None or key_file is not None) and passphrase is not None:
+        if key_id is not None or key_file is not None:
             conf = get_config()
             if not conf:
                 sys.exit(1)
@@ -179,7 +180,7 @@ def handle_npm_uploading(
                 PACKAGE_TYPE_NPM, artifacts,
                 target_dir, prefix,
                 client, bucket_name,
-                key_id, key_file, passphrase
+                key_id, key_file, sign_method, passphrase
             )
             failed_metas.extend(_failed_metas)
             generated_signs.extend(_generated_signs)

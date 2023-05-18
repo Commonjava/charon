@@ -14,9 +14,10 @@ future. And Ronda service will be hosted in AWS S3.
 
 See [AWS CLi V2 installation](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html#cliv2-linux-install)
 
-### [Optional] GnuPG CLI tool
+### [Optional] GnuPG CLI tool or rpm-sign
 
 For artifact signing using keys already in GPG keystore, not required when using exported secret key file.
+Can be configured to use rpm-sign for release.
 
 ## Installation
 

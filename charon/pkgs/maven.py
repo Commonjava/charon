@@ -263,6 +263,7 @@ def handle_maven_uploading(
     do_index=True,
     key_id=None,
     key_file=None,
+    sign_method=None,
     passphrase=None,
     dry_run=False,
     manifest_bucket_name=None
@@ -389,7 +390,7 @@ def handle_maven_uploading(
                 logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_name)
 
         # 10. Generate signature file if gpg ket is provided
-        if (key_id is not None or key_file is not None) and passphrase is not None:
+        if key_id is not None or key_file is not None:
             conf = get_config()
             if not conf:
                 sys.exit(1)
@@ -400,7 +401,7 @@ def handle_maven_uploading(
                 PACKAGE_TYPE_MAVEN, artifacts,
                 top_level, prefix,
                 s3_client, bucket_name,
-                key_id, key_file, passphrase
+                key_id, key_file, sign_method, passphrase
             )
             failed_metas.extend(_failed_metas)
             generated_signs.extend(_generated_signs)
