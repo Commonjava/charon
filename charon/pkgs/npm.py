@@ -72,10 +72,8 @@ def handle_npm_uploading(
         aws_profile=None,
         dir_=None,
         do_index=True,
-        key_id=None,
-        key_file=None,
-        sign_method=None,
-        passphrase=None,
+        gen_sign=False,
+        key=None,
         dry_run=False,
         manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -167,11 +165,12 @@ def handle_npm_uploading(
             failed_metas.extend(_failed_metas)
             logger.info("package.json uploading done")
 
-        if key_id is not None or key_file is not None:
+        if gen_sign:
             conf = get_config()
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)
+            command = conf.get_detach_signature_command()
             artifacts = [s for s in valid_paths if not s.endswith(tuple(suffix_list))]
             if META_FILE_GEN_KEY in meta_files:
                 artifacts.extend(meta_files[META_FILE_GEN_KEY])
@@ -180,7 +179,7 @@ def handle_npm_uploading(
                 PACKAGE_TYPE_NPM, artifacts,
                 target_dir, prefix,
                 client, bucket_name,
-                key_id, key_file, sign_method, passphrase
+                key, command
             )
             failed_metas.extend(_failed_metas)
             generated_signs.extend(_generated_signs)

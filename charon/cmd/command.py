@@ -97,33 +97,19 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
-    "--sign_keyid",
+    "--contain_signature",
+    "-s",
+    is_flag=True,
+    help="""
+    Toggle signature generation and upload feature in charon.
+    """
+)
+@option(
+    "--sign_key",
     "-k",
     help="""
-    GPG key fingerprint to sign artifacts, cannot work with --sign_keyfile
-    requires key already imported with gpg command --passphrase is needed.
-    """,
-)
-@option(
-    "--sign_keyfile",
-    "-K",
-    help="""
-    GPG key file path to sign artifacts, --passphrase is needed.
-    Will be ignored when using sign_method rpm-sign
-    """,
-)
-@option(
-    "--sign_method",
-    help="""
-    Choose 'gpg' or 'rpm-sign' to warp the actuall command, default to use gpg.
-    key_id will be used to set key for signature.
-    """,
-)
-@option(
-    "--passphrase",
-    help="""
-    The passphrase for GPG key, Necessary when using gpg as sign method.
-    Will require input when it's not set
+    rpm-sign key to be used, will replace {{ key }} in default configuration for signature.
+    Does noting if detach_signature_command does not contain {{ key }} field.
     """,
 )
 @option(
@@ -150,10 +136,8 @@ def upload(
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
-    sign_keyid: str = None,
-    sign_keyfile: str = None,
-    sign_method: str = "gpg",
-    passphrase: str = None,
+    contain_signature: bool = False,
+    sign_key: str = "redhatdevel",
     debug=False,
     quiet=False,
     dryrun=False
@@ -179,10 +163,6 @@ def upload(
             logger.error("No AWS profile specified!")
             sys.exit(1)
 
-        if sign_method != 'gpg' and sign_method != 'rpm-sign':
-            logger.error("Signature method must be gpg or rpm-sign")
-            sys.exit(1)
-
         archive_path = __get_local_repo(repo)
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
@@ -196,10 +176,8 @@ def upload(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                key_id=sign_keyid,
-                key_file=sign_keyfile,
-                sign_method=sign_method,
-                passphrase=passphrase,
+                gen_sign=contain_signature,
+                key=sign_key,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )
@@ -220,10 +198,8 @@ def upload(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
-                key_id=sign_keyid,
-                key_file=sign_keyfile,
-                sign_method=sign_method,
-                passphrase=passphrase,
+                gen_sign=contain_signature,
+                key=sign_key,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )
