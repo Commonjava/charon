@@ -18,7 +18,7 @@ import os
 import subprocess
 import asyncio
 import logging
-import jinja2
+from jinja2 import Template
 from typing import Awaitable, Callable, List, Tuple
 from charon.storage import S3Client
 
@@ -47,7 +47,6 @@ def generate_sign(
     It returns a tuple containing two lists: one with the successfully generated files
     and another with the failed to generate files due to exceptions.
     """
-    env = jinja2.Environment()
 
     async def sign_file(
         filename: str, failed_paths: List[str], generated_signs: List[str]
@@ -81,14 +80,12 @@ def generate_sign(
                 logger.debug(".asc file %s existed, skipping", remote)
                 return
 
-            context = {'key': key, 'file': artifact}
-            run_command = env.from_string(command).render(context)
-            logger.debug("Generated signature command: %s", run_command)
-
-            result = await __run_cmd_async(run_command.split())
+            run_command = Template(command)
+            result = await __run_cmd_async(run_command.render(key=key, file=artifact).split())
 
             if result.returncode == 0:
                 generated_signs.append(local)
+                logger.debug("Generated signature file: %s", local)
             else:
                 failed_paths.append(local)
 
