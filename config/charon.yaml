@@ -12,6 +12,8 @@ ignore_signature_suffix:
   npm:
     - "package.json"
 
+detach_signature_command: "rpm-sign --detach-sign --key {{ key }} {{ file }}"
+
 targets:
   stage-ga:
   - bucket: "stage-maven-ga"

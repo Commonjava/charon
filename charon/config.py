@@ -37,6 +37,7 @@ class CharonConfig(object):
         self.__targets: Dict = data.get("targets", None)
         self.__manifest_bucket: str = data.get("manifest_bucket", None)
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
+        self.__signature_command: str = data.get("detach_signature_command", None)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -58,6 +59,9 @@ class CharonConfig(object):
         if not xartifact_list:
             logger.error("package type %s does not have ignore artifact config.", package_type)
         return xartifact_list
+
+    def get_detach_signature_command(self) -> str:
+        return self.__signature_command
 
 
 def get_config() -> Optional[CharonConfig]:

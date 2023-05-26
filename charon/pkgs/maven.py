@@ -261,10 +261,8 @@ def handle_maven_uploading(
     aws_profile=None,
     dir_=None,
     do_index=True,
-    key_id=None,
-    key_file=None,
-    sign_method=None,
-    passphrase=None,
+    gen_sign=False,
+    key=None,
     dry_run=False,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -389,19 +387,20 @@ def handle_maven_uploading(
                 failed_metas.extend(_failed_metas)
                 logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_name)
 
-        # 10. Generate signature file if gpg ket is provided
-        if key_id is not None or key_file is not None:
+        # 10. Generate signature file if contain_signature is set to True
+        if gen_sign:
             conf = get_config()
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
+            command = conf.get_detach_signature_command()
             artifacts = [s for s in valid_mvn_paths if not s.endswith(tuple(suffix_list))]
             logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = signature.generate_sign(
                 PACKAGE_TYPE_MAVEN, artifacts,
                 top_level, prefix,
                 s3_client, bucket_name,
-                key_id, key_file, sign_method, passphrase
+                key, command
             )
             failed_metas.extend(_failed_metas)
             generated_signs.extend(_generated_signs)

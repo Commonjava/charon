@@ -26,6 +26,10 @@
         }
       }
     },
+    "detach_signature_command": {
+      "type": "string",
+      "description": "signature command to be used for signature"
+    },
     "targets": {
       "type": "object",
       "patternProperties": {
