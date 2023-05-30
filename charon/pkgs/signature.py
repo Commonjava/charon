@@ -18,6 +18,7 @@ import os
 import subprocess
 import asyncio
 import logging
+import shlex
 from jinja2 import Template
 from typing import Awaitable, Callable, List, Tuple
 from charon.storage import S3Client
@@ -81,8 +82,8 @@ def generate_sign(
                 logger.debug(".asc file %s existed, skipping", remote)
                 return
 
-            run_command = Template(command)
-            result = await __run_cmd_async(run_command.render(key=key, file=artifact).split())
+            run_command = Template(command).render(key=key, file=artifact)
+            result = await __run_cmd_async(shlex.split(run_command))
 
             if result.returncode == 0:
                 generated_signs.append(local)
