@@ -49,9 +49,10 @@ def generate_sign(
     """
 
     async def sign_file(
-        filename: str, failed_paths: List[str], generated_signs: List[str]
+        filename: str, failed_paths: List[str], generated_signs: List[str],
+        sem: asyncio.BoundedSemaphore
     ):
-        async with asyncio.BoundedSemaphore(10):
+        async with sem:
             signature_file = filename + ".asc"
             if prefix:
                 remote = os.path.join(prefix, signature_file)
@@ -107,13 +108,14 @@ def __do_path_cut_and(
     failed_paths = []
     generated_signs = []
     tasks = []
+    sem = asyncio.BoundedSemaphore(10)
     for full_path in file_paths:
         path = full_path
         if path.startswith(slash_root):
             path = path[len(slash_root):]
         tasks.append(
             asyncio.ensure_future(
-                path_handler(path, failed_paths, generated_signs)
+                path_handler(path, failed_paths, generated_signs, sem)
             )
         )
 
