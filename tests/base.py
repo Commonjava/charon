@@ -43,6 +43,18 @@ ignore_patterns:
     - ".*^(redhat).*"
     - ".*snapshot.*"
 
+ignore_signature_suffix:
+  maven:
+    - ".sha1"
+    - ".sha256"
+    - ".md5"
+    - "maven-metadata.xml"
+    - "archtype-catalog.xml"
+  npm:
+    - "package.json"
+
+detach_signature_command: "touch {{ file }}.asc"
+
 targets:
     ga:
     - bucket: "charon-test"
