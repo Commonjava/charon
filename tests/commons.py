@@ -89,6 +89,19 @@ COMMONS_CLIENT_INDEX = "org/apache/httpcomponents/httpclient/index.html"
 COMMONS_CLIENT_456_INDEX = "org/apache/httpcomponents/httpclient/4.5.6/index.html"
 COMMONS_LOGGING_INDEX = "commons-logging/commons-logging/index.html"
 COMMONS_ROOT_INDEX = "index.html"
+COMMONS_LOGGING_SIGNS = [
+    "commons-logging/commons-logging/1.2/commons-logging-1.2.jar.asc",
+    "commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar.asc",
+    "commons-logging/commons-logging/1.2/commons-logging-1.2.pom.asc",
+]
+COMMONS_CLIENT_456_SIGNS = [
+    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.jar.asc",
+    "org/apache/httpcomponents/httpclient/4.5.6/httpclient-4.5.6.pom.asc",
+]
+COMMONS_CLIENT_459_SIGNS = [
+    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.jar.asc",
+    "org/apache/httpcomponents/httpclient/4.5.9/httpclient-4.5.9.pom.asc",
+]
 
 
 # For npm

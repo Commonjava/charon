@@ -26,17 +26,18 @@ from tests.commons import (
     COMMONS_CLIENT_META_NUM, COMMONS_CLIENT_456_MANIFEST, COMMONS_CLIENT_456_FILES,
     COMMONS_LOGGING_FILES, CODE_FRAME_7_14_5_MANIFEST, CODE_FRAME_7_14_5_FILES
 )
+from tests.constants import INPUTS
 
 
 @mock_s3
 class ManifestUploadTest(PackageBaseTest):
 
     def test_maven_manifest_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None, None)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -62,11 +63,11 @@ class ManifestUploadTest(PackageBaseTest):
             self.assertIn(f, manifest_content)
 
     def test_npm_manifest_upload(self):
-        test_zip = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        test_zip = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_zip, product,
-            targets=[(TEST_TARGET, TEST_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[(TEST_TARGET, TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET

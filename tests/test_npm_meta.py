@@ -22,6 +22,7 @@ from charon.pkgs.npm import handle_npm_uploading, read_package_metadata_from_con
 from charon.storage import S3Client
 from charon.constants import DEFAULT_REGISTRY
 from tests.base import BaseTest
+from tests.constants import INPUTS
 
 MY_BUCKET = "npm_bucket"
 
@@ -63,13 +64,10 @@ class NPMMetadataOnS3Test(BaseTest):
             Key='@redhat/kogito-tooling-workspace/package.json',
             Body=str(original_version_0_5_8_package_json)
         )
-        tarball_test_path = os.path.join(
-            os.getcwd(),
-            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
-        )
+        tarball_test_path = os.path.join(INPUTS, 'kogito-tooling-workspace-0.9.0-3.tgz')
         handle_npm_uploading(
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
-            targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[('', MY_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(
@@ -116,13 +114,10 @@ class NPMMetadataOnS3Test(BaseTest):
             Key='@redhat/kogito-tooling-workspace/package.json',
             Body=str(original_version_1_0_1_package_json)
         )
-        tarball_test_path = os.path.join(
-            os.getcwd(),
-            'tests/input/kogito-tooling-workspace-0.9.0-3.tgz'
-        )
+        tarball_test_path = os.path.join(INPUTS, 'kogito-tooling-workspace-0.9.0-3.tgz')
         handle_npm_uploading(
             tarball_test_path, "kogito-tooling-workspace-0.9.0-3",
-            targets=[(None, MY_BUCKET, None, DEFAULT_REGISTRY)],
+            buckets=[('', MY_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
         (files, _) = self.s3_client.get_files(

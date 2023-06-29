@@ -15,12 +15,13 @@ limitations under the License.
 """
 from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
+import charon.pkgs.signature as signature
 from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
-from charon.config import get_template
+from charon.config import CharonConfig, get_template, get_config
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
@@ -256,10 +257,12 @@ def handle_maven_uploading(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    targets: List[Tuple[str, str, str, str]] = None,
+    buckets: List[Tuple[str, str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
+    gen_sign=False,
+    key=None,
     dry_run=False,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -304,10 +307,10 @@ def handle_maven_uploading(
 
     # 4. Do uploading
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
+    targets_ = [(bucket[1], remove_prefix(bucket[2], "/")) for bucket in buckets]
     logger.info(
         "Start uploading files to s3 buckets: %s",
-        [target[1] for target in targets]
+        [bucket[1] for bucket in buckets]
     )
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
@@ -317,7 +320,8 @@ def handle_maven_uploading(
     )
     logger.info("Files uploading done\n")
     succeeded = True
-    for target in targets:
+    generated_signs = []
+    for bucket in buckets:
         # 5. Do manifest uploading
         if not manifest_bucket_name:
             logger.warning(
@@ -325,7 +329,7 @@ def handle_maven_uploading(
                 'uploading\n')
         else:
             logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
-            manifest_folder = target[1]
+            manifest_folder = bucket[1]
             manifest_name, manifest_full_path = write_manifest(valid_mvn_paths, top_level, prod_key)
             s3_client.upload_manifest(
                 manifest_name, manifest_full_path,
@@ -334,39 +338,38 @@ def handle_maven_uploading(
             logger.info("Manifest uploading is done\n")
 
         # 6. Use uploaded poms to scan s3 for metadata refreshment
-        bucket_ = target[1]
-        prefix__ = remove_prefix(target[2], "/")
-        failed_metas = []
-        logger.info("Start generating maven-metadata.xml files for bucket %s", bucket_)
+        bucket_name = bucket[1]
+        prefix = remove_prefix(bucket[2], "/")
+        logger.info("Start generating maven-metadata.xml files for bucket %s", bucket_name)
         meta_files = _generate_metadatas(
-            s3=s3_client, bucket=bucket_,
+            s3=s3_client, bucket=bucket_name,
             poms=valid_poms, root=top_level,
-            prefix=prefix__
+            prefix=prefix
         )
         logger.info("maven-metadata.xml files generation done\n")
         failed_metas = meta_files.get(META_FILE_FAILED, [])
 
         # 7. Upload all maven-metadata.xml
         if META_FILE_GEN_KEY in meta_files:
-            logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket_)
+            logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket_name)
             _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=meta_files[META_FILE_GEN_KEY],
-                target=(bucket_, prefix__),
+                target=(bucket_name, prefix),
                 product=None,
                 root=top_level
             )
             failed_metas.extend(_failed_metas)
-            logger.info("maven-metadata.xml updating done in bucket %s\n", bucket_)
+            logger.info("maven-metadata.xml updating done in bucket %s\n", bucket_name)
 
         # 8. Determine refreshment of archetype-catalog.xml
         if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
-            logger.info("Start generating archetype-catalog.xml for bucket %s", bucket_)
+            logger.info("Start generating archetype-catalog.xml for bucket %s", bucket_name)
             upload_archetype_file = _generate_upload_archetype_catalog(
-                s3=s3_client, bucket=bucket_,
+                s3=s3_client, bucket=bucket_name,
                 root=top_level,
-                prefix=prefix__
+                prefix=prefix
             )
-            logger.info("archetype-catalog.xml files generation done in bucket %s\n", bucket_)
+            logger.info("archetype-catalog.xml files generation done in bucket %s\n", bucket_name)
 
             # 9. Upload archetype-catalog.xml if it has changed
             if upload_archetype_file:
@@ -374,31 +377,60 @@ def handle_maven_uploading(
                 archetype_files.extend(
                     __hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME)
                 )
-                logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket_)
+                logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket_name)
                 _failed_metas = s3_client.upload_metadatas(
                     meta_file_paths=archetype_files,
-                    target=(bucket_, prefix__),
+                    target=(bucket_name, prefix),
                     product=None,
                     root=top_level
                 )
                 failed_metas.extend(_failed_metas)
-                logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_)
+                logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_name)
+
+        # 10. Generate signature file if contain_signature is set to True
+        if gen_sign:
+            conf = get_config()
+            if not conf:
+                sys.exit(1)
+            suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
+            command = conf.get_detach_signature_command()
+            artifacts = [s for s in valid_mvn_paths if not s.endswith(tuple(suffix_list))]
+            logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
+            (_failed_metas, _generated_signs) = signature.generate_sign(
+                PACKAGE_TYPE_MAVEN, artifacts,
+                top_level, prefix,
+                s3_client, bucket_name,
+                key, command
+            )
+            failed_metas.extend(_failed_metas)
+            generated_signs.extend(_generated_signs)
+            logger.info("Singature generation done.\n")
+
+            logger.info("Start upload singature files to s3 bucket %s\n", bucket_name)
+            _failed_metas = s3_client.upload_signatures(
+                meta_file_paths=generated_signs,
+                target=(bucket_name, prefix),
+                product=None,
+                root=top_level
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Signature uploading done.\n")
 
         # this step generates index.html for each dir and add them to file list
         # index is similar to metadata, it will be overwritten everytime
         if do_index:
-            logger.info("Start generating index files to s3 bucket %s", bucket_)
+            logger.info("Start generating index files to s3 bucket %s", bucket_name)
             created_indexes = indexing.generate_indexes(
                 PACKAGE_TYPE_MAVEN,
                 top_level, valid_dirs,
-                s3_client, bucket_, prefix__
+                s3_client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
-            logger.info("Start updating index files to s3 bucket %s", bucket_)
+            logger.info("Start updating index files to s3 bucket %s", bucket_name)
             _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=created_indexes,
-                target=(bucket_, prefix__),
+                target=(bucket_name, prefix),
                 product=None,
                 root=top_level
             )
@@ -407,7 +439,7 @@ def handle_maven_uploading(
         else:
             logger.info("Bypass indexing")
 
-        upload_post_process(failed_files, failed_metas, prod_key, bucket_)
+        upload_post_process(failed_files, failed_metas, prod_key, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
 
     return (tmp_root, succeeded)
@@ -418,7 +450,7 @@ def handle_maven_del(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    targets: List[Tuple[str, str, str, str]] = None,
+    buckets: List[Tuple[str, str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
@@ -433,7 +465,7 @@ def handle_maven_del(
           need to upload in the tarball
         * root is a prefix in the tarball to identify which path is
           the beginning of the maven GAV path
-        * targets contains the target name with its bucket name and prefix
+        * buckets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
@@ -454,21 +486,21 @@ def handle_maven_del(
     # 3. Delete all valid_paths from s3
     logger.debug("Valid poms: %s", valid_poms)
     succeeded = True
-    for target in targets:
-        prefix_ = remove_prefix(target[2], "/")
+    for bucket in buckets:
+        prefix = remove_prefix(bucket[2], "/")
         s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-        bucket = target[1]
-        logger.info("Start deleting files from s3 bucket %s", bucket)
+        bucket_name = bucket[1]
+        logger.info("Start deleting files from s3 bucket %s", bucket_name)
         failed_files = s3_client.delete_files(
             valid_mvn_paths,
-            target=(bucket, prefix_),
+            target=(bucket_name, prefix),
             product=prod_key,
             root=top_level
         )
         logger.info("Files deletion done\n")
 
         # 4. Delete related manifest from s3
-        manifest_folder = target[1]
+        manifest_folder = bucket[1]
         logger.info(
             "Start deleting manifest from s3 bucket %s in folder %s",
             manifest_bucket_name, manifest_folder
@@ -479,25 +511,25 @@ def handle_maven_del(
         # 5. Use changed GA to scan s3 for metadata refreshment
         logger.info(
             "Start generating maven-metadata.xml files for all changed GAs in s3 bucket %s",
-            bucket
+            bucket_name
         )
         meta_files = _generate_metadatas(
-            s3=s3_client, bucket=bucket,
+            s3=s3_client, bucket=bucket_name,
             poms=valid_poms, root=top_level,
-            prefix=prefix_
+            prefix=prefix
         )
 
         logger.info("maven-metadata.xml files generation done\n")
 
         # 6. Upload all maven-metadata.xml. We need to delete metadata files
         # firstly for all affected GA, and then replace the theirs content.
-        logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket)
+        logger.info("Start updating maven-metadata.xml to s3 bucket %s", bucket_name)
         all_meta_files = []
         for _, files in meta_files.items():
             all_meta_files.extend(files)
         s3_client.delete_files(
             file_paths=all_meta_files,
-            target=(bucket, prefix_),
+            target=(bucket_name, prefix),
             product=None,
             root=top_level
         )
@@ -505,7 +537,7 @@ def handle_maven_del(
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = s3_client.upload_metadatas(
                 meta_file_paths=meta_files[META_FILE_GEN_KEY],
-                target=(bucket, prefix_),
+                target=(bucket_name, prefix),
                 product=None,
                 root=top_level
             )
@@ -517,9 +549,9 @@ def handle_maven_del(
         if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
             logger.info("Start generating archetype-catalog.xml")
             archetype_action = _generate_rollback_archetype_catalog(
-                s3=s3_client, bucket=bucket,
+                s3=s3_client, bucket=bucket_name,
                 root=top_level,
-                prefix=prefix_
+                prefix=prefix
             )
             logger.info("archetype-catalog.xml files generation done\n")
 
@@ -527,10 +559,10 @@ def handle_maven_del(
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
             archetype_files.extend(__hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
             if archetype_action < 0:
-                logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket)
+                logger.info("Start updating archetype-catalog.xml to s3 bucket %s", bucket_name)
                 _failed_metas = s3_client.delete_files(
                     file_paths=archetype_files,
-                    target=(bucket, prefix_),
+                    target=(bucket_name, prefix),
                     product=None,
                     root=top_level
                 )
@@ -539,7 +571,7 @@ def handle_maven_del(
             elif archetype_action > 0:
                 _failed_metas = s3_client.upload_metadatas(
                     meta_file_paths=archetype_files,
-                    target=(bucket, prefix_),
+                    target=(bucket_name, prefix),
                     product=None,
                     root=top_level
                 )
@@ -550,14 +582,14 @@ def handle_maven_del(
         if do_index:
             logger.info("Start generating index files for all changed entries")
             created_indexes = indexing.generate_indexes(
-                PACKAGE_TYPE_MAVEN, top_level, valid_dirs, s3_client, bucket, prefix_
+                PACKAGE_TYPE_MAVEN, top_level, valid_dirs, s3_client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
-            logger.info("Start updating index to s3 bucket %s", bucket)
+            logger.info("Start updating index to s3 bucket %s", bucket_name)
             _failed_index_files = s3_client.upload_metadatas(
                 meta_file_paths=created_indexes,
-                target=(bucket, prefix_),
+                target=(bucket_name, prefix),
                 product=None,
                 root=top_level
             )
@@ -567,7 +599,7 @@ def handle_maven_del(
         else:
             logger.info("Bypassing indexing")
 
-        rollback_post_process(failed_files, failed_metas, prod_key, bucket)
+        rollback_post_process(failed_files, failed_metas, prod_key, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
 
     return (tmp_root, succeeded)
@@ -1010,6 +1042,12 @@ def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
 def _handle_error(err_msgs: List[str]):
     # Reminder: will implement later
     pass
+
+
+def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
+    if package_type:
+        return conf.get_ignore_signature_suffix(package_type)
+    return []
 
 
 class VersionCompareKey:

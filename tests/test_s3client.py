@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from typing import List
-from boto3_type_annotations import s3
 from charon.storage import S3Client, CHECKSUM_META_KEY
 from charon.utils.archive import extract_zip_all
 from charon.utils.files import overwrite_file, read_sha1
@@ -27,6 +26,7 @@ import sys
 import zipfile
 import shutil
 
+from tests.constants import INPUTS
 
 MY_BUCKET = "my_bucket"
 MY_PREFIX = "mock_folder"
@@ -149,11 +149,11 @@ class S3ClientTest(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         # test upload existed files with the product. The product will be added to metadata
         self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
+            all_files, targets=[(MY_BUCKET, '')],
             product="apache-commons", root=root
         )
 
-        def content_check(products: List[str], objs: List[s3.ObjectSummary]):
+        def content_check(products: List[str], objs: List):
             self.assertEqual(COMMONS_LANG3_ZIP_ENTRY, len(objs))
             for o in objs:
                 obj = o.Object()
@@ -171,7 +171,7 @@ class S3ClientTest(BaseTest):
 
         # test upload existed files with extra product. The extra product will be added to metadata
         self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
+            all_files, targets=[(MY_BUCKET, '')],
             product="commons-lang3", root=root
         )
         objects = list(bucket.objects.all())
@@ -179,14 +179,14 @@ class S3ClientTest(BaseTest):
 
         # test delete files with one product. The file will not be deleted, but the product will
         # be removed from metadata.
-        self.s3_client.delete_files(all_files, target=(MY_BUCKET, None), product="apache-commons",
+        self.s3_client.delete_files(all_files, target=(MY_BUCKET, ''), product="apache-commons",
                                     root=root)
         objects = list(bucket.objects.all())
         content_check(["commons-lang3"], objects)
 
         # test delete files with left product. The file will be deleted, because all products
         # have been removed from metadata.
-        self.s3_client.delete_files(all_files, target=(MY_BUCKET, None), product="commons-lang3",
+        self.s3_client.delete_files(all_files, target=(MY_BUCKET, ''), product="commons-lang3",
                                     root=root)
         self.assertEqual(0, len(list(bucket.objects.all())))
 
@@ -231,7 +231,7 @@ class S3ClientTest(BaseTest):
         overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_files(
-            [file], targets=[(MY_BUCKET, None)],
+            [file], targets=[(MY_BUCKET, '')],
             product="foo-bar-1.0", root=temp_root
         )
         objects = list(bucket.objects.all())
@@ -252,7 +252,7 @@ class S3ClientTest(BaseTest):
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_files(
-            [file], targets=[(MY_BUCKET, None)],
+            [file], targets=[(MY_BUCKET, '')],
             product="foo-bar-1.0-2", root=temp_root
         )
         objects = list(bucket.objects.all())
@@ -290,7 +290,7 @@ class S3ClientTest(BaseTest):
         overwrite_file(file, content1)
         sha1_1 = read_sha1(file)
         self.s3_client.upload_metadatas(
-            [file], target=(MY_BUCKET, None), root=temp_root
+            [file], target=(MY_BUCKET, ''), root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(1, len(objects))
@@ -305,7 +305,7 @@ class S3ClientTest(BaseTest):
         self.assertEqual(sha1_1, sha1_1_repeated)
         self.s3_client.upload_metadatas(
             [file],
-            target=(MY_BUCKET, None),
+            target=(MY_BUCKET, ''),
             root=temp_root,
         )
         objects = list(bucket.objects.all())
@@ -335,7 +335,7 @@ class S3ClientTest(BaseTest):
         sha1_2 = read_sha1(file)
         self.assertNotEqual(sha1_1, sha1_2)
         self.s3_client.upload_metadatas(
-            [file], target=(MY_BUCKET, None), root=temp_root
+            [file], target=(MY_BUCKET, ''), root=temp_root
         )
         objects = list(bucket.objects.all())
         self.assertEqual(1, len(objects))
@@ -361,7 +361,7 @@ class S3ClientTest(BaseTest):
         shutil.rmtree(root)
 
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
+            all_files, targets=[(MY_BUCKET, '')],
             product="apache-commons", root=temp_root
         )
 
@@ -370,7 +370,7 @@ class S3ClientTest(BaseTest):
     def test_exists_override_failing(self):
         (temp_root, _, all_files) = self.__prepare_files()
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
+            all_files, targets=[(MY_BUCKET, '')],
             product="apache-commons", root=temp_root
         )
         self.assertEqual(0, len(failed_paths))
@@ -383,7 +383,7 @@ class S3ClientTest(BaseTest):
         sha1_changed = read_sha1(all_files[0])
         self.assertNotEqual(sha1, sha1_changed)
         failed_paths = self.s3_client.upload_files(
-            all_files, targets=[(MY_BUCKET, None)],
+            all_files, targets=[(MY_BUCKET, '')],
             product="apache-commons-2", root=temp_root
         )
         bucket = self.mock_s3.Bucket(MY_BUCKET)
@@ -392,7 +392,7 @@ class S3ClientTest(BaseTest):
 
     def __prepare_files(self):
         test_zip = zipfile.ZipFile(
-            os.path.join(os.getcwd(), "tests/input/commons-lang3.zip")
+            os.path.join(INPUTS, "commons-lang3.zip")
         )
         temp_root = os.path.join(self.tempdir, "tmp_zip")
         os.mkdir(temp_root)

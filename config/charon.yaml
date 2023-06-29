@@ -1,0 +1,32 @@
+ignore_patterns:
+  - ".*^(redhat).*"
+  - ".*snapshot.*"
+
+ignore_signature_suffix:
+  maven:
+    - ".sha1"
+    - ".sha256"
+    - ".md5"
+    - "maven-metadata.xml"
+    - "archtype-catalog.xml"
+  npm:
+    - "package.json"
+
+detach_signature_command: "rpm-sign --detach-sign --key {{ key }} {{ file }}"
+
+targets:
+  stage-ga:
+  - bucket: "stage-maven-ga"
+    prefix: ga
+  stage-ea:
+  - bucket: "stage-maven-ea"
+    prefix: earlyaccess/all
+  stage-maven: # collection of stage-ea and stage-ga
+  - bucket: "stage-maven-ga"
+    prefix: ga
+  - bucket: "stage-maven-ea"
+    prefix: earlyaccess/all
+  stage-npm:
+  - bucket: "stage-npm-npmjs"
+    prefix: /
+    registry: "npm.stage.registry.redhat.com"

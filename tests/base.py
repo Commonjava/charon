@@ -25,9 +25,9 @@ from charon.constants import PROD_INFO_SUFFIX
 from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.commons import TEST_BUCKET, TEST_MANIFEST_BUCKET
-from boto3_type_annotations import s3
 from moto import mock_s3
 
+from tests.constants import HERE
 
 SHORT_TEST_PREFIX = "ga"
 LONG_TEST_PREFIX = "earlyaccess/all"
@@ -43,18 +43,32 @@ ignore_patterns:
     - ".*^(redhat).*"
     - ".*snapshot.*"
 
+ignore_signature_suffix:
+  maven:
+    - ".sha1"
+    - ".sha256"
+    - ".md5"
+    - "maven-metadata.xml"
+    - "archtype-catalog.xml"
+  npm:
+    - "package.json"
+
+detach_signature_command: "touch {{ file }}.asc"
+
 targets:
     ga:
-        bucket: "charon-test"
-        prefix: ga
+    - bucket: "charon-test"
+      prefix: ga
     ea:
-        bucket: "charon-test-ea"
-        prefix: earlyaccess/all
+    - bucket: "charon-test-ea"
+      prefix: earlyaccess/all
 
     npm:
-        bucket: "charon-test-npm"
-        registry: "npm1.registry.redhat.com"
-        """
+    - bucket: "charon-test-npm"
+      registry: "npm1.registry.redhat.com"
+aws_profile: "test"
+manifest_bucket: "manifest"
+      """
         self.prepare_config(config_base, default_config_content)
 
     def tearDown(self):
@@ -70,7 +84,7 @@ targets:
     def __prepare_template(self, config_base):
         template_path = os.path.join(config_base, 'template')
         os.mkdir(config_base)
-        shutil.copytree(os.path.join(os.getcwd(), "template"), template_path)
+        shutil.copytree(os.path.join(HERE, "../template"), template_path)
         if not os.path.isdir(template_path):
             self.fail("Template initilization failed!")
 
@@ -115,7 +129,7 @@ class PackageBaseTest(BaseTest):
     def __prepare_s3(self):
         return boto3.resource('s3')
 
-    def check_product(self, file: str, prods: List[str], bucket: s3.Bucket = None, msg=None):
+    def check_product(self, file: str, prods: List[str], bucket=None, msg=None):
         prod_file = file + PROD_INFO_SUFFIX
         test_bucket = bucket
         if not test_bucket:
@@ -128,7 +142,7 @@ class PackageBaseTest(BaseTest):
             msg=msg
         )
 
-    def check_content(self, objs: List[s3.ObjectSummary], products: List[str], msg=None):
+    def check_content(self, objs: List, products: List[str], msg=None):
         for obj in objs:
             file_obj = obj.Object()
             test_bucket = self.mock_s3.Bucket(file_obj.bucket_name)

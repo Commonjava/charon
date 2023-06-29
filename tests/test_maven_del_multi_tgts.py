@@ -27,6 +27,8 @@ from tests.commons import (
 from moto import mock_s3
 import os
 
+from tests.constants import INPUTS
+
 
 @mock_s3
 class MavenDeleteMultiTgtsTest(PackageBaseTest):
@@ -58,12 +60,12 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         product_mix = [product_456, product_459]
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
 
         handle_maven_del(
             test_zip, product_456,
             ignore_patterns=[".*.sha1"],
-            targets=[(None, TEST_BUCKET, None, None)],
+            buckets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False
         )
@@ -108,12 +110,12 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
     def __test_prefix_deletion(self, prefix: str):
         self.__prepare_content(prefix)
 
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -238,10 +240,10 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
                 msg=f'{bucket_name}'
             )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir,
             do_index=False
         )
@@ -253,21 +255,21 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
             self.assertEqual(0, len(objs), msg=f'{bucket_name}')
 
     def __prepare_content(self, prefix=None):
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.6.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
-        targets_ = [(None, TEST_BUCKET, prefix, None), (None, TEST_BUCKET_2, prefix, None)]
+        targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
         handle_maven_uploading(
             test_zip, product_456,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir,
             do_index=False
         )
 
-        test_zip = os.path.join(os.getcwd(), "tests/input/commons-client-4.5.9.zip")
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir,
             do_index=False
         )

@@ -15,7 +15,6 @@ limitations under the License.
 """
 import asyncio
 import threading
-from boto3_type_annotations.s3.service_resource import Object
 from charon.utils.files import read_sha1
 from charon.constants import PROD_INFO_SUFFIX, MANIFEST_SUFFIX
 
@@ -24,7 +23,6 @@ from botocore.errorfactory import ClientError
 from botocore.exceptions import HTTPClientError
 from boto3.exceptions import S3UploadFailedError
 from botocore.config import Config
-from boto3_type_annotations import s3
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 import os
 import logging
@@ -57,15 +55,15 @@ class S3Client(object):
         aws_profile=None, extra_conf=None,
         con_limit=25, dry_run=False
     ) -> None:
-        self.__client: s3.ServiceResource = self.__init_aws_client(aws_profile, extra_conf)
-        self.__buckets: Dict[str, s3.Bucket] = {}
+        self.__client = self.__init_aws_client(aws_profile, extra_conf)
+        self.__buckets: Dict[str, Any] = {}
         self.__dry_run = dry_run
         self.__con_sem = asyncio.BoundedSemaphore(con_limit)
         self.__lock = threading.Lock()
 
     def __init_aws_client(
         self, aws_profile=None, extra_conf=None
-    ) -> s3.ServiceResource:
+    ):
         if aws_profile:
             logger.debug("Using aws profile: %s", aws_profile)
             s3_session = session.Session(profile_name=aws_profile)
@@ -130,7 +128,7 @@ class S3Client(object):
         main_bucket = self.__get_bucket(main_bucket_name)
         key_prefix = main_target[1]
         extra_targets = targets[1:] if len(targets) > 1 else []
-        extra_prefixed_buckets: List[Tuple[s3.Bucket, str]] = []
+        extra_prefixed_buckets: List[Tuple[Any, str]] = []
         if len(extra_targets) > 0:
             for target in extra_targets:
                 extra_prefixed_buckets.append((self.__get_bucket(target[0]), target[1]))
@@ -153,7 +151,7 @@ class S3Client(object):
                     index, total, full_file_path, main_bucket_name
                 )
                 main_path_key = os.path.join(key_prefix, path) if key_prefix else path
-                main_file_object: s3.Object = main_bucket.Object(main_path_key)
+                main_file_object = main_bucket.Object(main_path_key)
                 existed = False
                 try:
                     existed = await self.__run_async(self.__file_exists, main_file_object)
@@ -218,7 +216,7 @@ class S3Client(object):
                         'Copyinging %s from bucket %s to bucket %s',
                         full_file_path, main_bucket_name, extra_bucket
                     )
-                    file_object: s3.Object = extra_bucket.Object(extra_path_key)
+                    file_object = extra_bucket.Object(extra_path_key)
                     existed = await self.__run_async(self.__file_exists, file_object)
                     if not existed:
                         if not self.__dry_run:
@@ -285,7 +283,7 @@ class S3Client(object):
 
     async def __copy_between_bucket(
         self, source: str, source_key: str,
-        target: s3.Bucket, target_key: str
+        target, target_key: str
     ) -> bool:
         logger.debug(
             "Copying file %s from bucket %s to target %s as %s",
@@ -345,7 +343,7 @@ class S3Client(object):
 
                 key_prefix = target[1]
                 path_key = os.path.join(key_prefix, path) if key_prefix else path
-                file_object: s3.Object = bucket.Object(path_key)
+                file_object = bucket.Object(path_key)
                 existed = False
                 try:
                     existed = await self.__run_async(self.__file_exists, file_object)
@@ -416,6 +414,100 @@ class S3Client(object):
             root=root
         )
 
+    def upload_signatures(
+        self, meta_file_paths: List[str],
+        target: Tuple[str, str],
+        product: Optional[str] = None, root="/"
+    ) -> List[str]:
+        """ Upload a list of signature files to s3 bucket. This function is very similar to
+        upload_metadata, except:
+            * The signature files will not be overwritten if existed
+        """
+        bucket_name = target[0]
+        bucket = self.__get_bucket(bucket_name)
+
+        async def path_upload_handler(
+            full_file_path: str, path: str, index: int,
+            total: int, failed: List[str]
+        ):
+            async with self.__con_sem:
+                if not os.path.isfile(full_file_path):
+                    logger.warning(
+                        'Warning: file %s does not exist during uploading. Product: %s',
+                        full_file_path, product
+                    )
+                    failed.append(full_file_path)
+                    return
+
+                logger.debug(
+                    '(%d/%d) Updating sginature %s to bucket %s',
+                    index, total, path, bucket_name
+                )
+
+                key_prefix = target[1]
+                path_key = os.path.join(key_prefix, path) if key_prefix else path
+                file_object = bucket.Object(path_key)
+                existed = False
+                try:
+                    existed = await self.__run_async(self.__file_exists, file_object)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "Error: file existence check failed due to error: %s", e
+                    )
+                    failed.append(full_file_path)
+                    return
+                (content_type, _) = mimetypes.guess_type(full_file_path)
+                if not content_type:
+                    content_type = DEFAULT_MIME_TYPE
+
+                try:
+                    if not self.__dry_run:
+                        if not existed:
+                            await self.__run_async(
+                                functools.partial(
+                                    file_object.put,
+                                    Body=open(full_file_path, "rb"),
+                                    Metadata={},
+                                    ContentType=content_type
+                                )
+                            )
+                        elif product:
+                            # NOTE: This should not happen for most cases, as most
+                            # of the metadata file does not have product info. Just
+                            # leave for requirement change in future
+                            # This is now used for npm version-level package.json
+                            prods = [product]
+                            if existed:
+                                (prods, no_error) = await self.__run_async(
+                                    self.__get_prod_info,
+                                    path_key, bucket_name
+                                )
+                                if not no_error:
+                                    failed.append(full_file_path)
+                                    return
+                                if no_error and product not in prods:
+                                    prods.append(product)
+                            updated = await self.__update_prod_info(
+                                path_key, bucket_name, prods
+                            )
+                            if not updated:
+                                failed.append(full_file_path)
+                                return
+                    logger.debug('Updated signature %s to bucket %s', path, bucket_name)
+                except (ClientError, HTTPClientError) as e:
+                    logger.error(
+                        "ERROR: file %s not uploaded to bucket"
+                        " %s due to error: %s ",
+                        full_file_path, bucket_name, e
+                    )
+                    failed.append(full_file_path)
+
+        return self.__do_path_cut_and(
+            file_paths=meta_file_paths,
+            path_handler=self.__path_handler_count_wrapper(path_upload_handler),
+            root=root
+        )
+
     def upload_manifest(
             self, manifest_name: str, manifest_full_path: str, target: str,
             manifest_bucket_name: str
@@ -424,7 +516,7 @@ class S3Client(object):
         path_key = os.path.join(target, manifest_name)
         manifest_bucket = self.__get_bucket(manifest_bucket_name)
         try:
-            file_object: s3.Object = manifest_bucket.Object(path_key)
+            file_object = manifest_bucket.Object(path_key)
             file_object.upload_file(
                 Filename=manifest_full_path,
                 ExtraArgs={'ContentType': DEFAULT_MIME_TYPE}
@@ -556,7 +648,7 @@ class S3Client(object):
         path_key = os.path.join(target, manifest_name)
 
         manifest_bucket = self.__get_bucket(manifest_bucket_name)
-        file_object: s3.Object = manifest_bucket.Object(path_key)
+        file_object = manifest_bucket.Object(path_key)
         existed = False
         try:
             existed = self.__file_exists(file_object)
@@ -641,7 +733,7 @@ class S3Client(object):
         file_object = bucket.Object(path)
         return self.__file_exists(file_object)
 
-    def __get_bucket(self, bucket_name: str) -> s3.Bucket:
+    def __get_bucket(self, bucket_name: str):
         self.__lock.acquire()
         try:
             bucket = self.__buckets.get(bucket_name)
@@ -654,7 +746,7 @@ class S3Client(object):
         finally:
             self.__lock.release()
 
-    def __file_exists(self, file_object: Object) -> bool:
+    def __file_exists(self, file_object) -> bool:
         try:
             file_object.load()
             return True

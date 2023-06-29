@@ -26,6 +26,7 @@ from tests.commons import (
     TEST_BUCKET, CODE_FRAME_7_14_5_FILES,
     CODE_FRAME_7_15_8_FILES, CODE_FRAME_META, TEST_BUCKET_2
 )
+from tests.constants import INPUTS
 
 
 @mock_s3
@@ -53,20 +54,20 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
         self.__test_prefix("/")
 
     def test_double_uploads(self):
-        targets_ = [(None, TEST_BUCKET, None, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, None, DEFAULT_REGISTRY)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, '', DEFAULT_REGISTRY),
+                    ('', TEST_BUCKET_2, '', DEFAULT_REGISTRY)]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.15.8.tgz")
+        test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -124,13 +125,13 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
             )
 
     def __test_prefix(self, prefix: str = None):
-        targets_ = [(None, TEST_BUCKET, prefix, DEFAULT_REGISTRY),
-                    (None, TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, prefix, DEFAULT_REGISTRY),
+                    ('', TEST_BUCKET_2, prefix, DEFAULT_REGISTRY)]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
 

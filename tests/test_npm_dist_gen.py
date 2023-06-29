@@ -23,6 +23,7 @@ from tests.commons import (
     TEST_BUCKET, TEST_BUCKET_2,
     CODE_FRAME_META, CODE_FRAME_7_14_5_META
 )
+from tests.constants import INPUTS
 
 
 @mock_s3
@@ -33,12 +34,12 @@ class NPMUploadTest(PackageBaseTest):
         self.test_bucket_2 = self.mock_s3.Bucket(TEST_BUCKET_2)
 
     def test_dist_gen_in_single_target(self):
-        targets_ = [(None, TEST_BUCKET, None, "npm1.registry.redhat.com")]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, '', "npm1.registry.redhat.com")]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -75,13 +76,13 @@ class NPMUploadTest(PackageBaseTest):
                       "+vOtCS5ndmJicPJhKAwYRI6UfFw==\"", merged_meta_content_client)
 
     def test_dist_gen_in_multi_targets(self):
-        targets_ = [(None, TEST_BUCKET, None, "npm1.registry.redhat.com"),
-                    (None, TEST_BUCKET_2, None, "npm2.registry.redhat.com")]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, '', "npm1.registry.redhat.com"),
+                    ('', TEST_BUCKET_2, '', "npm2.registry.redhat.com")]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket_1 = self.mock_s3.Bucket(TEST_BUCKET)
@@ -111,12 +112,12 @@ class NPMUploadTest(PackageBaseTest):
                       "-frame-7.14.5.tgz\"", merged_meta_content_client)
 
     def test_overlapping_registry_dist_gen(self):
-        targets_ = [(None, TEST_BUCKET, None, "npm1.registry.redhat.com")]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_ = [('', TEST_BUCKET, '', "npm1.registry.redhat.com")]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_,
+            buckets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -132,12 +133,12 @@ class NPMUploadTest(PackageBaseTest):
         self.assertIn("\"tarball\": \"https://npm1.registry.redhat.com/@babel/code-frame/-/code"
                       "-frame-7.14.5.tgz\"", merged_meta_content_client)
 
-        targets_overlapping_ = [(None, TEST_BUCKET, None, "npm1.overlapping.registry.redhat.com")]
-        test_tgz = os.path.join(os.getcwd(), "tests/input/code-frame-7.14.5.tgz")
+        targets_overlapping_ = [('', TEST_BUCKET, '', "npm1.overlapping.registry.redhat.com")]
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            targets=targets_overlapping_,
+            buckets=targets_overlapping_,
             dir_=self.tempdir, do_index=False
         )
 

@@ -24,6 +24,8 @@ from typing import List, Set, Tuple
 from semantic_version import compare
 
 import charon.pkgs.indexing as indexing
+import charon.pkgs.signature as signature
+from charon.config import CharonConfig, get_config
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
 from charon.utils.archive import extract_npm_tarball
@@ -66,10 +68,12 @@ class NPMPackageMetadata(object):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        targets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
+        gen_sign=False,
+        key=None,
         dry_run=False,
         manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -79,7 +83,7 @@ def handle_npm_uploading(
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * targets contains the target name with its bucket name and prefix
+        * buckets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir_ is base dir for extracting the tarball, will use system
@@ -88,22 +92,23 @@ def handle_npm_uploading(
         Returns the directory used for archive processing and if uploading is successful
     """
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    for target in targets:
-        bucket_ = target[1]
-        prefix__ = remove_prefix(target[2], "/")
-        registry__ = target[3]
+    generated_signs = []
+    for bucket in buckets:
+        bucket_name = bucket[1]
+        prefix = remove_prefix(bucket[2], "/")
+        registry = bucket[3]
         target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-            tarball_path, registry__, prod=product, dir__=dir_
+            tarball_path, registry, prod=product, dir__=dir_
         )
         if not os.path.isdir(target_dir):
             logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
             sys.exit(1)
         valid_dirs = __get_path_tree(valid_paths, target_dir)
 
-        logger.info("Start uploading files to s3 buckets: %s", bucket_)
+        logger.info("Start uploading files to s3 buckets: %s", bucket_name)
         failed_files = client.upload_files(
             file_paths=[valid_paths[0]],
-            targets=[(bucket_, prefix__)],
+            targets=[(bucket_name, prefix)],
             product=product,
             root=target_dir
         )
@@ -117,7 +122,7 @@ def handle_npm_uploading(
                 'uploading\n')
         else:
             logger.info("Start uploading manifest to s3 bucket %s", manifest_bucket_name)
-            manifest_folder = bucket_
+            manifest_folder = bucket_name
             manifest_name, manifest_full_path = write_manifest(valid_paths, target_dir, product)
 
             client.upload_manifest(
@@ -128,13 +133,13 @@ def handle_npm_uploading(
 
         logger.info(
             "Start generating version-level package.json for package: %s in s3 bucket %s",
-            package_metadata.name, bucket_
+            package_metadata.name, bucket_name
         )
         failed_metas = []
         _version_metadata_path = valid_paths[1]
         _failed_metas = client.upload_metadatas(
             meta_file_paths=[_version_metadata_path],
-            target=(bucket_, prefix__),
+            target=(bucket_name, prefix),
             product=product,
             root=target_dir
         )
@@ -143,36 +148,66 @@ def handle_npm_uploading(
 
         logger.info(
             "Start generating package.json for package: %s in s3 bucket %s",
-            package_metadata.name, bucket_
+            package_metadata.name, bucket_name
         )
         meta_files = _gen_npm_package_metadata_for_upload(
-            client, bucket_, target_dir, package_metadata, prefix__
+            client, bucket_name, target_dir, package_metadata, prefix
         )
         logger.info("package.json generation done\n")
 
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
                 meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
-                target=(bucket_, prefix__),
+                target=(bucket_name, prefix),
                 product=None,
                 root=target_dir
             )
             failed_metas.extend(_failed_metas)
             logger.info("package.json uploading done")
 
+        if gen_sign:
+            conf = get_config()
+            if not conf:
+                sys.exit(1)
+            suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)
+            command = conf.get_detach_signature_command()
+            artifacts = [s for s in valid_paths if not s.endswith(tuple(suffix_list))]
+            if META_FILE_GEN_KEY in meta_files:
+                artifacts.extend(meta_files[META_FILE_GEN_KEY])
+            logger.info("Start generating signature for s3 bucket %s\n", bucket_name)
+            (_failed_metas, _generated_signs) = signature.generate_sign(
+                PACKAGE_TYPE_NPM, artifacts,
+                target_dir, prefix,
+                client, bucket_name,
+                key, command
+            )
+            failed_metas.extend(_failed_metas)
+            generated_signs.extend(_generated_signs)
+            logger.info("Singature generation done.\n")
+
+            logger.info("Start upload singature files to s3 bucket %s\n", bucket_name)
+            _failed_metas = client.upload_signatures(
+                meta_file_paths=generated_signs,
+                target=(bucket_name, prefix),
+                product=None,
+                root=target_dir
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Signature uploading done.\n")
+
         # this step generates index.html for each dir and add them to file list
         # index is similar to metadata, it will be overwritten everytime
         if do_index:
-            logger.info("Start generating index files to s3 bucket %s", bucket_)
+            logger.info("Start generating index files to s3 bucket %s", bucket_name)
             created_indexes = indexing.generate_indexes(
-                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_, prefix__
+                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
-            logger.info("Start updating index files to s3 bucket %s", bucket_)
+            logger.info("Start updating index files to s3 bucket %s", bucket_name)
             _failed_metas = client.upload_metadatas(
                 meta_file_paths=created_indexes,
-                target=(bucket_, prefix__),
+                target=(bucket_name, prefix),
                 product=None,
                 root=target_dir
             )
@@ -181,7 +216,7 @@ def handle_npm_uploading(
         else:
             logger.info("Bypass indexing\n")
 
-        upload_post_process(failed_files, failed_metas, product, bucket_)
+        upload_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
 
     return (target_dir, succeeded)
@@ -190,7 +225,7 @@ def handle_npm_uploading(
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        targets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]] = None,
         aws_profile=None,
         dir_=None,
         do_index=True,
@@ -201,7 +236,7 @@ def handle_npm_del(
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * targets contains the target name with its bucket name and prefix
+        * buckets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
@@ -217,19 +252,19 @@ def handle_npm_del(
 
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     succeeded = True
-    for target in targets:
-        bucket = target[1]
-        prefix_ = remove_prefix(target[2], "/")
-        logger.info("Start deleting files from s3 bucket %s", bucket)
+    for bucket in buckets:
+        bucket_name = bucket[1]
+        prefix = remove_prefix(bucket[2], "/")
+        logger.info("Start deleting files from s3 bucket %s", bucket_name)
         failed_files = client.delete_files(
             file_paths=valid_paths,
-            target=(bucket, prefix_),
+            target=(bucket_name, prefix),
             product=product, root=target_dir
         )
         logger.info("Files deletion done\n")
 
         if manifest_bucket_name:
-            manifest_folder = target[1]
+            manifest_folder = bucket[1]
             logger.info(
                 "Start deleting manifest from s3 bucket %s in folder %s",
                 manifest_bucket_name, manifest_folder
@@ -243,27 +278,27 @@ def handle_npm_del(
 
         logger.info(
             "Start generating package.json for package: %s in bucket %s",
-            package_name_path, bucket
+            package_name_path, bucket_name
         )
         meta_files = _gen_npm_package_metadata_for_del(
-            client, bucket, target_dir, package_name_path, prefix_
+            client, bucket_name, target_dir, package_name_path, prefix
         )
         logger.info("package.json generation done\n")
 
-        logger.info("Start uploading package.json to s3 bucket %s", bucket)
+        logger.info("Start uploading package.json to s3 bucket %s", bucket_name)
         all_meta_files = []
         for _, file in meta_files.items():
             all_meta_files.append(file)
         client.delete_files(
             file_paths=all_meta_files,
-            target=(bucket, prefix_),
+            target=(bucket_name, prefix),
             product=None, root=target_dir
         )
         failed_metas = []
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
                 meta_file_paths=[meta_files[META_FILE_GEN_KEY]],
-                target=(bucket, prefix_),
+                target=(bucket_name, prefix),
                 product=None,
                 root=target_dir
             )
@@ -273,17 +308,17 @@ def handle_npm_del(
         if do_index:
             logger.info(
                 "Start generating index files for all changed entries for bucket %s",
-                bucket
+                bucket_name
             )
             created_indexes = indexing.generate_indexes(
-                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket, prefix_
+                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
-            logger.info("Start updating index to s3 bucket %s", bucket)
+            logger.info("Start updating index to s3 bucket %s", bucket_name)
             _failed_index_files = client.upload_metadatas(
                 meta_file_paths=created_indexes,
-                target=(bucket, prefix_),
+                target=(bucket_name, prefix),
                 product=None,
                 root=target_dir
             )
@@ -292,7 +327,7 @@ def handle_npm_del(
         else:
             logger.info("Bypassing indexing\n")
 
-        rollback_post_process(failed_files, failed_metas, product, bucket)
+        rollback_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
 
     return (target_dir, succeeded)
@@ -533,3 +568,9 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
         if dir_.startswith("@"):
             valid_dirs.add(dir_.split("/")[0])
     return valid_dirs
+
+
+def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
+    if package_type:
+        return conf.get_ignore_signature_suffix(package_type)
+    return []
