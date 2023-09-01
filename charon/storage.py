@@ -700,15 +700,14 @@ class S3Client(object):
         bucket = self.__get_bucket(bucket_name)
 
         try:
+            paginator = bucket.meta.client.get_paginator('list_objects_v2')
             if not folder or folder.strip() == "/" or folder.strip() == "":
-                paginator = bucket.meta.client.get_paginator('list_objects_v2')
                 pages = paginator.paginate(
                     Bucket=bucket.name,
                     Delimiter='/'
                 )
             else:
                 prefix = folder if folder.endswith("/") else folder+"/"
-                paginator = bucket.meta.client.get_paginator('list_objects_v2')
                 pages = paginator.paginate(
                     Bucket=bucket.name,
                     Prefix=prefix,
