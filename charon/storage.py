@@ -698,7 +698,7 @@ class S3Client(object):
            not in its subfolders.
         """
         bucket = self.__get_bucket(bucket_name)
-        
+
         try:
             if not folder or folder.strip() == "/" or folder.strip() == "":
                 paginator = bucket.meta.client.get_paginator('list_objects_v2')
@@ -720,7 +720,7 @@ class S3Client(object):
                          " %s due to error: %s ", folder,
                          bucket_name, e)
             return []
-        
+
         contents = []
         for page in pages:
             folders = page.get("CommonPrefixes")
