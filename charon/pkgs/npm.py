@@ -16,7 +16,7 @@ limitations under the License.
 import logging
 import os
 import sys
-from json import load, loads, dump, JSONDecodeError
+from json import load, loads, dump, JSONDecodeError, JSONEncoder
 import tarfile
 from tempfile import mkdtemp
 from typing import List, Set, Tuple
@@ -32,7 +32,7 @@ from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
 from charon.utils.strings import remove_prefix
 from charon.utils.files import write_manifest
-from charon.utils.map import del_none
+from charon.utils.map import del_none, replace_field
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +61,13 @@ class NPMPackageMetadata(object):
             self.dist_tags = {'latest': metadata.get('version')}
             self.versions = {metadata.get('version'): metadata}
         else:
-            self.dist_tags = metadata.get('dist_tags', None)
+            self.dist_tags = metadata.get('dist-tags', None)
             self.versions = metadata.get('versions', None)
+
+
+class NPMPackageMetadataEncoder(JSONEncoder):
+    def default(self, o):
+        return replace_field(del_none(o.__dict__.copy()), "dist_tags", "dist-tags")
 
 
 def handle_npm_uploading(
@@ -549,7 +554,7 @@ def _write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='
     final_package_metadata_path = os.path.join(root, package_metadata.name, PACKAGE_JSON)
     try:
         with open(final_package_metadata_path, mode='w', encoding='utf-8') as f:
-            dump(del_none(package_metadata.__dict__.copy()), f)
+            dump(obj=package_metadata, cls=NPMPackageMetadataEncoder, fp=f)
         return final_package_metadata_path
     except FileNotFoundError:
         logger.error(
