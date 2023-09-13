@@ -48,7 +48,7 @@ class NPMMetadataOnS3Test(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         original_version_0_5_8_package_json = """
         {"name": "@redhat/kogito-tooling-workspace",
-        "dist_tags": {"latest": "0.5.8"}, "versions": {"0.5.8": {"name":
+        "dist-tags": {"latest": "0.5.8"}, "versions": {"0.5.8": {"name":
         "@redhat/kogito-tooling-workspace", "version": "0.5.8", "title": "0.5.8title",
         "description": "0.5.8description", "keywords": ["0.5.8"], "maintainers": [
         "0.5.8maintainer"], "repository": {"type": "git", "url": "https://github.com/0.5.8.git"},
@@ -98,7 +98,7 @@ class NPMMetadataOnS3Test(BaseTest):
     def test_handle_npm_uploading_for_new_version(self):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         original_version_1_0_1_package_json = """
-        {"name": "@redhat/kogito-tooling-workspace", "dist_tags": {"latest": "1.0.1"},
+        {"name": "@redhat/kogito-tooling-workspace", "dist-tags": {"latest": "1.0.1"},
         "versions": {"1.0.1": {"name": "@redhat/kogito-tooling-workspace", "version": "1.0.1",
         "title": "1.0.1title", "description": "1.0.1description", "keywords": ["1.0.1"],
         "maintainers": ["1.0.1maintainer"], "repository": {"type": "git",

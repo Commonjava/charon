@@ -5,3 +5,10 @@ def del_none(d):
         elif isinstance(value, dict):
             del_none(value)
     return d
+
+
+def replace_field(d, field, new_field):
+    if d[field]:
+        d[new_field] = d[field]
+        del d[field]
+    return d

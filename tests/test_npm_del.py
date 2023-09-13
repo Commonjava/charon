@@ -83,7 +83,7 @@ class NPMDeleteTest(PackageBaseTest):
         self.assertIn("\"versions\": {\"7.15.8\":", meta_content_client)
         self.assertNotIn("\"7.14.5\": {\"name\":", meta_content_client)
         self.assertIn("\"license\": \"MIT\"", meta_content_client)
-        self.assertIn("\"dist_tags\": {\"latest\": \"7.15.8\"}", meta_content_client)
+        self.assertIn("\"dist-tags\": {\"latest\": \"7.15.8\"}", meta_content_client)
 
         test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
