@@ -698,19 +698,22 @@ class S3Client(object):
            not in its subfolders.
         """
         bucket = self.__get_bucket(bucket_name)
+
         try:
+            paginator = bucket.meta.client.get_paginator('list_objects_v2')
             if not folder or folder.strip() == "/" or folder.strip() == "":
-                result = bucket.meta.client.list_objects(
+                pages = paginator.paginate(
                     Bucket=bucket.name,
                     Delimiter='/'
                 )
             else:
                 prefix = folder if folder.endswith("/") else folder+"/"
-                result = bucket.meta.client.list_objects(
+                pages = paginator.paginate(
                     Bucket=bucket.name,
                     Prefix=prefix,
                     Delimiter='/'
                 )
+
         except (ClientError, HTTPClientError) as e:
             logger.error("ERROR: Can not get contents of %s from bucket"
                          " %s due to error: %s ", folder,
@@ -718,12 +721,13 @@ class S3Client(object):
             return []
 
         contents = []
-        folders = result.get("CommonPrefixes")
-        if folders:
-            contents.extend([f.get("Prefix") for f in folders])
-        files = result.get("Contents")
-        if files:
-            contents.extend([f.get("Key") for f in files])
+        for page in pages:
+            folders = page.get("CommonPrefixes")
+            if folders:
+                contents.extend([f.get("Prefix") for f in folders])
+            files = page.get("Contents")
+            if files:
+                contents.extend([f.get("Key") for f in files])
         return contents
 
     def file_exists_in_bucket(
