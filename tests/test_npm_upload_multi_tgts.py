@@ -121,7 +121,7 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
                 "\"license\": \"MIT\"", meta_content_client, msg=f'{bucket_name}'
             )
             self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.15.8\"}", meta_content_client, msg=f'{bucket_name}'
+                "\"dist-tags\": {\"latest\": \"7.15.8\"}", meta_content_client, msg=f'{bucket_name}'
             )
 
     def __test_prefix(self, prefix: str = None):
@@ -192,6 +192,6 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
                 msg=f'{bucket_name}'
             )
             self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.14.5\"}",
+                "\"dist-tags\": {\"latest\": \"7.14.5\"}",
                 meta_content_client, msg=f'{bucket_name}'
             )

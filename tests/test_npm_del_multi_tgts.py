@@ -117,7 +117,7 @@ class NPMDeleteMultiTgtsTest(PackageBaseTest):
                 "\"license\": \"MIT\"", meta_content_client, msg=f'{bucket_name}'
             )
             self.assertIn(
-                "\"dist_tags\": {\"latest\": \"7.15.8\"}",
+                "\"dist-tags\": {\"latest\": \"7.15.8\"}",
                 meta_content_client, msg=f'{bucket_name}'
             )
 
