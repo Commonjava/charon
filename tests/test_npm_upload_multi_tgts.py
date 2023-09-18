@@ -123,6 +123,7 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
             self.assertIn(
                 "\"dist-tags\": {\"latest\": \"7.15.8\"}", meta_content_client, msg=f'{bucket_name}'
             )
+            self.assertNotIn("\"dist_tags\":", meta_content_client)
 
     def __test_prefix(self, prefix: str = None):
         targets_ = [('', TEST_BUCKET, prefix, DEFAULT_REGISTRY),
@@ -195,3 +196,4 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
                 "\"dist-tags\": {\"latest\": \"7.14.5\"}",
                 meta_content_client, msg=f'{bucket_name}'
             )
+            self.assertNotIn("\"dist_tags\":", meta_content_client)
