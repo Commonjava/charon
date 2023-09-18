@@ -532,16 +532,20 @@ def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_lates
             original.time[t] = source.time.get(t)
             changed = True
     if source.dist_tags:
-        for d in source.dist_tags.keys():
-            if d not in original.dist_tags.keys():
-                original.dist_tags[d] = source.dist_tags.get(d)
-                changed = True
-            elif d in original.dist_tags.keys() and compare(
-                    source.dist_tags.get(d),
-                    original.dist_tags.get(d)
-            ) > 0:
-                original.dist_tags[d] = source.dist_tags.get(d)
-                changed = True
+        if original.dist_tags:
+            for d in source.dist_tags.keys():
+                if d not in original.dist_tags.keys():
+                    original.dist_tags[d] = source.dist_tags.get(d)
+                    changed = True
+                elif d in original.dist_tags.keys() and compare(
+                        source.dist_tags.get(d),
+                        original.dist_tags.get(d)
+                ) > 0:
+                    original.dist_tags[d] = source.dist_tags.get(d)
+                    changed = True
+        else:
+            original.dist_tags = source.dist_tags
+            changed = True
     if source.versions:
         for v in source.versions.keys():
             original.versions[v] = source.versions.get(v)

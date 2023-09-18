@@ -1,7 +1,7 @@
 %global owner Commonjava
 %global modulename charon
 
-%global charon_version 1.1.2
+%global charon_version 1.2.2
 %global sdist_tar_name %{modulename}-%{charon_version}
 
 %global python3_pkgversion 3
@@ -81,6 +81,19 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 
 
 %changelog
+* Mon Sep 18 2023 Harsh Modi <hmodi@redhat.com>
+- 1.2.2 release
+- hot fix for "dist_tags" derived issue
+
+* Wed Sep 13 2023 Harsh Modi <hmodi@redhat.com>
+- 1.2.1 release
+- Fix the aws list objects max 1000 limit issue
+- Fix the "dist_tags" issue in npm metadata generation
+
+* Thu Jun 29 2023 Harsh Modi <hmodi@redhat.com>
+- 1.2.0 release
+- Add maven repository artifact signature feature
+
 * Tue Sep 20 2022 Harsh Modi <hmodi@redhat.com>
 - 1.1.2 release
 - add configuration schema and validation
