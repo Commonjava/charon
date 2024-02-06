@@ -13,3 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+from click import group
+from charon.cmd.cmd_upload import upload
+from charon.cmd.cmd_delete import delete
+
+
+@group()
+def cli():
+    """Charon is a tool to synchronize several types of
+       artifacts repository data to Red Hat Ronda
+       service (maven.repository.redhat.com).
+    """
+
+
+# init group command
+cli.add_command(upload)
+cli.add_command(delete)

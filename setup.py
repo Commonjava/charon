@@ -48,6 +48,6 @@ setup(
     package_data={'charon': ['schemas/*.json']},
     test_suite="tests",
     entry_points={
-        "console_scripts": ["charon = charon:cli"],
+        "console_scripts": ["charon = charon.cmd:cli"],
     },
 )
