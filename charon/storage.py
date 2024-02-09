@@ -530,10 +530,11 @@ class S3Client(object):
         self, file_paths: List[str], target: Tuple[str, str],
         product: Optional[str], root="/"
     ) -> List[str]:
-        """ Deletes a list of files to s3 bucket. * Use the cut down file path as s3 key. The cut
-        down way is move root from the file path if it starts with root. Example: if file_path is
-        /tmp/maven-repo/org/apache/.... and root is /tmp/maven-repo Then the key will be
-        org/apache/.....
+        """ Deletes a list of files to s3 bucket.
+            * Use the cut down file path as s3 key. The cut
+            down way is move root from the file path if it starts with root.
+            Example: if file_path is /tmp/maven-repo/org/apache/.... and
+            root is /tmp/maven-repo Then the key will be org/apache/.....
             * The removing will happen with conditions of product checking. First the deletion
             will remove The product from the file metadata "rh-products". After the metadata
             removing, if there still are extra products left in that metadata, the file will not
@@ -636,6 +637,90 @@ class S3Client(object):
         )
 
         return failed_files
+
+    def simple_delete_file(
+        self, file_path: str, target: Tuple[str, str]
+    ):
+        """ Deletes file in s3 bucket, regardless of any extra
+            information like product and version info.
+            * Warning: this will directly delete the files even if
+            it has lots of product info, so please be careful to use.
+            If you want to delete product artifact files, please use
+            delete_files
+        """
+        bucket = target[0]
+        prefix = target[1]
+        bucket_obj = self.__get_bucket(bucket)
+        path_key = os.path.join(prefix, file_path)
+        file_object = bucket_obj.Object(path_key)
+        existed = False
+        try:
+            existed = self.__file_exists(file_object)
+            if existed:
+                bucket_obj.delete_objects(Delete={"Objects": [{"Key": path_key}]})
+            else:
+                logger.warning(
+                    'Warning: File %s does not exist in S3 bucket %s, will ignore its deleting',
+                    file_path, bucket
+                )
+        except (ClientError, HTTPClientError) as e:
+            logger.error(
+                "Error: file existence check failed due to error: %s", e
+            )
+
+    def simple_upload_file(
+        self, file_path: str, file_content: str,
+        target: Tuple[str, str],
+        mime_type: str = None,
+        check_sum_sha1: str = None
+    ):
+        """ Uploads file to s3 bucket, regardless of any extra
+            information like product and version info.
+            * Warning: this will directly delete the files even if
+            it has lots of product info, so please be careful to use.
+            If you want to upload product artifact files, please use
+            upload_files
+        """
+        bucket = target[0]
+        prefix = target[1]
+        bucket_obj = self.__get_bucket(bucket)
+        path_key = os.path.join(prefix, file_path)
+        file_object = bucket_obj.Object(path_key)
+        existed = False
+        logger.debug(
+            'Uploading %s to bucket %s', path_key, bucket
+        )
+        existed = False
+        try:
+            existed = self.__file_exists(file_object)
+        except (ClientError, HTTPClientError) as e:
+            logger.error(
+                "Error: file existence check failed due to error: %s", e
+            )
+            return
+
+        content_type = mime_type
+        if not content_type:
+            content_type = DEFAULT_MIME_TYPE
+        if not existed:
+            f_meta = {}
+            if check_sum_sha1 and check_sum_sha1.strip() != "":
+                f_meta[CHECKSUM_META_KEY] = check_sum_sha1
+            try:
+                if not self.__dry_run:
+                    file_object.put(
+                        Body=file_content,
+                        Metadata=f_meta,
+                        ContentType=content_type
+                    )
+                logger.debug('Uploaded %s to bucket %s', file_path, bucket)
+            except (ClientError, HTTPClientError) as e:
+                logger.error(
+                    "ERROR: file %s not uploaded to bucket %s due to error: %s ",
+                    file_path, bucket, e
+                    )
+        else:
+            raise FileExistsError("Error: file %s already exists, upload is forbiden.")
 
     def delete_manifest(self, product_key: str, target: str, manifest_bucket_name: str):
         if not manifest_bucket_name:

@@ -17,6 +17,7 @@ from charon.config import get_template
 from charon.storage import S3Client
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
                               PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
+from charon.utils.files import digest_content
 from jinja2 import Template
 import os
 import logging
@@ -149,6 +150,17 @@ def __generate_index_html(
 
 
 def __to_html(package_type: str, contents: List[str], folder: str, top_level: str) -> str:
+    html_content = __to_html_content(package_type, contents, folder)
+    html_path = os.path.join(top_level, folder, "index.html")
+    if folder == "/":
+        html_path = os.path.join(top_level, "index.html")
+    os.makedirs(os.path.dirname(html_path), exist_ok=True)
+    with open(html_path, 'w', encoding='utf-8') as html:
+        html.write(html_content)
+    return html_path
+
+
+def __to_html_content(package_type: str, contents: List[str], folder: str) -> str:
     items = []
     if folder != "/":
         items.append("../")
@@ -160,13 +172,7 @@ def __to_html(package_type: str, contents: List[str], folder: str, top_level: st
         items.extend(contents)
     items = __sort_index_items(items)
     index = IndexedHTML(title=folder, header=folder, items=items)
-    html_path = os.path.join(top_level, folder, "index.html")
-    if folder == "/":
-        html_path = os.path.join(top_level, "index.html")
-    os.makedirs(os.path.dirname(html_path), exist_ok=True)
-    with open(html_path, 'w', encoding='utf-8') as html:
-        html.write(index.generate_index_file_content(package_type))
-    return html_path
+    return index.generate_index_file_content(package_type)
 
 
 def __sort_index_items(items):
@@ -250,3 +256,60 @@ class IndexedItemsCompareKey:
             return -1
         else:
             return 0
+
+
+def re_index(
+    bucket: str,
+    prefix: str,
+    path: str,
+    package_type: str,
+    aws_profile: str = None,
+    dry_run: bool = False
+):
+    """Refresh the index.html for the specified folder in the bucket.
+    """
+    s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
+    s3_folder = os.path.join(prefix, path)
+    if path.strip() == "" or path.strip() == "/":
+        s3_folder = prefix
+    items: List[str] = s3_client.list_folder_content(bucket, s3_folder)
+    contents = [i for i in items if not i.endswith(PROD_INFO_SUFFIX)]
+    if PACKAGE_TYPE_NPM == package_type:
+        if any([True if "package.json" in c else False for c in contents]):
+            logger.warn(
+                "The path %s contains NPM package.json which will work as "
+                "package metadata for indexing. This indexing is ignored.",
+                path
+            )
+            return
+
+    if len(contents) >= 1:
+        real_contents = []
+        if prefix and prefix.strip() != "":
+            for c in contents:
+                if c.strip() != "":
+                    if c.startswith(prefix):
+                        real_c = remove_prefix(c, prefix)
+                        real_c = remove_prefix(real_c, "/")
+                        real_contents.append(real_c)
+                    else:
+                        real_contents.append(c)
+        else:
+            real_contents = contents
+        logger.debug(real_contents)
+        index_content = __to_html_content(package_type, real_contents, path)
+        if not dry_run:
+            index_path = os.path.join(path, "index.html")
+            if path == "/":
+                index_path = "index.html"
+            s3_client.simple_delete_file(index_path, (bucket, prefix))
+            s3_client.simple_upload_file(
+                index_path, index_content, (bucket, prefix),
+                "text/html", digest_content(index_content)
+            )
+    else:
+        logger.warning(
+            "The path %s does not contain any contents in bucket %s. "
+            "Will not do any re-indexing",
+            path, bucket
+        )
