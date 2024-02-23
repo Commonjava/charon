@@ -16,3 +16,6 @@ package/
 # Unit test
 __pytest_reports
 htmlcov
+
+# Generated when local run
+*.log

@@ -96,3 +96,13 @@ This command will delete some paths from repo in S3.
   but not delete the artifacts themselves.
 * During or after the paths' deletion, regenerate the
   metadata files and index files for both types.
+
+### charon-index: refresh the index.html for the specified path
+
+```bash
+usage: charon index $PATH [-t, --target] [-D, --debug] [-q, --quiet]
+```
+
+This command will refresh the index.html for the specified path.
+
+* Note that if the path is a NPM metadata path which contains package.json, this refreshment will not work because this type of folder will display the package.json instead of the index.html in http request.
