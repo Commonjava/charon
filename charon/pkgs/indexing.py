@@ -276,7 +276,7 @@ def re_index(
     contents = [i for i in items if not i.endswith(PROD_INFO_SUFFIX)]
     if PACKAGE_TYPE_NPM == package_type:
         if any([True if "package.json" in c else False for c in contents]):
-            logger.warn(
+            logger.warning(
                 "The path %s contains NPM package.json which will work as "
                 "package metadata for indexing. This indexing is ignored.",
                 path
