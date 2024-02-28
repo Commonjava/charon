@@ -269,7 +269,8 @@ def re_index(
     """Refresh the index.html for the specified folder in the bucket.
     """
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    s3_folder = os.path.join(prefix, path)
+    real_prefix = prefix if prefix.strip() != "/" else ""
+    s3_folder = os.path.join(real_prefix, path)
     if path.strip() == "" or path.strip() == "/":
         s3_folder = prefix
     items: List[str] = s3_client.list_folder_content(bucket, s3_folder)
@@ -285,11 +286,11 @@ def re_index(
 
     if len(contents) >= 1:
         real_contents = []
-        if prefix and prefix.strip() != "":
+        if real_prefix and real_prefix.strip() != "":
             for c in contents:
                 if c.strip() != "":
-                    if c.startswith(prefix):
-                        real_c = remove_prefix(c, prefix)
+                    if c.startswith(real_prefix):
+                        real_c = remove_prefix(c, real_prefix)
                         real_c = remove_prefix(real_c, "/")
                         real_contents.append(real_c)
                     else:
@@ -302,9 +303,9 @@ def re_index(
             index_path = os.path.join(path, "index.html")
             if path == "/":
                 index_path = "index.html"
-            s3_client.simple_delete_file(index_path, (bucket, prefix))
+            s3_client.simple_delete_file(index_path, (bucket, real_prefix))
             s3_client.simple_upload_file(
-                index_path, index_content, (bucket, prefix),
+                index_path, index_content, (bucket, real_prefix),
                 "text/html", digest_content(index_content)
             )
     else:

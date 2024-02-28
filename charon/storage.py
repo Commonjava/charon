@@ -713,7 +713,7 @@ class S3Client(object):
                         Metadata=f_meta,
                         ContentType=content_type
                     )
-                logger.debug('Uploaded %s to bucket %s', file_path, bucket)
+                logger.debug('Uploaded %s to bucket %s', path_key, bucket)
             except (ClientError, HTTPClientError) as e:
                 logger.error(
                     "ERROR: file %s not uploaded to bucket %s due to error: %s ",
