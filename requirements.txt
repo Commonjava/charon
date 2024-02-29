@@ -9,5 +9,4 @@ defusedxml==0.7.1
 subresource-integrity==0.2
 jsonschema==4.19.0
 beautifulsoup4==4.11.1
-requests==2.31.0
 urllib3==1.26.18

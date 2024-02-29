@@ -676,7 +676,7 @@ class S3Client(object):
     ):
         """ Uploads file to s3 bucket, regardless of any extra
             information like product and version info.
-            * Warning: this will directly delete the files even if
+            * Warning: this will directly overwrite the files even if
             it has lots of product info, so please be careful to use.
             If you want to upload product artifact files, please use
             upload_files
