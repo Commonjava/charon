@@ -50,7 +50,7 @@ Requires: python%{python3_pkgversion}-importlib-metadata
 Requires: python%{python3_pkgversion}-zipp
 Requires: python%{python3_pkgversion}-attrs
 Requires: python%{python3_pkgversion}-pyrsistent
-
+Requires: python%{python3_pkgversion}-beautifulsoup4
 
 %description
 Simple Python tool with command line interface for charon init,
