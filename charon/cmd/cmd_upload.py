@@ -178,6 +178,7 @@ def upload(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 gen_sign=contain_signature,
+                cf_enable=conf.is_aws_cf_enable(),
                 key=sign_key,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
@@ -200,6 +201,7 @@ def upload(
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 gen_sign=contain_signature,
+                cf_enable=conf.is_aws_cf_enable(),
                 key=sign_key,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name

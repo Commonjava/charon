@@ -15,13 +15,15 @@ limitations under the License.
 """
 from charon.config import get_template
 from charon.storage import S3Client
+from charon.cache import CFClient
+from charon.pkgs.pkg_utils import invalidate_cf_paths
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
                               PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
 from charon.utils.files import digest_content
 from jinja2 import Template
 import os
 import logging
-from typing import List, Set
+from typing import List, Set, Tuple
 
 from charon.utils.strings import remove_prefix
 
@@ -259,21 +261,23 @@ class IndexedItemsCompareKey:
 
 
 def re_index(
-    bucket: str,
-    prefix: str,
+    bucket: Tuple[str, str, str, str, str],
     path: str,
     package_type: str,
     aws_profile: str = None,
+    cf_enable: bool = False,
     dry_run: bool = False
 ):
     """Refresh the index.html for the specified folder in the bucket.
     """
+    bucket_name = bucket[1]
+    prefix = bucket[2]
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     real_prefix = prefix if prefix.strip() != "/" else ""
     s3_folder = os.path.join(real_prefix, path)
     if path.strip() == "" or path.strip() == "/":
         s3_folder = prefix
-    items: List[str] = s3_client.list_folder_content(bucket, s3_folder)
+    items: List[str] = s3_client.list_folder_content(bucket_name, s3_folder)
     contents = [i for i in items if not i.endswith(PROD_INFO_SUFFIX)]
     if PACKAGE_TYPE_NPM == package_type:
         if any([True if "package.json" in c else False for c in contents]):
@@ -303,14 +307,17 @@ def re_index(
             index_path = os.path.join(path, "index.html")
             if path == "/":
                 index_path = "index.html"
-            s3_client.simple_delete_file(index_path, (bucket, real_prefix))
+            s3_client.simple_delete_file(index_path, (bucket_name, real_prefix))
             s3_client.simple_upload_file(
-                index_path, index_content, (bucket, real_prefix),
+                index_path, index_content, (bucket_name, real_prefix),
                 "text/html", digest_content(index_content)
             )
+            if cf_enable:
+                cf_client = CFClient(aws_profile=aws_profile)
+                invalidate_cf_paths(cf_client, bucket, [index_path])
     else:
         logger.warning(
             "The path %s does not contain any contents in bucket %s. "
             "Will not do any re-indexing",
-            path, bucket
+            path, bucket_name
         )
