@@ -1,0 +1,6 @@
+# Sample config files
+
+There are two sample config files here:
+
+* [aws-credentials.sample](./aws-credentials.sample): sample aws credentials file. It is same with aws credentials config file in official
+* [charon.yaml.sample](./charon.yaml.sample): sample charon config file. You can put it into $HOME/.charon/charon.yaml and change the content by your requirements.
