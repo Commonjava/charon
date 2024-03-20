@@ -15,7 +15,7 @@ limitations under the License.
 """
 from charon.utils.files import digest
 from typing import Tuple, List, Dict
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 import tempfile
 import os
 import logging
@@ -224,7 +224,9 @@ def _list_folder_content(folder_url: str, folder_path: str) -> List[str]:
                 contentType = r.headers.get('Content-Type')
                 if contentType and "text/html" in contentType:
                     pageContent = r.text
-                    return _parseContent(pageContent, folder_path)
+                    p = _IndexParser()
+                    p.feed(pageContent)
+                    return p.get_content(folder_path)
                 else:
                     logger.warning("%s is not a folder!", folder_url)
     except Exception as e:
@@ -232,16 +234,20 @@ def _list_folder_content(folder_url: str, folder_path: str) -> List[str]:
     return []
 
 
-def _parseContent(pageContent: str, parent: str) -> List[str]:
-    items = []
-    soup = BeautifulSoup(pageContent, "html.parser")
-    contents = soup.find("ul", id="contents").find_all("a")
-    for c in contents:
-        item = c["href"]
-        if not item or item.strip() == '../':
-            continue
-        items.append(os.path.join(parent, item))
-    return items
+class _IndexParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.__content = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            for name, link in attrs:
+                if name == "href" and link.strip() not in ['../', '']:
+                    self.__content.append(link)
+
+    def get_content(self, parent):
+        return [os.path.join(parent, i) for i in self.__content]
 
 
 def _read_remote_file_content(remote_file_url: str) -> str:
