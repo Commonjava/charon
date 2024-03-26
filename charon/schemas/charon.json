@@ -66,6 +66,10 @@
       "type": "string",
       "description": "aws profile to use with S3"
     },
+    "aws_cf_enable": {
+      "type": "boolean",
+      "description": "enable aws cloudfront support"
+    },
     "manifest_bucket": {
       "type": "string",
       "description": "which bucket to use for storing manifests"
