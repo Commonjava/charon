@@ -20,7 +20,12 @@ from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
-from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
+from charon.cache import CFClient
+from charon.pkgs.pkg_utils import (
+    upload_post_process,
+    rollback_post_process,
+    invalidate_cf_paths
+)
 from charon.config import CharonConfig, get_template, get_config
 from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
@@ -257,11 +262,12 @@ def handle_maven_uploading(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    buckets: List[Tuple[str, str, str, str]] = None,
+    buckets: List[Tuple[str, str, str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
     gen_sign=False,
+    cf_enable=False,
     key=None,
     dry_run=False,
     manifest_bucket_name=None
@@ -322,6 +328,9 @@ def handle_maven_uploading(
     succeeded = True
     generated_signs = []
     for bucket in buckets:
+        # prepare cf invalidate files
+        cf_invalidate_paths = []
+
         # 5. Do manifest uploading
         if not manifest_bucket_name:
             logger.warning(
@@ -360,6 +369,9 @@ def handle_maven_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("maven-metadata.xml updating done in bucket %s\n", bucket_name)
+            # Add maven-metadata.xml to CF invalidate paths
+            if cf_enable:
+                cf_invalidate_paths.extend(meta_files.get(META_FILE_GEN_KEY, []))
 
         # 8. Determine refreshment of archetype-catalog.xml
         if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
@@ -386,6 +398,9 @@ def handle_maven_uploading(
                 )
                 failed_metas.extend(_failed_metas)
                 logger.info("archetype-catalog.xml updating done in bucket %s\n", bucket_name)
+                # Add archtype-catalog to invalidate paths
+                if cf_enable:
+                    cf_invalidate_paths.extend(archetype_files)
 
         # 10. Generate signature file if contain_signature is set to True
         if gen_sign:
@@ -436,8 +451,16 @@ def handle_maven_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("Index files updating done\n")
+            # Add index files to Cf invalidate paths
+            if cf_enable:
+                cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypass indexing")
+
+        # Finally do the CF invalidating for metadata files
+        if cf_enable and len(cf_invalidate_paths) > 0:
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, top_level)
 
         upload_post_process(failed_files, failed_metas, prod_key, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
@@ -450,10 +473,11 @@ def handle_maven_del(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    buckets: List[Tuple[str, str, str, str]] = None,
+    buckets: List[Tuple[str, str, str, str, str]] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
+    cf_enable=False,
     dry_run=False,
     manifest_bucket_name=None
 ) -> Tuple[str, bool]:
@@ -487,6 +511,9 @@ def handle_maven_del(
     logger.debug("Valid poms: %s", valid_poms)
     succeeded = True
     for bucket in buckets:
+        # prepare cf invalidation paths
+        cf_invalidate_paths = []
+
         prefix = remove_prefix(bucket[2], "/")
         s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
         bucket_name = bucket[1]
@@ -544,6 +571,11 @@ def handle_maven_del(
             if len(_failed_metas) > 0:
                 failed_metas.extend(_failed_metas)
         logger.info("maven-metadata.xml updating done\n")
+        if cf_enable:
+            logger.debug(
+                "Extending invalidate_paths with %s:", all_meta_files
+            )
+            cf_invalidate_paths.extend(all_meta_files)
 
         # 7. Determine refreshment of archetype-catalog.xml
         if os.path.exists(os.path.join(top_level, "archetype-catalog.xml")):
@@ -578,6 +610,8 @@ def handle_maven_del(
                 if len(_failed_metas) > 0:
                     failed_metas.extend(_failed_metas)
             logger.info("archetype-catalog.xml updating done\n")
+            if cf_enable:
+                cf_invalidate_paths.extend(archetype_files)
 
         if do_index:
             logger.info("Start generating index files for all changed entries")
@@ -596,8 +630,14 @@ def handle_maven_del(
             if len(_failed_index_files) > 0:
                 failed_metas.extend(_failed_index_files)
             logger.info("Index files updating done.\n")
+            if cf_enable:
+                cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypassing indexing")
+
+        if cf_enable and len(cf_invalidate_paths):
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, top_level)
 
         rollback_post_process(failed_files, failed_metas, prod_key, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0

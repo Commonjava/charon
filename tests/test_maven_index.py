@@ -24,13 +24,13 @@ from tests.commons import (
     COMMONS_LOGGING_INDEXES, COMMONS_CLIENT_INDEX, COMMONS_CLIENT_456_INDEX,
     COMMONS_LOGGING_INDEX, COMMONS_ROOT_INDEX
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenFileIndexTest(PackageBaseTest):
 
     def test_uploading_index(self):
@@ -177,7 +177,11 @@ class MavenFileIndexTest(PackageBaseTest):
             Key=commons_client_457_test,
             Body="Just a test content"
         )
-        re_index(TEST_BUCKET, "", commons_client_root, "maven")
+        re_index(
+            (TEST_BUCKET, TEST_BUCKET, "", "", None),
+            commons_client_root, "maven",
+            cf_enable=True
+        )
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
         self.assertIn('<a href="../" title="../">../</a>', index_content)

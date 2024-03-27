@@ -87,34 +87,31 @@ def index(
             # log is recorded get_target
             sys.exit(1)
 
-        aws_bucket = None
-        prefix = None
-        for b in conf.get_target(target):
+        for b in tgt:
             aws_bucket = b.get('bucket')
-            prefix = b.get('prefix', '')
 
-        package_type = None
-        if "maven" in aws_bucket:
-            logger.info(
-                "The target is a maven repository. Will refresh the index as maven package type"
-            )
-            package_type = PACKAGE_TYPE_MAVEN
-        elif "npm" in aws_bucket:
-            package_type = PACKAGE_TYPE_NPM
-            logger.info(
-                "The target is a npm repository. Will refresh the index as npm package type"
-            )
-        else:
-            logger.error(
-                "The target is not supported. Only maven or npm target is supported."
-            )
-            sys.exit(1)
+            package_type = None
+            if "maven" in aws_bucket:
+                logger.info(
+                    "The target is a maven repository. Will refresh the index as maven package type"
+                )
+                package_type = PACKAGE_TYPE_MAVEN
+            elif "npm" in aws_bucket:
+                package_type = PACKAGE_TYPE_NPM
+                logger.info(
+                    "The target is a npm repository. Will refresh the index as npm package type"
+                )
+            else:
+                logger.error(
+                    "The target %s is not supported. Only maven or npm target is supported.",
+                    target
+                )
 
-        if not aws_bucket:
-            logger.error("No bucket specified!")
-            sys.exit(1)
+            if not aws_bucket:
+                logger.error("No bucket specified for target %s!", target)
+            else:
+                re_index(b, path, package_type, aws_profile, dryrun)
 
-        re_index(aws_bucket, prefix, path, package_type, aws_profile, dryrun)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state

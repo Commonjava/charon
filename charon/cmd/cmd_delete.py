@@ -158,6 +158,7 @@ def delete(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                cf_enable=conf.is_aws_cf_enable(),
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )
@@ -178,6 +179,7 @@ def delete(
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                cf_enable=conf.is_aws_cf_enable(),
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )

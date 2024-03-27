@@ -22,7 +22,7 @@ from tests.commons import (
     CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX,
     TEST_BUCKET_2
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
@@ -30,7 +30,7 @@ from tests.constants import INPUTS
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
-@mock_s3
+@mock_aws
 class NpmFileIndexMultiTgtsTest(PackageBaseTest):
     def setUp(self):
         super().setUp()

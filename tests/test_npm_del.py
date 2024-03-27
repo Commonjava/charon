@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import os
-from moto import mock_s3
+from moto import mock_aws
 from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.storage import CHECKSUM_META_KEY
@@ -23,7 +23,7 @@ from tests.commons import TEST_BUCKET, CODE_FRAME_7_14_5_FILES, CODE_FRAME_META
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class NPMDeleteTest(PackageBaseTest):
     def test_npm_deletion(self):
         self.__test_prefix()

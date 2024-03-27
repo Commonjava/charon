@@ -15,7 +15,7 @@ limitations under the License.
 """
 import os
 
-from moto import mock_s3
+from moto import mock_aws
 
 from charon.pkgs.npm import handle_npm_uploading
 from charon.pkgs.pkg_utils import is_metadata
@@ -29,7 +29,7 @@ from tests.commons import (
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class NPMUploadTest(PackageBaseTest):
 
     def test_npm_upload(self):

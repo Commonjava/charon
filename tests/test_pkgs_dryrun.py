@@ -18,13 +18,13 @@ from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
 from charon.constants import DEFAULT_REGISTRY
 from tests.base import PackageBaseTest
 from tests.commons import TEST_BUCKET
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class PkgsDryRunTest(PackageBaseTest):
     def test_maven_upload_dry_run(self):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")

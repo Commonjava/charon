@@ -19,7 +19,7 @@ from charon.utils.archive import extract_zip_all
 from charon.utils.files import overwrite_file, read_sha1
 from charon.constants import PROD_INFO_SUFFIX
 from tests.base import BaseTest, SHORT_TEST_PREFIX
-from moto import mock_s3
+from moto import mock_aws
 import boto3
 import os
 import sys
@@ -35,7 +35,7 @@ COMMONS_LANG3_ZIP_ENTRY = 60
 COMMONS_LANG3_ZIP_MVN_ENTRY = 26
 
 
-@mock_s3
+@mock_aws
 class S3ClientTest(BaseTest):
     def setUp(self):
         super().setUp()

@@ -35,7 +35,8 @@ def _get_buckets(targets: List[str], conf: CharonConfig) -> List[Tuple[str, str,
             aws_bucket = bucket.get('bucket')
             prefix = bucket.get('prefix', '')
             registry = bucket.get('registry', DEFAULT_REGISTRY)
-            buckets.append((target, aws_bucket, prefix, registry))
+            cf_domain = bucket.get('domain', None)
+            buckets.append((target, aws_bucket, prefix, registry, cf_domain))
     return buckets
 
 

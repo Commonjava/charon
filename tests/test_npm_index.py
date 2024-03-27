@@ -22,7 +22,7 @@ from tests.commons import (
     TEST_BUCKET, CODE_FRAME_7_14_5_INDEXES,
     CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
@@ -30,7 +30,7 @@ from tests.constants import INPUTS
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
-@mock_s3
+@mock_aws
 class NpmFileIndexTest(PackageBaseTest):
     def test_uploading_index(self):
         self.__test_upload_prefix()
@@ -222,7 +222,11 @@ class NpmFileIndexTest(PackageBaseTest):
         test_bucket.put_object(
             Key=test_file_path, Body="test content"
         )
-        re_index(TEST_BUCKET, prefix, "@babel/", "npm")
+        re_index(
+            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            "@babel/", "npm",
+            cf_enable=True
+        )
         index_obj = test_bucket.Object(prefixed_namespace_babel_index)
         index_content = str(index_obj.get()["Body"].read(), "utf-8")
         self.assertIn(
@@ -249,7 +253,11 @@ class NpmFileIndexTest(PackageBaseTest):
         test_bucket.put_object(
             Key=test_file_path, Body="test content"
         )
-        re_index(TEST_BUCKET, prefix, "/", "npm")
+        re_index(
+            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            "/", "npm",
+            cf_enable=True
+        )
         index_obj = test_bucket.Object(prefixed_root_index)
         index_content = str(index_obj.get()["Body"].read(), "utf-8")
         self.assertIn('<a href="@babel/index.html" title="@babel/">@babel/</a>', index_content)
@@ -277,7 +285,11 @@ class NpmFileIndexTest(PackageBaseTest):
         test_bucket.put_object(
             Key=test_file_path, Body="test content"
         )
-        re_index(TEST_BUCKET, prefix, metadata_path, "npm")
+        re_index(
+            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            metadata_path, "npm",
+            cf_enable=True
+        )
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
         self.assertIn(

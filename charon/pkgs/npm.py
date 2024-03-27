@@ -28,8 +28,13 @@ import charon.pkgs.signature as signature
 from charon.config import CharonConfig, get_config
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
+from charon.cache import CFClient
 from charon.utils.archive import extract_npm_tarball
-from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
+from charon.pkgs.pkg_utils import (
+    upload_post_process,
+    rollback_post_process,
+    invalidate_cf_paths
+)
 from charon.utils.strings import remove_prefix
 from charon.utils.files import write_manifest
 from charon.utils.map import del_none, replace_field
@@ -78,6 +83,7 @@ def handle_npm_uploading(
         dir_=None,
         do_index=True,
         gen_sign=False,
+        cf_enable=False,
         key=None,
         dry_run=False,
         manifest_bucket_name=None
@@ -96,9 +102,13 @@ def handle_npm_uploading(
 
         Returns the directory used for archive processing and if uploading is successful
     """
+
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     generated_signs = []
     for bucket in buckets:
+        # prepare cf invalidate files
+        cf_invalidate_paths = []
+
         bucket_name = bucket[1]
         prefix = remove_prefix(bucket[2], "/")
         registry = bucket[3]
@@ -159,6 +169,13 @@ def handle_npm_uploading(
             client, bucket_name, target_dir, package_metadata, prefix
         )
         logger.info("package.json generation done\n")
+        if cf_enable:
+            meta_f = meta_files.get(META_FILE_GEN_KEY, [])
+            logger.debug("Add invalidating metafiles: %s", meta_f)
+            if isinstance(meta_f, str):
+                cf_invalidate_paths.append(meta_f)
+            elif isinstance(meta_f, list):
+                cf_invalidate_paths.extend(meta_f)
 
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
@@ -218,8 +235,15 @@ def handle_npm_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("Index files updating done\n")
+            if cf_enable:
+                cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypass indexing\n")
+
+        # Do CloudFront invalidating for generated metadata
+        if cf_enable and len(cf_invalidate_paths):
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
 
         upload_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
@@ -234,6 +258,7 @@ def handle_npm_del(
         aws_profile=None,
         dir_=None,
         do_index=True,
+        cf_enable=False,
         dry_run=False,
         manifest_bucket_name=None
 ) -> Tuple[str, str]:
@@ -258,6 +283,9 @@ def handle_npm_del(
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     succeeded = True
     for bucket in buckets:
+        # prepare cf invalidate files
+        cf_invalidate_paths = []
+
         bucket_name = bucket[1]
         prefix = remove_prefix(bucket[2], "/")
         logger.info("Start deleting files from s3 bucket %s", bucket_name)
@@ -309,6 +337,9 @@ def handle_npm_del(
             )
             failed_metas.extend(_failed_metas)
         logger.info("package.json uploading done")
+        if cf_enable and len(all_meta_files):
+            logger.debug("Add meta files to cf invalidate list: %s", all_meta_files)
+            cf_invalidate_paths.extend(all_meta_files)
 
         if do_index:
             logger.info(
@@ -329,8 +360,16 @@ def handle_npm_del(
             )
             failed_metas.extend(_failed_index_files)
             logger.info("Index files updating done.\n")
+            if cf_enable and len(created_indexes):
+                logger.debug("Add index files to cf invalidate list: %s", created_indexes)
+                cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypassing indexing\n")
+
+        # Do CloudFront invalidating for generated metadata
+        if cf_enable and len(cf_invalidate_paths):
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
 
         rollback_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
@@ -476,7 +515,7 @@ def _scan_for_version(path: str):
         logger.error('Error: Failed to parse json!')
 
 
-def _is_latest_version(source_version: str, versions: list()):
+def _is_latest_version(source_version: str, versions: List[str]):
     for v in versions:
         if compare(source_version, v) <= 0:
             return False
