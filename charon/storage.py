@@ -65,14 +65,14 @@ class S3Client(object):
         self, aws_profile=None, extra_conf=None
     ):
         if aws_profile:
-            logger.debug("Using aws profile: %s", aws_profile)
+            logger.debug("[S3] Using aws profile: %s", aws_profile)
             s3_session = session.Session(profile_name=aws_profile)
         else:
             s3_session = session.Session()
         endpoint_url = self.__get_endpoint(extra_conf)
         config = None
         if self.__enable_acceleration(extra_conf):
-            logger.info("S3 acceleration config enabled, "
+            logger.info("[S3] S3 acceleration config enabled, "
                         "will enable s3 use_accelerate_endpoint config")
             config = Config(s3={"use_accelerate_endpoint": True})
         return s3_session.resource(
@@ -87,9 +87,12 @@ class S3Client(object):
             if isinstance(extra_conf, Dict):
                 endpoint_url = extra_conf.get(ENDPOINT_ENV, None)
         if endpoint_url:
-            logger.info("Using endpoint url for aws client: %s", endpoint_url)
+            logger.info(
+                "[S3] Using endpoint url for aws S3 client: %s",
+                endpoint_url
+            )
         else:
-            logger.debug("No user-specified endpoint url is used.")
+            logger.debug("[S3] No user-specified endpoint url is used.")
         return endpoint_url
 
     def __enable_acceleration(self, extra_conf) -> bool:
@@ -140,14 +143,14 @@ class S3Client(object):
             async with self.__con_sem:
                 if not os.path.isfile(full_file_path):
                     logger.warning(
-                        'Warning: file %s does not exist during uploading. Product: %s',
+                        '[S3] Warning: file %s does not exist during uploading. Product: %s',
                         full_file_path, product
                     )
                     failed.append(full_file_path)
                     return
 
                 logger.debug(
-                    '(%d/%d) Uploading %s to bucket %s',
+                    '[S3] (%d/%d) Uploading %s to bucket %s',
                     index, total, full_file_path, main_bucket_name
                 )
                 main_path_key = os.path.join(key_prefix, path) if key_prefix else path
@@ -157,7 +160,7 @@ class S3Client(object):
                     existed = await self.__run_async(self.__file_exists, main_file_object)
                 except (ClientError, HTTPClientError) as e:
                     logger.error(
-                        "Error: file existence check failed due to error: %s", e
+                        "[S3] Error: file existence check failed due to error: %s", e
                     )
                     failed.append(full_file_path)
                     return
@@ -193,9 +196,9 @@ class S3Client(object):
                                     main_path_key, main_bucket_name, [product]
                                 )
 
-                        logger.debug('Uploaded %s to bucket %s', path, main_bucket_name)
+                        logger.debug('[S3] Uploaded %s to bucket %s', path, main_bucket_name)
                     except (ClientError, HTTPClientError) as e:
-                        logger.error("ERROR: file %s not uploaded to bucket"
+                        logger.error("[S3] ERROR: file %s not uploaded to bucket"
                                      " %s due to error: %s ", full_file_path,
                                      main_bucket_name, e)
                         failed.append(full_file_path)
@@ -230,9 +233,9 @@ class S3Client(object):
                                         extra_path_key, extra_bucket_name, [product]
                                     )
                             except (ClientError, HTTPClientError) as e:
-                                logger.error("ERROR: copying failure happend for file %s to bucket"
-                                             " %s due to error: %s ", full_file_path,
-                                             extra_bucket_name, e)
+                                logger.error("[S3] ERROR: copying failure happend for file %s"
+                                             " to bucket %s due to error: %s ",
+                                             full_file_path, extra_bucket_name, e)
                                 failed.append(full_file_path)
                     else:
                         await handle_existed(
@@ -613,7 +616,7 @@ class S3Client(object):
                                 if not updated:
                                     failed.append(full_file_path)
                                     return
-                            logger.info("Deleted %s from bucket %s", path, bucket_name)
+                            logger.info("[S3] Deleted %s from bucket %s", path, bucket_name)
                             return
                         except (ClientError, HTTPClientError) as e:
                             logger.error(
@@ -759,7 +762,7 @@ class S3Client(object):
             try:
                 objs = list(bucket.objects.filter(Prefix=prefix))
             except (ClientError, HTTPClientError) as e:
-                logger.error("ERROR: Can not get files under %s in bucket"
+                logger.error("[S3] ERROR: Can not get files under %s in bucket"
                              " %s due to error: %s ", prefix,
                              bucket_name, e)
                 return ([], False)
@@ -800,7 +803,7 @@ class S3Client(object):
                 )
 
         except (ClientError, HTTPClientError) as e:
-            logger.error("ERROR: Can not get contents of %s from bucket"
+            logger.error("[S3] ERROR: Can not get contents of %s from bucket"
                          " %s due to error: %s ", folder,
                          bucket_name, e)
             return []
@@ -828,7 +831,7 @@ class S3Client(object):
             bucket = self.__buckets.get(bucket_name)
             if bucket:
                 return bucket
-            logger.debug("Cache aws bucket %s", bucket_name)
+            logger.debug("[S3] Cache aws bucket %s", bucket_name)
             bucket = self.__client.Bucket(bucket_name)
             self.__buckets[bucket_name] = bucket
             return bucket
@@ -848,15 +851,15 @@ class S3Client(object):
     def __get_prod_info(
         self, file: str, bucket_name: str
     ) -> Tuple[List[str], bool]:
-        logger.debug("Getting product infomation for file %s", file)
+        logger.debug("[S3] Getting product infomation for file %s", file)
         prod_info_file = file + PROD_INFO_SUFFIX
         try:
             info_file_content = self.read_file_content(bucket_name, prod_info_file)
             prods = [p.strip() for p in info_file_content.split("\n")]
-            logger.debug("Got product information as below %s", prods)
+            logger.debug("[S3] Got product information as below %s", prods)
             return (prods, True)
         except (ClientError, HTTPClientError) as e:
-            logger.warning("WARN: Can not get product info for file %s "
+            logger.warning("[S3] WARN: Can not get product info for file %s "
                            "due to error: %s", file, e)
             return ([], False)
 
@@ -868,7 +871,7 @@ class S3Client(object):
         file_obj = bucket.Object(prod_info_file)
         content_type = "text/plain"
         if len(prods) > 0:
-            logger.debug("Updating product infomation for file %s "
+            logger.debug("[S3] Updating product infomation for file %s "
                          "with products: %s", file, prods)
             try:
                 await self.__run_async(
@@ -878,14 +881,14 @@ class S3Client(object):
                         ContentType=content_type
                     )
                 )
-                logger.debug("Updated product infomation for file %s", file)
+                logger.debug("[S3] Updated product infomation for file %s", file)
                 return True
             except (ClientError, HTTPClientError) as e:
-                logger.warning("WARNING: Can not update product info for file %s "
+                logger.warning("[S3] WARNING: Can not update product info for file %s "
                                "due to error: %s", file, e)
                 return False
         else:
-            logger.debug("Removing product infomation file for file %s "
+            logger.debug("[S3] Removing product infomation file for file %s "
                          "because no products left", file)
             try:
                 result = await self.__run_async(
@@ -899,10 +902,10 @@ class S3Client(object):
                             Delete={"Objects": [{"Key": prod_info_file}]}
                         )
                     )
-                    logger.debug("Removed product infomation file for file %s", file)
+                    logger.debug("[S3] Removed product infomation file for file %s", file)
                 return True
             except (ClientError, HTTPClientError) as e:
-                logger.warning("WARNING: Can not delete product info file for file %s "
+                logger.warning("[S3] WARNING: Can not delete product info file for file %s "
                                "due to error: %s", file, e)
                 return False
 
@@ -918,7 +921,7 @@ class S3Client(object):
                 await path_handler(full_file_path, path, index, total, failed)
             finally:
                 if index % FILE_REPORT_LIMIT == 0:
-                    logger.info("######### %d/%d files finished", index, total)
+                    logger.info("[S3] ######### %d/%d files finished", index, total)
         return wrapper
 
     def __do_path_cut_and(

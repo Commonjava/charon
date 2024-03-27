@@ -35,7 +35,7 @@ class CFClient(object):
         self, aws_profile=None, extra_conf=None
     ):
         if aws_profile:
-            logger.debug("Using aws profile: %s", aws_profile)
+            logger.debug("[CloudFront] Using aws profile: %s", aws_profile)
             cf_session = session.Session(profile_name=aws_profile)
         else:
             cf_session = session.Session()
@@ -51,9 +51,12 @@ class CFClient(object):
             if isinstance(extra_conf, Dict):
                 endpoint_url = extra_conf.get(ENDPOINT_ENV, None)
         if endpoint_url:
-            logger.info("Using endpoint url for aws CF client: %s", endpoint_url)
+            logger.info(
+                "[CloudFront] Using endpoint url for aws CF client: %s",
+                endpoint_url
+            )
         else:
-            logger.debug("No user-specified endpoint url is used.")
+            logger.debug("[CloudFront] No user-specified endpoint url is used.")
         return endpoint_url
 
     def invalidate_paths(self, distr_id: str, paths: List[str]) -> Dict[str, str]:
