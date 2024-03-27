@@ -105,6 +105,8 @@ def handle_npm_uploading(
 
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     generated_signs = []
+    succeeded = True
+    root_dir = mkdtemp(prefix=f"npm-charon-{product}-", dir=dir_)
     for bucket in buckets:
         # prepare cf invalidate files
         cf_invalidate_paths = []
@@ -113,7 +115,7 @@ def handle_npm_uploading(
         prefix = remove_prefix(bucket[2], "/")
         registry = bucket[3]
         target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-            tarball_path, registry, prod=product, dir__=dir_
+            tarball_path, registry, prod=product, dir__=root_dir
         )
         if not os.path.isdir(target_dir):
             logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
@@ -128,8 +130,6 @@ def handle_npm_uploading(
             root=target_dir
         )
         logger.info("Files uploading done\n")
-
-        succeeded = True
 
         if not manifest_bucket_name:
             logger.warning(
@@ -235,8 +235,9 @@ def handle_npm_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("Index files updating done\n")
-            if cf_enable:
-                cf_invalidate_paths.extend(created_indexes)
+            # We will not invalidate the index files per cost consideration
+            # if cf_enable:
+            #     cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypass indexing\n")
 
@@ -248,7 +249,7 @@ def handle_npm_uploading(
         upload_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
 
-    return (target_dir, succeeded)
+    return (root_dir, succeeded)
 
 
 def handle_npm_del(
@@ -360,9 +361,10 @@ def handle_npm_del(
             )
             failed_metas.extend(_failed_index_files)
             logger.info("Index files updating done.\n")
-            if cf_enable and len(created_indexes):
-                logger.debug("Add index files to cf invalidate list: %s", created_indexes)
-                cf_invalidate_paths.extend(created_indexes)
+            # We will not invalidate the index files per cost consideration
+            # if cf_enable and len(created_indexes):
+            #     logger.debug("Add index files to cf invalidate list: %s", created_indexes)
+            #     cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypassing indexing\n")
 

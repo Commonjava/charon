@@ -22,10 +22,12 @@ from tests.commons import TEST_BUCKET
 from tests.constants import INPUTS
 from moto import mock_aws
 import os
+import pytest
 
 
 @mock_aws
 class CFReIndexTest(CFBasedTest):
+    @pytest.mark.skip(reason="Indexing CF invalidation is abandoned")
     def test_cf_maven_after_reindex(self):
         response = self.mock_cf.list_invalidations(DistributionId=self.test_dist_id)
         self.assertIsNotNone(response)
@@ -41,8 +43,7 @@ class CFReIndexTest(CFBasedTest):
 
         re_index(
             (TEST_BUCKET, TEST_BUCKET, "ga", "", "maven.repository.redhat.com"),
-            "org/apache/httpcomponents/httpclient/", "maven",
-            cf_enable=True
+            "org/apache/httpcomponents/httpclient/", "maven"
         )
 
         response = self.mock_cf.list_invalidations(DistributionId=self.test_dist_id)
@@ -51,6 +52,7 @@ class CFReIndexTest(CFBasedTest):
         self.assertEqual(1, len(items))
         self.assertEqual('completed', str.lower(items[0].get('Status')))
 
+    @pytest.mark.skip(reason="Indexing CF invalidation is abandoned")
     def test_cf_npm_after_reindex(self):
         response = self.mock_cf.list_invalidations(DistributionId=self.test_dist_id)
         self.assertIsNotNone(response)
@@ -66,8 +68,7 @@ class CFReIndexTest(CFBasedTest):
 
         re_index(
             (TEST_BUCKET, TEST_BUCKET, "", "", "npm.registry.redhat.com"),
-            "@babel/", "npm",
-            cf_enable=True
+            "@babel/", "npm"
         )
 
         response = self.mock_cf.list_invalidations(DistributionId=self.test_dist_id)

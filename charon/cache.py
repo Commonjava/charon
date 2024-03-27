@@ -59,7 +59,10 @@ class CFClient(object):
             logger.debug("[CloudFront] No user-specified endpoint url is used.")
         return endpoint_url
 
-    def invalidate_paths(self, distr_id: str, paths: List[str]) -> Dict[str, str]:
+    def invalidate_paths(
+        self, distr_id: str, paths: List[str],
+        batch_size: int = 15
+    ) -> List[Dict[str, str]]:
         """Send a invalidating requests for the paths in distribution to CloudFront.
         This will invalidate the paths in the distribution to enforce the refreshment
         from backend S3 bucket for these paths. For details see:
@@ -67,30 +70,42 @@ class CFClient(object):
             * The distr_id is the id for the distribution. This id can be get through
             get_dist_id_by_domain(domain) function
             * Can specify the invalidating paths through paths param.
+            * Batch size is the number of paths to be invalidated in one request.
+            Because paths contains wildcard(*), so the default value is 15 which
+            is the maximum number in official doc:
+            https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html#InvalidationLimits
         """
-        caller_ref = str(uuid.uuid4())
         logger.debug("[CloudFront] Creating invalidation for paths: %s", paths)
-        try:
-            response = self.__client.create_invalidation(
-                DistributionId=distr_id,
-                InvalidationBatch={
-                    'CallerReference': caller_ref,
-                    'Paths': {
-                        'Quantity': len(paths),
-                        'Items': paths
+        real_paths = [paths]
+        # Split paths into batches by batch_size
+        if batch_size:
+            real_paths = [paths[i:i + batch_size] for i in range(0, len(paths), batch_size)]
+        results = []
+        for batch_paths in real_paths:
+            caller_ref = str(uuid.uuid4())
+            try:
+                response = self.__client.create_invalidation(
+                    DistributionId=distr_id,
+                    InvalidationBatch={
+                        'CallerReference': caller_ref,
+                        'Paths': {
+                            'Quantity': len(batch_paths),
+                            'Items': batch_paths
+                        }
                     }
-                }
-            )
-            if response:
-                invalidation = response.get('Invalidation', {})
-                return {
-                    'Id': invalidation.get('Id', None),
-                    'Status': invalidation.get('Status', None)
-                }
-        except Exception as err:
-            logger.error(
-                "[CloudFront] Error occurred while creating invalidation, error: %s", err
-            )
+                )
+                if response:
+                    invalidation = response.get('Invalidation', {})
+                    results.append({
+                        'Id': invalidation.get('Id', None),
+                        'Status': invalidation.get('Status', None)
+                    })
+            except Exception as err:
+                logger.error(
+                    "[CloudFront] Error occurred while creating invalidation"
+                    " for paths %s, error: %s", batch_paths, err
+                )
+        return results
 
     def check_invalidation(self, distr_id: str, invalidation_id: str) -> dict:
         try:
@@ -115,7 +130,7 @@ class CFClient(object):
         """Get distribution id by a domain name. The id can be used to send invalidating
         request through #invalidate_paths function
            * Domain are Ronda domains, like "maven.repository.redhat.com"
-           or "npm.repository.redhat.com"
+           or "npm.registry.redhat.com"
         """
         try:
             response = self.__client.list_distributions()
