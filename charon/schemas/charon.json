@@ -52,6 +52,10 @@
               "registry": {
                 "description": "npm registry",
                 "type": "string"
+              },
+              "domain": {
+                "description": "domain name for bucket",
+                "type": "string"
               }
             },
             "required": [
