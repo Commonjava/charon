@@ -76,7 +76,7 @@ logger = logging.getLogger(__name__)
     default=False
 )
 @command()
-def clear_cf(
+def cf_invalidate(
     target: str,
     paths: List[str],
     path_file: str,
