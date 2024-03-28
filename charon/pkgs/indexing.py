@@ -15,8 +15,8 @@ limitations under the License.
 """
 from charon.config import get_template
 from charon.storage import S3Client
-from charon.cache import CFClient
-from charon.pkgs.pkg_utils import invalidate_cf_paths
+# from charon.cache import CFClient
+# from charon.pkgs.pkg_utils import invalidate_cf_paths
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
                               PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
 from charon.utils.files import digest_content
@@ -265,7 +265,7 @@ def re_index(
     path: str,
     package_type: str,
     aws_profile: str = None,
-    cf_enable: bool = False,
+    # cf_enable: bool = False,
     dry_run: bool = False
 ):
     """Refresh the index.html for the specified folder in the bucket.
@@ -312,9 +312,10 @@ def re_index(
                 index_path, index_content, (bucket_name, real_prefix),
                 "text/html", digest_content(index_content)
             )
-            if cf_enable:
-                cf_client = CFClient(aws_profile=aws_profile)
-                invalidate_cf_paths(cf_client, bucket, [index_path])
+            # We will not invalidate index.html per cost consideration
+            # if cf_enable:
+            #     cf_client = CFClient(aws_profile=aws_profile)
+            #     invalidate_cf_paths(cf_client, bucket, [index_path])
     else:
         logger.warning(
             "The path %s does not contain any contents in bucket %s. "

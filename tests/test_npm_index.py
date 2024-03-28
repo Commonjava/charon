@@ -224,8 +224,7 @@ class NpmFileIndexTest(PackageBaseTest):
         )
         re_index(
             (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
-            "@babel/", "npm",
-            cf_enable=True
+            "@babel/", "npm"
         )
         index_obj = test_bucket.Object(prefixed_namespace_babel_index)
         index_content = str(index_obj.get()["Body"].read(), "utf-8")
@@ -255,8 +254,7 @@ class NpmFileIndexTest(PackageBaseTest):
         )
         re_index(
             (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
-            "/", "npm",
-            cf_enable=True
+            "/", "npm"
         )
         index_obj = test_bucket.Object(prefixed_root_index)
         index_content = str(index_obj.get()["Body"].read(), "utf-8")
@@ -287,8 +285,7 @@ class NpmFileIndexTest(PackageBaseTest):
         )
         re_index(
             (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
-            metadata_path, "npm",
-            cf_enable=True
+            metadata_path, "npm"
         )
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]

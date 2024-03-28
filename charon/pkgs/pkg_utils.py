@@ -87,11 +87,17 @@ def invalidate_cf_paths(
     logger.debug("Invalidating paths: %s", final_paths)
     if not domain:
         domain = cf_client.get_domain_by_bucket(bucket_name)
-    distr_id = cf_client.get_dist_id_by_domain(domain)
-    if distr_id:
-        result = cf_client.invalidate_paths(distr_id, final_paths)
-        if result:
-            logger.info(
-                "The CF invalidating request for metadata/indexing is sent, "
-                "request id %s, status is %s", result['Id'], result['Status']
-            )
+    if domain:
+        distr_id = cf_client.get_dist_id_by_domain(domain)
+        if distr_id:
+            result = cf_client.invalidate_paths(distr_id, final_paths)
+            if result:
+                logger.info(
+                    "The CF invalidating request for metadata/indexing is sent, "
+                    "request status as below:\n %s", result
+                )
+    else:
+        logger.error(
+            "CF invalidating will not be performed because domain not found for"
+            " bucket %s. ", bucket_name
+        )

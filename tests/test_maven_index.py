@@ -179,8 +179,7 @@ class MavenFileIndexTest(PackageBaseTest):
         )
         re_index(
             (TEST_BUCKET, TEST_BUCKET, "", "", None),
-            commons_client_root, "maven",
-            cf_enable=True
+            commons_client_root, "maven"
         )
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
         index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
