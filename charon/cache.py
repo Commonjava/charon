@@ -12,10 +12,10 @@ ENDPOINT_ENV = "aws_endpoint_url"
 DEFAULT_BUCKET_TO_DOMAIN = {
     "prod-maven-ga": "maven.repository.redhat.com",
     "prod-maven-ea": "maven.repository.redhat.com",
-    "stage-maven-ga": "maven.strage.repository.redhat.com",
-    "stage-maven-ea": "maven.strage.repository.redhat.com",
-    "prod-npm": "npm.repository.redhat.com",
-    "stage-npm": "npm.stage.repository.redhat.com"
+    "stage-maven-ga": "maven.stage.repository.redhat.com",
+    "stage-maven-ea": "maven.stage.repository.redhat.com",
+    "prod-npm": "npm.registry.redhat.com",
+    "stage-npm": "npm.stage.registry.redhat.com"
 }
 
 
@@ -117,7 +117,7 @@ class CFClient(object):
                 invalidation = response.get('Invalidation', {})
                 return {
                     'Id': invalidation.get('Id', None),
-                    'CreateTime': invalidation.get('CreateTime', None),
+                    'CreateTime': str(invalidation.get('CreateTime', None)),
                     'Status': invalidation.get('Status', None)
                 }
         except Exception as err:

@@ -123,7 +123,7 @@ def cf_invalidate(
                 )
             else:
                 invalidate_cf_paths(
-                    cf_client, b, work_paths, b, batch_size=3000
+                    cf_client, b, work_paths, batch_size=3000
                 )
     except Exception:
         print(traceback.format_exc())
