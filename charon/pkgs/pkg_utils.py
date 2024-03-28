@@ -66,7 +66,8 @@ def invalidate_cf_paths(
     cf_client: CFClient,
     bucket: Tuple[str, str, str, str, str],
     invalidate_paths: List[str],
-    root="/"
+    root="/",
+    batch_size=15
 ):
     logger.info("Invalidating CF cache for %s", bucket[1])
     bucket_name = bucket[1]
@@ -90,7 +91,9 @@ def invalidate_cf_paths(
     if domain:
         distr_id = cf_client.get_dist_id_by_domain(domain)
         if distr_id:
-            result = cf_client.invalidate_paths(distr_id, final_paths)
+            result = cf_client.invalidate_paths(
+                distr_id, final_paths, batch_size
+            )
             if result:
                 logger.info(
                     "The CF invalidating request for metadata/indexing is sent, "
