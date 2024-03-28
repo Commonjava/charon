@@ -99,7 +99,7 @@ logger = logging.getLogger(__name__)
     required=True
 )
 @command()
-def validate(
+def checksum_validate(
     path: str,
     target: str,
     includes: List[str],
@@ -109,12 +109,13 @@ def validate(
     quiet: bool = False,
     debug: bool = False
 ):
-    """This command will validate the checksum of the specified path for the
-       maven repository. It will calculate the sha1 checksum of all artifact
-       files in the specified path and compare with the companied .sha1 files
-       of the artifacts, then record all mismatched artifacts in the report file.
-       If some artifact files misses the companied .sha1 files, they will also
-       be recorded.
+    """
+    Validate the checksum of the specified path for themaven repository.
+    It will calculate the sha1 checksum of all artifact files in the
+    specified path and compare with the companied .sha1 files of the
+    artifacts, then record all mismatched artifacts in the report file.
+    If some artifact files misses the companied .sha1 files, they will also
+    be recorded.
     """
     _decide_mode(
         "checksum-{}".format(target), path.replace("/", "_"),

@@ -65,7 +65,7 @@ def index(
     quiet: bool = False,
     dryrun: bool = False
 ):
-    """This command will re-generate the index.html files for the
+    """Generate or refresh the index.html files for the
     specified path.
     """
     _decide_mode(

@@ -82,7 +82,7 @@ def cf_invalidate(
     quiet: bool = False,
     debug: bool = False
 ):
-    """This command will do invalidating on AWS CloudFront for the specified paths.
+    """Do invalidating on AWS CloudFront for the specified paths.
     """
     _decide_mode(
         f"cfclear-{target}", "",
@@ -167,7 +167,8 @@ def cf_check(
     quiet: bool = False,
     debug: bool = False
 ):
-    """This command will check the invalidation status of the specified invalidation id.
+    """Check the invalidation status of the specified invalidation id
+    for AWS CloudFront.
     """
     _decide_mode(
         f"cfcheck-{target}", "",
