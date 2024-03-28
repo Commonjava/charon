@@ -28,7 +28,9 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def _get_buckets(targets: List[str], conf: CharonConfig) -> List[Tuple[str, str, str, str]]:
+def _get_buckets(
+    targets: List[str], conf: CharonConfig
+) -> List[Tuple[str, str, str, str, str]]:
     buckets = []
     for target in targets:
         for bucket in conf.get_target(target):

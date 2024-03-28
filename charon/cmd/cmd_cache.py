@@ -18,8 +18,8 @@ from charon.config import get_config
 from charon.cmd.internal import _decide_mode, _get_buckets
 from charon.cache import CFClient
 from charon.pkgs.pkg_utils import invalidate_cf_paths
-from click import command, option
-from typing import List
+from click import command, option, argument
+from typing import List, Tuple
 
 import traceback
 import logging
@@ -34,9 +34,8 @@ logger = logging.getLogger(__name__)
     "-t",
     "target",
     help="""
-    The target to do the uploading, which will decide which s3 bucket
-    and what root path where all files will be uploaded to.
-    Can accept more than one target.
+    The target to do the invalidating, which will decide the s3 bucket
+    which and its related domain to get the distribution.
     """,
     required=True
 )
@@ -104,23 +103,110 @@ def cf_invalidate(
             for line in f.readlines():
                 work_paths.append(str(line).strip())
 
+    use_wildcard = False
+    for path in work_paths:
+        if "*" in path:
+            use_wildcard = True
+            break
+
     try:
-        conf = get_config()
-        if not conf:
-            sys.exit(1)
-
-        aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
-        if not aws_profile:
-            logger.error("No AWS profile specified!")
-            sys.exit(1)
-
-        buckets = _get_buckets([target], conf)
+        (buckets, aws_profile) = _init_cmd(target)
 
         for b in buckets:
             cf_client = CFClient(aws_profile=aws_profile)
-            invalidate_cf_paths(
-                cf_client, b, work_paths
-            )
+            # Per aws official doc, if the paths contains wildcard, it is
+            # limited to 15 as max items in one request. Otherwise it could
+            # be 3000
+            if use_wildcard:
+                invalidate_cf_paths(
+                    cf_client, b, work_paths
+                )
+            else:
+                invalidate_cf_paths(
+                    cf_client, b, work_paths, b, batch_size=3000
+                )
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)
+
+
+@argument(
+    "invalidation_id",
+    type=str
+)
+@option(
+    "--target",
+    "-t",
+    "target",
+    help="""
+    The target to do the invalidating, which will decide the s3 bucket
+    which and its related domain to get the distribution.
+    """,
+    required=True
+)
+@option(
+    "--debug",
+    "-D",
+    "debug",
+    help="Debug mode, will print all debug logs for problem tracking.",
+    is_flag=True,
+    default=False
+)
+@option(
+    "--quiet",
+    "-q",
+    "quiet",
+    help="Quiet mode, will shrink most of the logs except warning and errors.",
+    is_flag=True,
+    default=False
+)
+@command()
+def cf_check(
+    invalidation_id: str,
+    target: str,
+    quiet: bool = False,
+    debug: bool = False
+):
+    """This command will check the invalidation status of the specified invalidation id.
+    """
+    _decide_mode(
+        f"cfcheck-{target}", "",
+        is_quiet=quiet, is_debug=debug
+    )
+    try:
+        (buckets, aws_profile) = _init_cmd(target)
+        for b in buckets:
+            cf_client = CFClient(aws_profile=aws_profile)
+            bucket_name = b[1]
+            domain = b[4]
+            if not domain:
+                domain = cf_client.get_domain_by_bucket(bucket_name)
+            if domain:
+                distr_id = cf_client.get_dist_id_by_domain(domain)
+                if distr_id:
+                    result = cf_client.check_invalidation(distr_id, invalidation_id)
+                    logger.info(
+                        "The status of invalidation %s is %s",
+                        invalidation_id, result
+                    )
+            else:
+                logger.error(
+                    "Can not check invalidation result for %s because domain not found"
+                    " for bucket %s. ", invalidation_id, bucket_name
+                )
+    except Exception:
+        print(traceback.format_exc())
+        sys.exit(2)
+
+
+def _init_cmd(target: str) -> Tuple[List[Tuple[str, str, str, str, str]], str]:
+    conf = get_config()
+    if not conf:
+        sys.exit(1)
+
+    aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
+    if not aws_profile:
+        logger.error("No AWS profile specified!")
+        sys.exit(1)
+
+    return (_get_buckets([target], conf), aws_profile)

@@ -18,7 +18,7 @@ from charon.cmd.cmd_upload import upload
 from charon.cmd.cmd_delete import delete
 from charon.cmd.cmd_index import index
 from charon.cmd.cmd_checksum import validate
-from charon.cmd.cmd_cache import cf_invalidate
+from charon.cmd.cmd_cache import cf_invalidate, cf_check
 
 
 @group()
@@ -35,3 +35,4 @@ cli.add_command(delete)
 cli.add_command(index)
 cli.add_command(validate)
 cli.add_command(cf_invalidate)
+cli.add_command(cf_check)
