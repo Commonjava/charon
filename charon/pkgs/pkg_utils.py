@@ -1,5 +1,9 @@
 from typing import List, Tuple
-from charon.cache import CFClient
+from charon.cache import (
+    CFClient,
+    INVALIDATION_BATCH_DEFAULT,
+    INVALIDATION_BATCH_WILDCARD
+)
 import logging
 import os
 
@@ -67,7 +71,7 @@ def invalidate_cf_paths(
     bucket: Tuple[str, str, str, str, str],
     invalidate_paths: List[str],
     root="/",
-    batch_size=15
+    batch_size=INVALIDATION_BATCH_DEFAULT
 ):
     logger.info("Invalidating CF cache for %s", bucket[1])
     bucket_name = bucket[1]
@@ -85,14 +89,19 @@ def invalidate_cf_paths(
         if prefix:
             path = os.path.join(prefix, path)
         final_paths.append(path)
-    logger.debug("Invalidating paths: %s", final_paths)
+    logger.debug("Invalidating paths: %s, size: %s", final_paths, len(final_paths))
     if not domain:
         domain = cf_client.get_domain_by_bucket(bucket_name)
     if domain:
         distr_id = cf_client.get_dist_id_by_domain(domain)
         if distr_id:
+            real_batch_size = batch_size
+            for path in final_paths:
+                if path.endswith('*'):
+                    real_batch_size = INVALIDATION_BATCH_WILDCARD
+                    break
             result = cf_client.invalidate_paths(
-                distr_id, final_paths, batch_size
+                distr_id, final_paths, real_batch_size
             )
             if result:
                 logger.info(

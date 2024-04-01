@@ -8,6 +8,8 @@ import uuid
 logger = logging.getLogger(__name__)
 
 ENDPOINT_ENV = "aws_endpoint_url"
+INVALIDATION_BATCH_DEFAULT = 3000
+INVALIDATION_BATCH_WILDCARD = 15
 
 DEFAULT_BUCKET_TO_DOMAIN = {
     "prod-maven-ga": "maven.repository.redhat.com",
@@ -61,7 +63,7 @@ class CFClient(object):
 
     def invalidate_paths(
         self, distr_id: str, paths: List[str],
-        batch_size: int = 15
+        batch_size=INVALIDATION_BATCH_DEFAULT
     ) -> List[Dict[str, str]]:
         """Send a invalidating requests for the paths in distribution to CloudFront.
         This will invalidate the paths in the distribution to enforce the refreshment
@@ -71,8 +73,7 @@ class CFClient(object):
             get_dist_id_by_domain(domain) function
             * Can specify the invalidating paths through paths param.
             * Batch size is the number of paths to be invalidated in one request.
-            Because paths contains wildcard(*), so the default value is 15 which
-            is the maximum number in official doc:
+            The default value is 3000 which is the maximum number in official doc:
             https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html#InvalidationLimits
         """
         logger.debug("[CloudFront] Creating invalidation for paths: %s", paths)
@@ -83,6 +84,10 @@ class CFClient(object):
         results = []
         for batch_paths in real_paths:
             caller_ref = str(uuid.uuid4())
+            logger.debug(
+                "Processing invalidation for batch with ref %s, size: %s",
+                caller_ref, len(batch_paths)
+            )
             try:
                 response = self.__client.create_invalidation(
                     DistributionId=distr_id,
