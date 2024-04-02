@@ -150,6 +150,12 @@ def delete(
         product_key = f"{product}-{version}"
         manifest_bucket_name = conf.get_manifest_bucket()
         buckets = _get_buckets(targets, conf)
+        if not buckets:
+            logger.error(
+                "The targets %s can not be found! Please check"
+                " your charon configuration to confirm the targets"
+                " are set correctly.", targets
+            )
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir, succeeded = handle_npm_del(

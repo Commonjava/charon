@@ -86,7 +86,7 @@ def cf_invalidate(
     """
     _decide_mode(
         f"cfclear-{target}", "",
-        is_quiet=quiet, is_debug=debug
+        is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     if not paths and not path_file:
         logger.error(
@@ -172,10 +172,13 @@ def cf_check(
     """
     _decide_mode(
         f"cfcheck-{target}", "",
-        is_quiet=quiet, is_debug=debug
+        is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     try:
         (buckets, aws_profile) = _init_cmd(target)
+        if not buckets:
+            sys.exit(1)
+
         for b in buckets:
             cf_client = CFClient(aws_profile=aws_profile)
             bucket_name = b[1]

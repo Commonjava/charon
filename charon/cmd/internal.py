@@ -90,14 +90,23 @@ def _validate_prod_key(product: str, version: str) -> bool:
     return True
 
 
-def _decide_mode(product: str, version: str, is_quiet: bool, is_debug: bool):
+def _decide_mode(
+    product: str, version: str, is_quiet: bool,
+    is_debug: bool, use_log_file=True
+):
     if is_quiet:
         logger.info("Quiet mode enabled, "
                     "will only give warning and error logs.")
-        set_logging(product, version, level=logging.WARNING)
+        set_logging(
+            product, version, level=logging.WARNING, use_log_file=use_log_file
+        )
     elif is_debug:
         logger.info("Debug mode enabled, "
                     "will give all debug logs for tracing.")
-        set_logging(product, version, level=logging.DEBUG)
+        set_logging(
+            product, version, level=logging.DEBUG, use_log_file=use_log_file
+        )
     else:
-        set_logging(product, version, level=logging.INFO)
+        set_logging(
+            product, version, level=logging.INFO, use_log_file=use_log_file
+        )

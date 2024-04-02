@@ -70,7 +70,7 @@ def index(
     """
     _decide_mode(
         "index-{}".format(target), path.replace("/", "_"),
-        is_quiet=quiet, is_debug=debug
+        is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     try:
         conf = get_config()
