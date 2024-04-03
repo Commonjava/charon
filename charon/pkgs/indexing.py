@@ -270,8 +270,8 @@ def re_index(
 ):
     """Refresh the index.html for the specified folder in the bucket.
     """
-    bucket_name = bucket[1]
-    prefix = bucket[2]
+    bucket_name = bucket.get("bucket")
+    prefix = bucket.get("prefix")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     real_prefix = prefix if prefix.strip() != "/" else ""
     s3_folder = os.path.join(real_prefix, path)

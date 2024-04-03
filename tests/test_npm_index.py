@@ -223,7 +223,7 @@ class NpmFileIndexTest(PackageBaseTest):
             Key=test_file_path, Body="test content"
         )
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            {"bucket": TEST_BUCKET, "prefix": prefix},
             "@babel/", "npm"
         )
         index_obj = test_bucket.Object(prefixed_namespace_babel_index)
@@ -253,7 +253,7 @@ class NpmFileIndexTest(PackageBaseTest):
             Key=test_file_path, Body="test content"
         )
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            {"bucket": TEST_BUCKET, "prefix": prefix},
             "/", "npm"
         )
         index_obj = test_bucket.Object(prefixed_root_index)
@@ -284,7 +284,7 @@ class NpmFileIndexTest(PackageBaseTest):
             Key=test_file_path, Body="test content"
         )
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, prefix, "", None),
+            {"bucket": TEST_BUCKET, "prefix": prefix},
             metadata_path, "npm"
         )
         objs = list(test_bucket.objects.all())
