@@ -46,8 +46,9 @@ def extract_zip_with_files(zf: ZipFile, target_dir: str, file_suffix: str, debug
     zf.extractall(target_dir, members=filtered)
 
 
-def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool, registry=DEFAULT_REGISTRY)\
-        -> Tuple[str, list]:
+def extract_npm_tarball(
+    path: str, target_dir: str, is_for_upload: bool, pkg_root="package", registry=DEFAULT_REGISTRY
+) -> Tuple[str, list]:
     """ Extract npm tarball will relocate the tgz file and metadata files.
         * Locate tar path ( e.g.: jquery/-/jquery-7.6.1.tgz or @types/jquery/-/jquery-2.2.3.tgz).
         * Locate version metadata path (e.g.: jquery/7.6.1 or @types/jquery/2.2.3).
@@ -56,30 +57,50 @@ def extract_npm_tarball(path: str, target_dir: str, is_for_upload: bool, registr
     valid_paths = []
     package_name_path = str()
     tgz = tarfile.open(path)
+    pkg_file = None
+    root_pkg_file_exists = True
+    try:
+        root_pkg_path = os.path.join(pkg_root, "package.json")
+        logger.debug(root_pkg_path)
+        pkg_file = tgz.getmember(root_pkg_path)
+        root_pkg_file_exists = pkg_file.isfile()
+    except KeyError:
+        root_pkg_file_exists = False
+        pkg_file = None
     tgz.extractall()
-    for f in tgz:
-        if f.name.endswith("package.json"):
-            version_data, parse_paths = __parse_npm_package_version_paths(f.path)
-            package_name_path = parse_paths[0]
-            os.makedirs(os.path.join(target_dir, parse_paths[0]))
-            tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
-            valid_paths.append(os.path.join(tarball_parent_path, _get_tgz_name(path)))
-            version_metadata_parent_path = os.path.join(
-                target_dir, parse_paths[0], parse_paths[1]
+    if not root_pkg_file_exists:
+        logger.info(
+            "Root package.json is not found for archive: %s, will search others",
+            path
+        )
+        for f in tgz:
+            if f.name.endswith("package.json"):
+                logger.info("Found package.json as %s", f.path)
+                pkg_file = f
+                break
+    if pkg_file:
+        version_data, parse_paths = __parse_npm_package_version_paths(pkg_file.path)
+        package_name_path = parse_paths[0]
+        os.makedirs(os.path.join(target_dir, parse_paths[0]))
+        tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
+        valid_paths.append(os.path.join(tarball_parent_path, _get_tgz_name(path)))
+        version_metadata_parent_path = os.path.join(
+            target_dir, parse_paths[0], parse_paths[1]
+        )
+        valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
+
+        if is_for_upload:
+            tgz_relative_path = "/".join([parse_paths[0], "-", _get_tgz_name(path)])
+            __write_npm_version_dist(
+                path, pkg_file.path, version_data, tgz_relative_path, registry
             )
-            valid_paths.append(os.path.join(version_metadata_parent_path, "package.json"))
 
-            if is_for_upload:
-                tgz_relative_path = "/".join([parse_paths[0], "-", _get_tgz_name(path)])
-                __write_npm_version_dist(path, f.path, version_data, tgz_relative_path, registry)
-
-                os.makedirs(tarball_parent_path)
-                target = os.path.join(tarball_parent_path, os.path.basename(path))
-                shutil.copyfile(path, target)
-                os.makedirs(version_metadata_parent_path)
-                target = os.path.join(version_metadata_parent_path, os.path.basename(f.path))
-                shutil.copyfile(f.path, target)
-            break
+            os.makedirs(tarball_parent_path)
+            target = os.path.join(tarball_parent_path, os.path.basename(path))
+            shutil.copyfile(path, target)
+            os.makedirs(version_metadata_parent_path)
+            target = os.path.join(version_metadata_parent_path, os.path.basename(pkg_file.path))
+            shutil.copyfile(pkg_file.path, target)
     return package_name_path, valid_paths
 
 

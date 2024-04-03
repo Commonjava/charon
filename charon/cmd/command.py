@@ -170,12 +170,15 @@ def upload(
         buckets = __get_buckets(targets, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
+            npm_root_path = root_path\
+                if root_path and root_path != "maven-repository" else "package"
             tmp_dir, succeeded = handle_npm_uploading(
                 archive_path,
                 product_key,
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                root_path=npm_root_path,
                 gen_sign=contain_signature,
                 key=sign_key,
                 dry_run=dryrun,
@@ -331,12 +334,15 @@ def delete(
         buckets = __get_buckets(targets, conf)
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
+            npm_root_path = root_path\
+                if root_path and root_path != "maven-repository" else "package"
             tmp_dir, succeeded = handle_npm_del(
                 archive_path,
                 product_key,
                 buckets=buckets,
                 aws_profile=aws_profile,
                 dir_=work_dir,
+                root_path=npm_root_path,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name
             )
