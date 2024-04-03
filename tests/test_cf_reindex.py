@@ -42,7 +42,7 @@ class CFReIndexTest(CFBasedTest):
         )
 
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, "ga", "", "maven.repository.redhat.com"),
+            {"bucket": TEST_BUCKET, "prefix": "ga"},
             "org/apache/httpcomponents/httpclient/", "maven"
         )
 
@@ -67,7 +67,7 @@ class CFReIndexTest(CFBasedTest):
         )
 
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, "", "", "npm.registry.redhat.com"),
+            {"bucket": TEST_BUCKET, "prefix": ""},
             "@babel/", "npm"
         )
 

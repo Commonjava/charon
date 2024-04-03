@@ -178,7 +178,7 @@ class MavenFileIndexTest(PackageBaseTest):
             Body="Just a test content"
         )
         re_index(
-            (TEST_BUCKET, TEST_BUCKET, "", "", None),
+            {"bucket": TEST_BUCKET, "prefix": ""},
             commons_client_root, "maven"
         )
         indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
