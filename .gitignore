@@ -11,6 +11,7 @@ coverage
 .vscode
 package/
 .local
+local
 .DS_Store
 
 # Unit test
