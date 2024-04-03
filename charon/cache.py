@@ -12,12 +12,18 @@ INVALIDATION_BATCH_DEFAULT = 3000
 INVALIDATION_BATCH_WILDCARD = 15
 
 DEFAULT_BUCKET_TO_DOMAIN = {
+    "prod-ga": "maven.repository.redhat.com",
     "prod-maven-ga": "maven.repository.redhat.com",
+    "prod-ea": "maven.repository.redhat.com",
     "prod-maven-ea": "maven.repository.redhat.com",
+    "stage-ga": "maven.stage.repository.redhat.com",
     "stage-maven-ga": "maven.stage.repository.redhat.com",
+    "stage-ea": "maven.stage.repository.redhat.com",
     "stage-maven-ea": "maven.stage.repository.redhat.com",
     "prod-npm": "npm.registry.redhat.com",
-    "stage-npm": "npm.stage.registry.redhat.com"
+    "prod-npm-npmjs": "npm.registry.redhat.com",
+    "stage-npm": "npm.stage.registry.redhat.com",
+    "stage-npm-npmjs": "npm.stage.registry.redhat.com"
 }
 
 
