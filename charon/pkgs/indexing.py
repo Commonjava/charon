@@ -170,6 +170,10 @@ def __to_html_content(package_type: str, contents: List[str], folder: str) -> st
             # index.html does not need to be included in html content.
             if not c.endswith("index.html"):
                 items.append(c[len(folder):])
+            temp_items = []
+            for item in items:
+                temp_items.append(item[1:] if item.startswith("/") else item)
+            items = temp_items
     else:
         items.extend(contents)
     items = __sort_index_items(items)
