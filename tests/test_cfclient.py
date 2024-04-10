@@ -45,13 +45,22 @@ class CFClientTest(BaseTest):
         dist_id = self.cf_client.get_dist_id_by_domain("notexists.redhat.com")
         self.assertIsNone(dist_id)
 
-    def test_invalidate_paths(self):
+    def test_invalidate_paths_single(self):
         dist_id = self.cf_client.get_dist_id_by_domain("maven.repository.redhat.com")
         result = self.cf_client.invalidate_paths(dist_id, ["/*"])
+        self.assertEqual(len(result), 1)
         self.assertTrue(result[0]['Id'])
         self.assertEqual('completed', str.lower(result[0]['Status']))
         status = self.cf_client.invalidate_paths("noexists_id", ["/*"])
         self.assertFalse(status)
+
+    def test_invalidate_paths_multi(self):
+        dist_id = self.cf_client.get_dist_id_by_domain("maven.repository.redhat.com")
+        result = self.cf_client.invalidate_paths(dist_id, ["/1", "/2", "/3"], batch_size=1)
+        self.assertEqual(len(result), 3)
+        for r in result:
+            self.assertTrue(r['Id'])
+            self.assertEqual('completed', str.lower(r['Status']))
 
     @pytest.mark.skip(reason="""
         Because current moto 5.0.3 has not implemented the get_invalidation(),

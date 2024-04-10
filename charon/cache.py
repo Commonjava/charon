@@ -4,6 +4,7 @@ from typing import Dict, List
 import os
 import logging
 import uuid
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +83,33 @@ class CFClient(object):
             The default value is 3000 which is the maximum number in official doc:
             https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html#InvalidationLimits
         """
-        logger.debug("[CloudFront] Creating invalidation for paths: %s", paths)
         real_paths = [paths]
         # Split paths into batches by batch_size
         if batch_size:
             real_paths = [paths[i:i + batch_size] for i in range(0, len(paths), batch_size)]
         results = []
+        current_invalidation = {}
         for batch_paths in real_paths:
+            while (current_invalidation and
+                    'InProgress' == current_invalidation.get('Status', '')):
+                time.sleep(5)
+                try:
+                    result = self.check_invalidation(distr_id, current_invalidation.get('Id'))
+                    if result:
+                        current_invalidation = {
+                            'Id': result.get('Id', None),
+                            'Status': result.get('Status', None)
+                        }
+                        logger.debug("Check invalidation: %s", current_invalidation)
+                except Exception as err:
+                    logger.warning(
+                        "[CloudFront] Error occurred while checking invalidation status during"
+                        " creating invalidation, invalidation: %s, error: %s",
+                        current_invalidation, err
+                    )
+                    break
+            if current_invalidation:
+                results.append(current_invalidation)
             caller_ref = str(uuid.uuid4())
             logger.debug(
                 "Processing invalidation for batch with ref %s, size: %s",
@@ -107,15 +128,17 @@ class CFClient(object):
                 )
                 if response:
                     invalidation = response.get('Invalidation', {})
-                    results.append({
+                    current_invalidation = {
                         'Id': invalidation.get('Id', None),
                         'Status': invalidation.get('Status', None)
-                    })
+                    }
             except Exception as err:
                 logger.error(
                     "[CloudFront] Error occurred while creating invalidation"
                     " for paths %s, error: %s", batch_paths, err
                 )
+        if current_invalidation:
+            results.append(current_invalidation)
         return results
 
     def check_invalidation(self, distr_id: str, invalidation_id: str) -> dict:
