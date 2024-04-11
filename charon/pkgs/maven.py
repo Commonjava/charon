@@ -459,7 +459,7 @@ def handle_maven_uploading(
         else:
             logger.info("Bypass indexing")
 
-        # Finally do the CF invalidating for metadata files
+        # 11. Finally do the CF invalidating for metadata files
         if cf_enable and len(cf_invalidate_paths) > 0:
             cf_client = CFClient(aws_profile=aws_profile)
             cf_invalidate_paths = __wildcard_metadata_paths(cf_invalidate_paths)
@@ -639,6 +639,7 @@ def handle_maven_del(
         else:
             logger.info("Bypassing indexing")
 
+        # 9. Finally do the CF invalidating for metadata files
         if cf_enable and len(cf_invalidate_paths):
             cf_client = CFClient(aws_profile=aws_profile)
             cf_invalidate_paths = __wildcard_metadata_paths(cf_invalidate_paths)
