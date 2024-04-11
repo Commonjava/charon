@@ -113,6 +113,9 @@ class CFClient(object):
                     break
             if current_invalidation:
                 results.append(current_invalidation)
+                # To avoid conflict rushing request, we can wait 1s here
+                # for next invalidation request sending.
+                time.sleep(1)
             caller_ref = str(uuid.uuid4())
             logger.debug(
                 "Processing invalidation for batch with ref %s, size: %s",
