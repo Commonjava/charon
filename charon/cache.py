@@ -86,16 +86,23 @@ class CFClient(object):
             The default value is 3000 which is the maximum number in official doc:
             https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html#InvalidationLimits
         """
+        INPRO_W_SECS = 5
+        NEXT_W_SECS = 1
         real_paths = [paths]
         # Split paths into batches by batch_size
         if batch_size:
             real_paths = [paths[i:i + batch_size] for i in range(0, len(paths), batch_size)]
+        total_time_approx = len(real_paths) * (INPRO_W_SECS * 2 + NEXT_W_SECS)
+        logger.info("There will be %d invalidating requests in total,"
+                    " will take more than %d seconds",
+                    len(real_paths), total_time_approx)
         results = []
         current_invalidation = {}
+        processed_count = 0
         for batch_paths in real_paths:
             while (current_invalidation and
                     INVALIDATION_STATUS_INPROGRESS == current_invalidation.get('Status', '')):
-                time.sleep(5)
+                time.sleep(INPRO_W_SECS)
                 try:
                     result = self.check_invalidation(distr_id, current_invalidation.get('Id'))
                     if result:
@@ -113,9 +120,14 @@ class CFClient(object):
                     break
             if current_invalidation:
                 results.append(current_invalidation)
+                processed_count += 1
+                if processed_count % 10 == 0:
+                    logger.info(
+                        "[CloudFront] ######### %d/%d requests finished",
+                        processed_count, len(real_paths))
                 # To avoid conflict rushing request, we can wait 1s here
                 # for next invalidation request sending.
-                time.sleep(1)
+                time.sleep(NEXT_W_SECS)
             caller_ref = str(uuid.uuid4())
             logger.debug(
                 "Processing invalidation for batch with ref %s, size: %s",
