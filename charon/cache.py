@@ -12,6 +12,9 @@ ENDPOINT_ENV = "aws_endpoint_url"
 INVALIDATION_BATCH_DEFAULT = 3000
 INVALIDATION_BATCH_WILDCARD = 15
 
+INVALIDATION_STATUS_COMPLETED = "Completed"
+INVALIDATION_STATUS_INPROGRESS = "InProgress"
+
 DEFAULT_BUCKET_TO_DOMAIN = {
     "prod-ga": "maven.repository.redhat.com",
     "prod-maven-ga": "maven.repository.redhat.com",
@@ -91,7 +94,7 @@ class CFClient(object):
         current_invalidation = {}
         for batch_paths in real_paths:
             while (current_invalidation and
-                    'InProgress' == current_invalidation.get('Status', '')):
+                    INVALIDATION_STATUS_INPROGRESS == current_invalidation.get('Status', '')):
                 time.sleep(5)
                 try:
                     result = self.check_invalidation(distr_id, current_invalidation.get('Id'))

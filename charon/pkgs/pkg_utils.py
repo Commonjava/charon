@@ -104,9 +104,15 @@ def invalidate_cf_paths(
                 distr_id, final_paths, real_batch_size
             )
             if result:
+                output = {}
+                for invalidation in result:
+                    status = invalidation.get('Status')
+                    if status not in output:
+                        output[status] = []
+                    output[status].append(invalidation["Id"])
                 logger.info(
                     "The CF invalidating request for metadata/indexing is sent, "
-                    "request status as below:\n %s", result
+                    "request result as below:\n %s", output
                 )
     else:
         logger.error(
