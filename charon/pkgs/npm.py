@@ -78,9 +78,10 @@ class NPMPackageMetadataEncoder(JSONEncoder):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]],
         aws_profile=None,
         dir_=None,
+        root_path="package",
         do_index=True,
         gen_sign=False,
         cf_enable=False,
@@ -115,7 +116,7 @@ def handle_npm_uploading(
         prefix = remove_prefix(bucket[2], "/")
         registry = bucket[3]
         target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-            tarball_path, registry, prod=product, dir__=root_dir
+            tarball_path, registry, prod=product, dir__=dir_, pkg_root=root_path
         )
         if not os.path.isdir(target_dir):
             logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
@@ -255,9 +256,10 @@ def handle_npm_uploading(
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]],
         aws_profile=None,
         dir_=None,
+        root_path="package",
         do_index=True,
         cf_enable=False,
         dry_run=False,
@@ -276,7 +278,7 @@ def handle_npm_del(
         Returns the directory used for archive processing and if the rollback is successful
     """
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
-        tarball_path, prod=product, dir__=dir_
+        tarball_path, prod=product, dir__=dir_, pkg_root=root_path
     )
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
@@ -474,11 +476,15 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, registry: str, prod="", dir__=None) ->\
-        Tuple[str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(
+    path: str, registry: str, prod="", dir__=None, pkg_root="pakage"
+) -> Tuple[str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
-        _, valid_paths = extract_npm_tarball(path, tmp_root, True, registry)
+        _, valid_paths = extract_npm_tarball(
+            path=path, target_dir=tmp_root, is_for_upload=True,
+            pkg_root=pkg_root, registry=registry
+        )
         if len(valid_paths) > 1:
             version = _scan_for_version(valid_paths[1])
             package = NPMPackageMetadata(version, True)
@@ -488,9 +494,13 @@ def _scan_metadata_paths_from_archive(path: str, registry: str, prod="", dir__=N
         sys.exit(1)
 
 
-def _scan_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, str, list]:
+def _scan_paths_from_archive(
+    path: str, prod="", dir__=None, pkg_root="package"
+) -> Tuple[str, str, list]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
-    package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, False)
+    package_name_path, valid_paths = extract_npm_tarball(
+        path=path, target_dir=tmp_root, is_for_upload=False, pkg_root=pkg_root
+    )
     return tmp_root, package_name_path, valid_paths
 
 
