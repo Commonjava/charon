@@ -2,7 +2,8 @@ from typing import List, Tuple
 from charon.cache import (
     CFClient,
     INVALIDATION_BATCH_DEFAULT,
-    INVALIDATION_BATCH_WILDCARD
+    INVALIDATION_BATCH_WILDCARD,
+    INVALIDATION_STATUS_COMPLETED
 )
 import logging
 import os
@@ -110,9 +111,17 @@ def invalidate_cf_paths(
                     if status not in output:
                         output[status] = []
                     output[status].append(invalidation["Id"])
+                non_completed = {}
+                for status, ids in output.items():
+                    if status != INVALIDATION_STATUS_COMPLETED:
+                        non_completed[status] = ids
                 logger.info(
-                    "The CF invalidating request for metadata/indexing is sent, "
-                    "request result as below:\n %s", output
+                    "The CF invalidating requests done, these following requests "
+                    "are not completed yet:\n %s\nPlease use cf-check command to "
+                    "check its details.", non_completed
+                )
+                logger.debug(
+                    "All invalidations requested in this process:\n %s", output
                 )
     else:
         logger.error(
