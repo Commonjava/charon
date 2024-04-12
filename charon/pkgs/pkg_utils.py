@@ -116,7 +116,7 @@ def invalidate_cf_paths(
                     if status != INVALIDATION_STATUS_COMPLETED:
                         non_completed[status] = ids
                 logger.info(
-                    "The CF invalidating requests done, these following requests "
+                    "The CF invalidating requests done, following requests "
                     "are not completed yet:\n %s\nPlease use cf-check command to "
                     "check its details.", non_completed
                 )
