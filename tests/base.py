@@ -25,9 +25,12 @@ from charon.constants import PROD_INFO_SUFFIX
 from charon.pkgs.pkg_utils import is_metadata
 from charon.storage import PRODUCT_META_KEY, CHECKSUM_META_KEY
 from tests.commons import TEST_BUCKET, TEST_MANIFEST_BUCKET
-from moto import mock_s3
+from tests.constants import HERE, TEST_DS_CONFIG
+from moto import mock_aws
+import logging
 
-from tests.constants import HERE
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("charon").setLevel(logging.DEBUG)
 
 SHORT_TEST_PREFIX = "ga"
 LONG_TEST_PREFIX = "earlyaccess/all"
@@ -38,7 +41,21 @@ class BaseTest(unittest.TestCase):
         self.change_home()
         config_base = self.get_config_base()
         self.__prepare_template(config_base)
-        default_config_content = """
+        config_content = self.get_config_content()
+        self.prepare_config(config_base, config_content)
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir, ignore_errors=True)
+        os.environ = self.old_environ
+
+    def change_home(self):
+        self.old_environ = os.environ.copy()
+        self.tempdir = tempfile.mkdtemp(prefix='charon-test-')
+        # Configure environment and copy templates
+        os.environ['HOME'] = self.tempdir
+
+    def get_config_content(self):
+        return """
 ignore_patterns:
     - ".*^(redhat).*"
     - ".*snapshot.*"
@@ -69,17 +86,6 @@ targets:
 aws_profile: "test"
 manifest_bucket: "manifest"
       """
-        self.prepare_config(config_base, default_config_content)
-
-    def tearDown(self):
-        shutil.rmtree(self.tempdir, ignore_errors=True)
-        os.environ = self.old_environ
-
-    def change_home(self):
-        self.old_environ = os.environ.copy()
-        self.tempdir = tempfile.mkdtemp(prefix='charon-test-')
-        # Configure environment and copy templates
-        os.environ['HOME'] = self.tempdir
 
     def __prepare_template(self, config_base):
         template_path = os.path.join(config_base, 'template')
@@ -101,7 +107,7 @@ manifest_bucket: "manifest"
         return os.path.join(self.get_temp_dir(), '.charon')
 
 
-@mock_s3
+@mock_aws
 class PackageBaseTest(BaseTest):
     def setUp(self):
         super().setUp()
@@ -158,3 +164,22 @@ class PackageBaseTest(BaseTest):
                         self.assertEqual(sha1_checksum, sha1_file_content, msg=msg)
                 self.assertIn(CHECKSUM_META_KEY, file_obj.metadata, msg=msg)
                 self.assertNotEqual("", file_obj.metadata[CHECKSUM_META_KEY].strip(), msg=msg)
+
+
+@mock_aws
+class CFBasedTest(PackageBaseTest):
+    def setUp(self):
+        super().setUp()
+        # mock_cf is used to generate expected content
+        self.mock_cf = self.__prepare_cf()
+        response = self.mock_cf.create_distribution(DistributionConfig=TEST_DS_CONFIG)
+        self.test_dist_id = response.get('Distribution').get('Id')
+
+    def tearDown(self):
+        super().tearDown()
+        # The IfMatch-value is ignored - any value is considered valid.
+        # Calling this function without a value is invalid, per AWS’ behaviour
+        self.mock_cf.delete_distribution(Id=self.test_dist_id, IfMatch='..')
+
+    def __prepare_cf(self):
+        return boto3.client('cloudfront')

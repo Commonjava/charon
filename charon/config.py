@@ -38,6 +38,7 @@ class CharonConfig(object):
         self.__manifest_bucket: str = data.get("manifest_bucket", None)
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
+        self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -62,6 +63,9 @@ class CharonConfig(object):
 
     def get_detach_signature_command(self) -> str:
         return self.__signature_command
+
+    def is_aws_cf_enable(self) -> bool:
+        return self.__aws_cf_enable
 
 
 def get_config() -> Optional[CharonConfig]:

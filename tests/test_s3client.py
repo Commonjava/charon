@@ -19,7 +19,7 @@ from charon.utils.archive import extract_zip_all
 from charon.utils.files import overwrite_file, read_sha1
 from charon.constants import PROD_INFO_SUFFIX
 from tests.base import BaseTest, SHORT_TEST_PREFIX
-from moto import mock_s3
+from moto import mock_aws
 import boto3
 import os
 import sys
@@ -35,7 +35,7 @@ COMMONS_LANG3_ZIP_ENTRY = 60
 COMMONS_LANG3_ZIP_MVN_ENTRY = 26
 
 
-@mock_s3
+@mock_aws
 class S3ClientTest(BaseTest):
     def setUp(self):
         super().setUp()
@@ -389,6 +389,79 @@ class S3ClientTest(BaseTest):
         bucket = self.mock_s3.Bucket(MY_BUCKET)
         file_obj = bucket.Object(path)
         self.assertEqual(sha1, file_obj.metadata[CHECKSUM_META_KEY])
+
+    def test_simple_upload_file(self):
+        (temp_root, _, all_files) = self.__prepare_files()
+        for file_path in all_files:
+            file_key = file_path[len(temp_root) + 1:]
+            file_content = open(file_path, "rb").read()
+            sha1 = read_sha1(file_path)
+            self.s3_client.simple_upload_file(
+                file_path=file_key,
+                file_content=file_content,
+                check_sum_sha1=sha1,
+                target=(MY_BUCKET, '')
+            )
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+
+        objects = list(bucket.objects.all())
+        self.assertEqual(len(all_files), len(objects))
+        file_path = all_files[0]
+        file_key = file_path[len(temp_root) + 1:]
+        file_content = open(file_path, "rb").read()
+        sha1 = read_sha1(file_path)
+        obj = bucket.Object(file_key)
+        self.assertEqual(sha1, obj.metadata[CHECKSUM_META_KEY])
+        self.assertEqual(file_key, obj.key)
+        self.assertEqual(
+            str(file_content, sys.getdefaultencoding()),
+            str(obj.get()["Body"].read(), sys.getdefaultencoding())
+        )
+
+        # test upload exists
+        self.assertRaises(
+            FileExistsError,
+            self.s3_client.simple_upload_file,
+            file_path=file_key,
+            file_content="file_content",
+            check_sum_sha1=sha1,
+            target=(MY_BUCKET, '')
+        )
+
+        shutil.rmtree(temp_root)
+
+    def test_simple_delete_file(self):
+        # prepare files
+        (temp_root, _, all_files) = self.__prepare_files()
+        for file_path in all_files:
+            file_key = file_path[len(temp_root) + 1:]
+            file_content = open(file_path, "rb").read()
+            sha1 = read_sha1(file_path)
+            self.s3_client.simple_upload_file(
+                file_path=file_key,
+                file_content=file_content,
+                check_sum_sha1=sha1,
+                target=(MY_BUCKET, '')
+            )
+        bucket = self.mock_s3.Bucket(MY_BUCKET)
+
+        objects = list(bucket.objects.all())
+        self.assertEqual(len(all_files), len(objects))
+
+        # test delete file start
+        file_key = all_files[0][len(temp_root) + 1:]
+        objects = list(bucket.objects.all())
+        self.assertIn(file_key, [o.key for o in objects])
+        self.s3_client.simple_delete_file(
+            file_path=file_key,
+            target=(MY_BUCKET, "")
+        )
+
+        objects = list(bucket.objects.all())
+        self.assertEqual(len(all_files) - 1, len(objects))
+        self.assertNotIn(file_key, [o.key for o in objects])
+
+        shutil.rmtree(temp_root)
 
     def __prepare_files(self):
         test_zip = zipfile.ZipFile(

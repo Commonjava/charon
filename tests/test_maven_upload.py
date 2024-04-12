@@ -23,13 +23,13 @@ from tests.commons import (
     COMMONS_CLIENT_456_MVN_NUM, COMMONS_CLIENT_MVN_NUM,
     COMMONS_CLIENT_META_NUM
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenUploadTest(PackageBaseTest):
     def test_fresh_upload(self):
         self.__test_prefix_upload("")

@@ -1,0 +1,3 @@
+# Sample template files to generate metadata
+
+These template files are used to generate related metadata accordingly. You can change based on the sample templates and then put them into $HOME/.charon/template/ to replace the default templates which are defined in charon sources.

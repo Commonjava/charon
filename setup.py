@@ -15,7 +15,7 @@ limitations under the License.
 """
 from setuptools import setup, find_packages
 
-version = "1.2.2"
+version = "1.3.0"
 
 # f = open('README.md')
 # long_description = f.read().strip()
@@ -48,6 +48,6 @@ setup(
     package_data={'charon': ['schemas/*.json']},
     test_suite="tests",
     entry_points={
-        "console_scripts": ["charon = charon:cli"],
+        "console_scripts": ["charon = charon.cmd:cli"],
     },
 )

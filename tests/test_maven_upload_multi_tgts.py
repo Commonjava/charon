@@ -24,13 +24,13 @@ from tests.commons import (
     COMMONS_CLIENT_456_MVN_NUM, COMMONS_CLIENT_MVN_NUM,
     COMMONS_CLIENT_META_NUM, TEST_BUCKET_2
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenUploadMultiTgtsTest(PackageBaseTest):
     def setUp(self):
         super().setUp()
