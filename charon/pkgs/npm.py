@@ -28,8 +28,13 @@ import charon.pkgs.signature as signature
 from charon.config import CharonConfig, get_config
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
+from charon.cache import CFClient
 from charon.utils.archive import extract_npm_tarball
-from charon.pkgs.pkg_utils import upload_post_process, rollback_post_process
+from charon.pkgs.pkg_utils import (
+    upload_post_process,
+    rollback_post_process,
+    invalidate_cf_paths
+)
 from charon.utils.strings import remove_prefix
 from charon.utils.files import write_manifest
 from charon.utils.map import del_none, replace_field
@@ -73,11 +78,13 @@ class NPMPackageMetadataEncoder(JSONEncoder):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]],
         aws_profile=None,
         dir_=None,
+        root_path="package",
         do_index=True,
         gen_sign=False,
+        cf_enable=False,
         key=None,
         dry_run=False,
         manifest_bucket_name=None
@@ -96,14 +103,20 @@ def handle_npm_uploading(
 
         Returns the directory used for archive processing and if uploading is successful
     """
+
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     generated_signs = []
+    succeeded = True
+    root_dir = mkdtemp(prefix=f"npm-charon-{product}-", dir=dir_)
     for bucket in buckets:
+        # prepare cf invalidate files
+        cf_invalidate_paths = []
+
         bucket_name = bucket[1]
         prefix = remove_prefix(bucket[2], "/")
         registry = bucket[3]
         target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
-            tarball_path, registry, prod=product, dir__=dir_
+            tarball_path, registry, prod=product, dir__=dir_, pkg_root=root_path
         )
         if not os.path.isdir(target_dir):
             logger.error("Error: the extracted target_dir path %s does not exist.", target_dir)
@@ -118,8 +131,6 @@ def handle_npm_uploading(
             root=target_dir
         )
         logger.info("Files uploading done\n")
-
-        succeeded = True
 
         if not manifest_bucket_name:
             logger.warning(
@@ -159,6 +170,13 @@ def handle_npm_uploading(
             client, bucket_name, target_dir, package_metadata, prefix
         )
         logger.info("package.json generation done\n")
+        if cf_enable:
+            meta_f = meta_files.get(META_FILE_GEN_KEY, [])
+            logger.debug("Add invalidating metafiles: %s", meta_f)
+            if isinstance(meta_f, str):
+                cf_invalidate_paths.append(meta_f)
+            elif isinstance(meta_f, list):
+                cf_invalidate_paths.extend(meta_f)
 
         if META_FILE_GEN_KEY in meta_files:
             _failed_metas = client.upload_metadatas(
@@ -218,22 +236,32 @@ def handle_npm_uploading(
             )
             failed_metas.extend(_failed_metas)
             logger.info("Index files updating done\n")
+            # We will not invalidate the index files per cost consideration
+            # if cf_enable:
+            #     cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypass indexing\n")
+
+        # Do CloudFront invalidating for generated metadata
+        if cf_enable and len(cf_invalidate_paths):
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
 
         upload_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
 
-    return (target_dir, succeeded)
+    return (root_dir, succeeded)
 
 
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]] = None,
+        buckets: List[Tuple[str, str, str, str]],
         aws_profile=None,
         dir_=None,
+        root_path="package",
         do_index=True,
+        cf_enable=False,
         dry_run=False,
         manifest_bucket_name=None
 ) -> Tuple[str, str]:
@@ -250,7 +278,7 @@ def handle_npm_del(
         Returns the directory used for archive processing and if the rollback is successful
     """
     target_dir, package_name_path, valid_paths = _scan_paths_from_archive(
-        tarball_path, prod=product, dir__=dir_
+        tarball_path, prod=product, dir__=dir_, pkg_root=root_path
     )
 
     valid_dirs = __get_path_tree(valid_paths, target_dir)
@@ -258,6 +286,9 @@ def handle_npm_del(
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     succeeded = True
     for bucket in buckets:
+        # prepare cf invalidate files
+        cf_invalidate_paths = []
+
         bucket_name = bucket[1]
         prefix = remove_prefix(bucket[2], "/")
         logger.info("Start deleting files from s3 bucket %s", bucket_name)
@@ -309,6 +340,9 @@ def handle_npm_del(
             )
             failed_metas.extend(_failed_metas)
         logger.info("package.json uploading done")
+        if cf_enable and len(all_meta_files):
+            logger.debug("Add meta files to cf invalidate list: %s", all_meta_files)
+            cf_invalidate_paths.extend(all_meta_files)
 
         if do_index:
             logger.info(
@@ -329,8 +363,17 @@ def handle_npm_del(
             )
             failed_metas.extend(_failed_index_files)
             logger.info("Index files updating done.\n")
+            # We will not invalidate the index files per cost consideration
+            # if cf_enable and len(created_indexes):
+            #     logger.debug("Add index files to cf invalidate list: %s", created_indexes)
+            #     cf_invalidate_paths.extend(created_indexes)
         else:
             logger.info("Bypassing indexing\n")
+
+        # Do CloudFront invalidating for generated metadata
+        if cf_enable and len(cf_invalidate_paths):
+            cf_client = CFClient(aws_profile=aws_profile)
+            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
 
         rollback_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
@@ -433,11 +476,15 @@ def _gen_npm_package_metadata_for_del(
     return meta_files
 
 
-def _scan_metadata_paths_from_archive(path: str, registry: str, prod="", dir__=None) ->\
-        Tuple[str, list, NPMPackageMetadata]:
+def _scan_metadata_paths_from_archive(
+    path: str, registry: str, prod="", dir__=None, pkg_root="pakage"
+) -> Tuple[str, list, NPMPackageMetadata]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
-        _, valid_paths = extract_npm_tarball(path, tmp_root, True, registry)
+        _, valid_paths = extract_npm_tarball(
+            path=path, target_dir=tmp_root, is_for_upload=True,
+            pkg_root=pkg_root, registry=registry
+        )
         if len(valid_paths) > 1:
             version = _scan_for_version(valid_paths[1])
             package = NPMPackageMetadata(version, True)
@@ -447,9 +494,13 @@ def _scan_metadata_paths_from_archive(path: str, registry: str, prod="", dir__=N
         sys.exit(1)
 
 
-def _scan_paths_from_archive(path: str, prod="", dir__=None) -> Tuple[str, str, list]:
+def _scan_paths_from_archive(
+    path: str, prod="", dir__=None, pkg_root="package"
+) -> Tuple[str, str, list]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
-    package_name_path, valid_paths = extract_npm_tarball(path, tmp_root, False)
+    package_name_path, valid_paths = extract_npm_tarball(
+        path=path, target_dir=tmp_root, is_for_upload=False, pkg_root=pkg_root
+    )
     return tmp_root, package_name_path, valid_paths
 
 
@@ -476,7 +527,7 @@ def _scan_for_version(path: str):
         logger.error('Error: Failed to parse json!')
 
 
-def _is_latest_version(source_version: str, versions: list()):
+def _is_latest_version(source_version: str, versions: List[str]):
     for v in versions:
         if compare(source_version, v) <= 0:
             return False

@@ -15,7 +15,7 @@ limitations under the License.
 """
 import os
 
-from moto import mock_s3
+from moto import mock_aws
 
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
@@ -28,7 +28,7 @@ from tests.commons import (
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class ManifestDeleteTest(PackageBaseTest):
 
     def test_maven_manifest_delete(self):

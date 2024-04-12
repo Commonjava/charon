@@ -52,6 +52,10 @@
               "registry": {
                 "description": "npm registry",
                 "type": "string"
+              },
+              "domain": {
+                "description": "domain name for bucket",
+                "type": "string"
               }
             },
             "required": [
@@ -65,6 +69,10 @@
     "aws_profile": {
       "type": "string",
       "description": "aws profile to use with S3"
+    },
+    "aws_cf_enable": {
+      "type": "boolean",
+      "description": "enable aws cloudfront support"
     },
     "manifest_bucket": {
       "type": "string",

@@ -45,7 +45,10 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(product: str, version: str, name="charon", level=logging.DEBUG, handler=None):
+def set_logging(
+    product: str, version: str, name="charon",
+    level=logging.DEBUG, handler=None, use_log_file=True
+):
     # create logger
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change
@@ -69,7 +72,8 @@ def set_logging(product: str, version: str, name="charon", level=logging.DEBUG, 
     # add ch to logger
     logger.addHandler(handler)
 
-    set_log_file_handler(product, version, logger)
+    if use_log_file:
+        set_log_file_handler(product, version, logger)
 
     logger = logging.getLogger('charon')
     for hdlr in list(logger.handlers):  # make a copy so it doesn't change

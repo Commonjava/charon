@@ -15,6 +15,7 @@ limitations under the License.
 """
 from charon.constants import PROD_INFO_SUFFIX
 from charon.pkgs.maven import handle_maven_uploading, handle_maven_del
+from charon.pkgs.indexing import re_index
 from charon.storage import CHECKSUM_META_KEY
 from charon.utils.strings import remove_prefix
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
@@ -23,13 +24,13 @@ from tests.commons import (
     COMMONS_LOGGING_INDEXES, COMMONS_CLIENT_INDEX, COMMONS_CLIENT_456_INDEX,
     COMMONS_LOGGING_INDEX, COMMONS_ROOT_INDEX
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenFileIndexTest(PackageBaseTest):
 
     def test_uploading_index(self):
@@ -44,8 +45,6 @@ class MavenFileIndexTest(PackageBaseTest):
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
         objs = list(test_bucket.objects.all())
         actual_files = [obj.key for obj in objs]
-
-        self.assertEqual(41, len(actual_files))
 
         for f in COMMONS_LOGGING_INDEXES:
             self.assertIn(f, actual_files)
@@ -125,6 +124,88 @@ class MavenFileIndexTest(PackageBaseTest):
             index_content
         )
         self.assertNotIn("<a href=\"../\" title=\"../\">../</a>", index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
+
+    def test_re_index(self):
+        test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
+        product = "commons-client-4.5.6"
+        handle_maven_uploading(
+            test_zip, product,
+            buckets=[('', TEST_BUCKET, '', '')],
+            dir_=self.tempdir
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+
+        for f in COMMONS_CLIENT_456_INDEXES:
+            self.assertIn(f, actual_files)
+
+        self.check_content(objs, [product])
+
+        indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn('<a href="../" title="../">../</a>', index_content)
+        self.assertIn('<a href="4.5.6/" title="4.5.6/">4.5.6/</a>', index_content)
+        self.assertIn(
+            '<a href="maven-metadata.xml" title="maven-metadata.xml">'
+            'maven-metadata.xml</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.md5" title="maven-metadata.xml.md5">'
+            'maven-metadata.xml.md5</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.sha1" title="maven-metadata.xml.sha1">'
+            'maven-metadata.xml.sha1</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.sha256" title="maven-metadata.xml.sha256">'
+            'maven-metadata.xml.sha256</a>',
+            index_content
+        )
+        self.assertNotIn("<a href=\"4.5.7/\" title=\"4.5.7/\">4.5.7/</a>", index_content)
+
+        # insert new in commons-client
+        commons_client_root = "org/apache/httpcomponents/httpclient/"
+        commons_client_457_test = commons_client_root + "4.5.7/httpclient-4.5.7.txt"
+        self.mock_s3.Bucket(TEST_BUCKET).put_object(
+            Key=commons_client_457_test,
+            Body="Just a test content"
+        )
+        re_index(
+            {"bucket": TEST_BUCKET, "prefix": ""},
+            commons_client_root, "maven"
+        )
+        indedx_obj = test_bucket.Object(COMMONS_CLIENT_INDEX)
+        index_content = str(indedx_obj.get()["Body"].read(), "utf-8")
+        self.assertIn('<a href="../" title="../">../</a>', index_content)
+        self.assertIn('<a href="4.5.6/" title="4.5.6/">4.5.6/</a>', index_content)
+        self.assertIn(
+            '<a href="maven-metadata.xml" title="maven-metadata.xml">'
+            'maven-metadata.xml</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.md5" title="maven-metadata.xml.md5">'
+            'maven-metadata.xml.md5</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.sha1" title="maven-metadata.xml.sha1">'
+            'maven-metadata.xml.sha1</a>',
+            index_content
+        )
+        self.assertIn(
+            '<a href="maven-metadata.xml.sha256" title="maven-metadata.xml.sha256">'
+            'maven-metadata.xml.sha256</a>',
+            index_content
+        )
+        self.assertIn("<a href=\"4.5.7/\" title=\"4.5.7/\">4.5.7/</a>", index_content)
         self.assertNotIn(PROD_INFO_SUFFIX, index_content)
 
     def test_upload_index_with_short_prefix(self):

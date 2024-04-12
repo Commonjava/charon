@@ -17,3 +17,33 @@ import os
 
 HERE = os.path.dirname(__file__)
 INPUTS = os.path.join(HERE, 'input')
+
+TEST_DS_CONFIG = {
+        'CallerReference': 'test',
+        "Aliases": {
+            "Quantity": 1,
+            "Items": [
+                "maven.repository.redhat.com",
+                "npm.registry.redhat.com"
+            ]
+        },
+        "Origins": {
+            "Quantity": 1,
+            "Items": [
+                {
+                    "Id": "prod-maven-ga",
+                    "DomainName": "prod-maven-ga.s3.us-east-1.amazonaws.com",
+                    "OriginPath": "",
+                    "CustomHeaders": {
+                        "Quantity": 0
+                    },
+                }
+            ]
+        },
+        "DefaultCacheBehavior": {
+            "TargetOriginId": "prod-maven-ga",
+            "ViewerProtocolPolicy": "allow-all",
+        },
+        "Comment": "",
+        "Enabled": True
+    }

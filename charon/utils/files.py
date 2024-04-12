@@ -58,9 +58,30 @@ def read_sha1(file: str) -> str:
 
 
 def digest(file: str, hash_type=HashType.SHA1) -> str:
+    hash_obj = _hash_object(hash_type)
+
     # BUF_SIZE is totally arbitrary, change for your app!
     BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+    with open(file, "rb") as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            hash_obj.update(data)
 
+    return hash_obj.hexdigest()
+
+
+def digest_content(content: str, hash_type=HashType.SHA1) -> str:
+    """This function will caculate the hash value for the string content with the specified
+       hash type
+    """
+    hash_obj = _hash_object(hash_type)
+    hash_obj.update(content.encode('utf-8'))
+    return hash_obj.hexdigest()
+
+
+def _hash_object(hash_type: HashType):
     hash_obj = None
     if hash_type == HashType.SHA1:
         hash_obj = hashlib.sha1()
@@ -70,15 +91,7 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
         hash_obj = hashlib.md5()
     else:
         raise Exception("Error: Unknown hash type for digesting.")
-
-    with open(file, "rb") as f:
-        while True:
-            data = f.read(BUF_SIZE)
-            if not data:
-                break
-            hash_obj.update(data)
-
-    return hash_obj.hexdigest()
+    return hash_obj
 
 
 def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, str]:

@@ -15,13 +15,14 @@ limitations under the License.
 """
 from charon.constants import PROD_INFO_SUFFIX, DEFAULT_REGISTRY
 from charon.pkgs.npm import handle_npm_uploading, handle_npm_del
+from charon.pkgs.indexing import re_index
 from charon.storage import CHECKSUM_META_KEY
 from tests.base import LONG_TEST_PREFIX, SHORT_TEST_PREFIX, PackageBaseTest
 from tests.commons import (
     TEST_BUCKET, CODE_FRAME_7_14_5_INDEXES,
     CODE_FRAME_7_15_8_INDEXES, COMMONS_ROOT_INDEX
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
@@ -29,7 +30,7 @@ from tests.constants import INPUTS
 NAMESPACE_BABEL_INDEX = "@babel/index.html"
 
 
-@mock_s3
+@mock_aws
 class NpmFileIndexTest(PackageBaseTest):
     def test_uploading_index(self):
         self.__test_upload_prefix()
@@ -181,4 +182,118 @@ class NpmFileIndexTest(PackageBaseTest):
             test_tgz, product_7_15_8,
             buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir
+        )
+
+    def test_re_index(self):
+        test_tgz = os.path.join(INPUTS, "code-frame-7.14.5.tgz")
+        product_7_14_5 = "code-frame-7.14.5"
+        prefix = SHORT_TEST_PREFIX
+
+        handle_npm_uploading(
+            test_tgz, product_7_14_5,
+            buckets=[('', TEST_BUCKET, SHORT_TEST_PREFIX, DEFAULT_REGISTRY)],
+            dir_=self.tempdir,
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+
+        prefixed_7158_indexes = [
+            os.path.join(prefix, f) for f in CODE_FRAME_7_15_8_INDEXES
+        ]
+        prefixed_namespace_babel_index = os.path.join(prefix, NAMESPACE_BABEL_INDEX)
+        prefixed_root_index = os.path.join(prefix, COMMONS_ROOT_INDEX)
+
+        for assert_file in prefixed_7158_indexes:
+            self.assertNotIn(assert_file, actual_files)
+
+        # test package path
+        index_obj = test_bucket.Object(prefixed_namespace_babel_index)
+        index_content = str(index_obj.get()["Body"].read(), "utf-8")
+        self.assertIn('<a href="code-frame/" title="code-frame/">code-frame/</a>',
+                      index_content)
+        test_file_path = os.path.join(prefix, "@babel/test/test-file.txt")
+        self.assertNotIn(
+            '<a href="test/test-file.txt" title="test/test-file.txt">'
+            'test/test-file.txt</a>', index_content
+        )
+        # Add entry and re-index package path
+        test_bucket.put_object(
+            Key=test_file_path, Body="test content"
+        )
+        re_index(
+            {"bucket": TEST_BUCKET, "prefix": prefix},
+            "@babel/", "npm"
+        )
+        index_obj = test_bucket.Object(prefixed_namespace_babel_index)
+        index_content = str(index_obj.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            '<a href="code-frame/" title="code-frame/">code-frame/</a>', index_content
+        )
+        self.assertIn(
+            '<a href="test/" title="test/">test/</a>', index_content
+        )
+        self.assertIn(
+            '<a href="../index.html" title="../">../</a>', index_content
+        )
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
+
+        # test root path
+        index_obj = test_bucket.Object(prefixed_root_index)
+        index_content = str(index_obj.get()["Body"].read(), "utf-8")
+        self.assertIn('<a href="@babel/index.html" title="@babel/">@babel/</a>', index_content)
+        test_file_path = os.path.join(prefix, "test/test-file.txt")
+        self.assertNotIn(
+            '<a href="test/test-file.txt" title="test/test-file.txt">'
+            'test/test-file.txt</a>', index_content
+        )
+        # Add entry and re-index root
+        test_bucket.put_object(
+            Key=test_file_path, Body="test content"
+        )
+        re_index(
+            {"bucket": TEST_BUCKET, "prefix": prefix},
+            "/", "npm"
+        )
+        index_obj = test_bucket.Object(prefixed_root_index)
+        index_content = str(index_obj.get()["Body"].read(), "utf-8")
+        self.assertIn('<a href="@babel/index.html" title="@babel/">@babel/</a>', index_content)
+        self.assertIn(
+            '<a href="test/" title="test/">'
+            'test/</a>', index_content
+        )
+        self.assertNotIn('<a href="../index.html" title="../">../</a>', index_content)
+        self.assertNotIn(PROD_INFO_SUFFIX, index_content)
+
+        # Test metadata path
+        metadata_path = "@babel/code-frame/"
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertIn(
+            os.path.join(prefix, metadata_path, "package.json"),
+            actual_files
+        )
+        self.assertNotIn(
+            os.path.join(prefix, metadata_path, "index.html"),
+            actual_files
+        )
+        # Add entry and re-index metadata path
+        test_file_path = os.path.join(prefix, metadata_path, "test/test-file.txt")
+        test_bucket.put_object(
+            Key=test_file_path, Body="test content"
+        )
+        re_index(
+            {"bucket": TEST_BUCKET, "prefix": prefix},
+            metadata_path, "npm"
+        )
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertIn(
+            os.path.join(prefix, metadata_path, "package.json"),
+            actual_files
+        )
+        self.assertNotIn(
+            os.path.join(prefix, metadata_path, "index.html"),
+            actual_files
         )

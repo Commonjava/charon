@@ -15,7 +15,7 @@ limitations under the License.
 """
 import os
 import subresource_integrity
-from moto import mock_s3
+from moto import mock_aws
 from charon.pkgs.npm import handle_npm_uploading
 from charon.utils.files import digest, HashType
 from tests.base import PackageBaseTest
@@ -26,7 +26,7 @@ from tests.commons import (
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class NPMUploadTest(PackageBaseTest):
     def setUp(self):
         super().setUp()

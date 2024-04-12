@@ -23,13 +23,13 @@ from tests.commons import (
     COMMONS_LOGGING_INDEXES, COMMONS_CLIENT_INDEX, COMMONS_CLIENT_456_INDEX,
     COMMONS_LOGGING_INDEX, COMMONS_ROOT_INDEX, TEST_BUCKET_2
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenFileIndexMultiTgtsTest(PackageBaseTest):
     def setUp(self):
         super().setUp()

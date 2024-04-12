@@ -15,7 +15,7 @@ limitations under the License.
 """
 import os
 
-from moto import mock_s3
+from moto import mock_aws
 
 from charon.pkgs.maven import handle_maven_uploading
 from charon.pkgs.npm import handle_npm_uploading
@@ -29,7 +29,7 @@ from tests.commons import (
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class ManifestUploadTest(PackageBaseTest):
 
     def test_maven_manifest_upload(self):

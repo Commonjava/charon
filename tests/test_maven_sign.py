@@ -19,13 +19,13 @@ from tests.commons import (
     TEST_BUCKET, COMMONS_CLIENT_456_SIGNS, COMMONS_LOGGING_SIGNS, COMMONS_CLIENT_456_INDEX,
     COMMONS_CLIENT_459_SIGNS
 )
-from moto import mock_s3
+from moto import mock_aws
 import os
 
 from tests.constants import INPUTS
 
 
-@mock_s3
+@mock_aws
 class MavenFileSignTest(PackageBaseTest):
 
     def test_uploading_sign(self):

@@ -16,7 +16,7 @@ limitations under the License.
 import os
 
 import boto3
-from moto import mock_s3
+from moto import mock_aws
 
 from charon.pkgs.npm import handle_npm_uploading, read_package_metadata_from_content
 from charon.storage import S3Client
@@ -27,7 +27,7 @@ from tests.constants import INPUTS
 MY_BUCKET = "npm_bucket"
 
 
-@mock_s3
+@mock_aws
 class NPMMetadataOnS3Test(BaseTest):
     def setUp(self):
         super().setUp()

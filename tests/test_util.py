@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from charon.utils.files import digest, read_sha1, HashType
+from charon.utils.files import digest, digest_content, read_sha1, HashType
 import os
 import unittest
 
@@ -27,6 +27,14 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(
             "61ff1d38cfeb281b05fcd6b9a2318ed47cd62c7f99b8a9d3e819591c03fe6804",
             digest(test_file, HashType.SHA256),
+        )
+
+    def test_digest_content(self):
+        test_content = "test common content"
+        self.assertEqual("8c7b70f25fb88bc6a0372f70f6805132e90e2029", digest_content(test_content))
+        self.assertEqual(
+            "1a1c26da1f6830614ed0388bb30d9e849e05bba5de4031e2a2fa6b48032f5354",
+            digest_content(test_content, HashType.SHA256),
         )
 
     def test_read_sha1(self):

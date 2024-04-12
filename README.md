@@ -96,3 +96,21 @@ This command will delete some paths from repo in S3.
   but not delete the artifacts themselves.
 * During or after the paths' deletion, regenerate the
   metadata files and index files for both types.
+
+### charon-index: refresh the index.html for the specified path
+
+```bash
+usage: charon index $PATH [-t, --target] [-D, --debug] [-q, --quiet]
+```
+
+This command will refresh the index.html for the specified path.
+
+* Note that if the path is a NPM metadata path which contains package.json, this refreshment will not work because this type of folder will display the package.json instead of the index.html in http request.
+
+### charon-validate: validate the checksum of files in specified path in a maven repository
+
+```bash
+usage: charon validate $path [-t, --target] [-f, --report_file_path] [-i, --includes] [-r, --recursive] [-D, --debug] [-q, --quiet]
+```
+
+This command will validate the checksum of the specified path for the maven repository. It will calculate the sha1 checksum of all artifact files in the specified path and compare with the companied .sha1 files of the artifacts, then record all mismatched artifacts in the report file. If some artifact files misses the companied .sha1 files, they will also be recorded.
