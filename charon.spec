@@ -80,12 +80,14 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 
 
 %changelog
-* Mon Mar 25 2024 Gang Li <gli@redhat.com>
+* Fri Apr 12 2024 Gang Li <gli@redhat.com>
 - 1.3.0 release
 - Add validate command: validate the checksum for maven artifacts
 - Add index command: support to re-index of the speicified folder
-- Add CF invalidating feature: invalidate generated metadata files (maven-metadata*/package.json/index.html) after product uploading/deleting in CloudFront
-- Add CF invalidating feature: add command to do CF invalidating and checking
+- Add CF invalidating features:
+  - Invalidate generated metadata files (maven-metadata*/package.json/index.html) after product uploading/deleting in CloudFront
+  - Add command to do CF invalidating and checking
+- Fix bug: picking the root package.json as the first priority one to generate npm package path
 
 * Mon Sep 18 2023 Harsh Modi <hmodi@redhat.com>
 - 1.2.2 release
