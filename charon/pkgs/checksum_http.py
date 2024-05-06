@@ -13,7 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from charon.utils.files import digest
+from charon.utils.files import digest, HashType
+from charon.storage import S3Client
 from typing import Tuple, List, Dict
 from html.parser import HTMLParser
 import tempfile
@@ -36,9 +37,8 @@ def handle_checksum_validation_http(
     skips: List[str] = None
 ):
     """ Handle the checksum check for maven artifacts.
-        * target contains bucket name and prefix for the bucket, which will
-          be used to store artifacts with the prefix. See target definition
-          in Charon configuration for details.
+        * bucket contains store artifacts with the prefix. See target
+          definition in Charon configuration for details.
         * path is the root path where to start the validation in the bucket.
         * includes are the file suffixes which will decide the types of files
           to do the validation.
@@ -266,3 +266,84 @@ def _decide_root_url(bucket: str) -> str:
     if bucket.strip().startswith("stage-maven"):
         return "https://maven.stage.repository.redhat.com"
     return None
+
+
+def refresh_checksum(
+    target: Tuple[str, str],
+    paths: List[str],
+    aws_profile: str = None
+):
+    """Refresh checksum for files in a given bucket.
+       * bucket contains store artifacts with the prefix. See target
+         definition in Charon configuration for details.
+       * paths are the exact files whose checksum files will be
+         refreshed with.
+    """
+    bucket_name = target[0]
+    prefix = target[1]
+    s3_client = S3Client(aws_profile=aws_profile)
+    real_prefix = prefix if prefix.strip() != "/" else ""
+    filetype_filter = [".prodinfo", ".sha1", ".sha256", ".md5"]
+    for path in paths:
+        is_artifact = True
+        for filetype in filetype_filter:
+            if path.strip().endswith(filetype):
+                is_artifact = False
+                continue
+        if not is_artifact:
+            logger.info(
+                "%s is not an artifact file for maven products. Skipped.",
+                path
+            )
+            continue
+        s3_path = os.path.join(real_prefix, path)
+        checksums = {
+            ".md5": HashType.MD5,
+            ".sha1": HashType.SHA1,
+            ".sha256": HashType.SHA256,
+            ".sha512": HashType.SHA512
+        }
+        if s3_client.file_exists_in_bucket(bucket_name, s3_path):
+            temp_f = os.path.join(tempfile.gettempdir(), path)
+            folder = os.path.dirname(temp_f)
+            try:
+                if not os.path.exists(folder):
+                    os.makedirs(folder)
+                s3_client.download_file(bucket_name, s3_path, temp_f)
+                existed_checksum_types = []
+                for file_type in checksums:
+                    s3_checksum_path = s3_path + file_type
+                    if s3_client.file_exists_in_bucket(bucket_name, s3_checksum_path):
+                        existed_checksum_types.append(file_type)
+                if existed_checksum_types:
+                    for file_type in existed_checksum_types:
+                        checksum_path = path + file_type
+                        s3_checksum_path = s3_path + file_type
+                        hash_type = checksums[file_type]
+                        correct_checksum_c = digest(temp_f, hash_type)
+                        original_checksum_c = s3_client.read_file_content(
+                            bucket_name, s3_checksum_path
+                        )
+                        if correct_checksum_c == original_checksum_c:
+                            logger.info("Checksum %s matches, no need to refresh.", checksum_path)
+                        else:
+                            logger.info("Checksum %s does not match, refreshing...", checksum_path)
+                            s3_client.simple_upload_file(
+                                file_path=checksum_path,
+                                file_content=correct_checksum_c,
+                                target=(bucket_name, prefix),
+                                mime_type="text/plain",
+                                force=True
+                            )
+                else:
+                    logger.warning(
+                        "No valid checksum files exist for %s, Skipped."
+                        " Are you sure it is a valid maven artifact?",
+                        path
+                    )
+            finally:
+                if folder and folder != tempfile.gettempdir() and os.path.exists(folder):
+                    shutil.rmtree(folder)
+            logger.info("Checksums are refreshed for artifact %s", path)
+        else:
+            logger.warning("File %s does not exist in bucket %s", s3_path, bucket_name)

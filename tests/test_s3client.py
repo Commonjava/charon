@@ -463,6 +463,34 @@ class S3ClientTest(BaseTest):
 
         shutil.rmtree(temp_root)
 
+    def test_download_file(self):
+        (temp_root, _, all_files) = self.__prepare_files()
+        for file_path in all_files:
+            file_key = file_path[len(temp_root) + 1:]
+            file_content = open(file_path, "rb").read()
+            sha1 = read_sha1(file_path)
+            self.s3_client.simple_upload_file(
+                file_path=file_key,
+                file_content=file_content,
+                check_sum_sha1=sha1,
+                target=(MY_BUCKET, '')
+            )
+
+        # test download file start
+        file_key = all_files[0][len(temp_root) + 1:]
+        file_path = os.path.join(temp_root, file_key)
+        original_sha1 = read_sha1(file_path)
+        os.remove(file_path)
+        self.assertFalse(os.path.exists(file_path))
+        self.s3_client.download_file(
+            MY_BUCKET, file_key, file_path
+        )
+        self.assertTrue(os.path.exists(file_path))
+        download_sha1 = read_sha1(file_path)
+        self.assertEqual(original_sha1, download_sha1)
+
+        shutil.rmtree(temp_root)
+
     def __prepare_files(self):
         test_zip = zipfile.ZipFile(
             os.path.join(INPUTS, "commons-lang3.zip")
