@@ -675,14 +675,15 @@ class S3Client(object):
         self, file_path: str, file_content: str,
         target: Tuple[str, str],
         mime_type: str = None,
-        check_sum_sha1: str = None
+        check_sum_sha1: str = None,
+        force: bool = False
     ):
         """ Uploads file to s3 bucket, regardless of any extra
             information like product and version info.
-            * Warning: this will directly overwrite the files even if
-            it has lots of product info, so please be careful to use.
-            If you want to upload product artifact files, please use
-            upload_files
+            * Warning: If force is set True, it will directly overwrite
+            the files even if it has lots of product info, so please be
+            careful to use. If you want to upload product artifact files,
+            please use upload_files()
         """
         bucket = target[0]
         prefix = target[1]
@@ -705,7 +706,7 @@ class S3Client(object):
         content_type = mime_type
         if not content_type:
             content_type = DEFAULT_MIME_TYPE
-        if not existed:
+        if not existed or force:
             f_meta = {}
             if check_sum_sha1 and check_sum_sha1.strip() != "":
                 f_meta[CHECKSUM_META_KEY] = check_sum_sha1
@@ -723,7 +724,9 @@ class S3Client(object):
                     file_path, bucket, e
                     )
         else:
-            raise FileExistsError("Error: file %s already exists, upload is forbiden.")
+            raise FileExistsError(
+                    f"Error: file {path_key} already exists, upload is forbiden."
+                  )
 
     def delete_manifest(self, product_key: str, target: str, manifest_bucket_name: str):
         if not manifest_bucket_name:
@@ -779,6 +782,10 @@ class S3Client(object):
         bucket = self.__get_bucket(bucket_name)
         file_object = bucket.Object(key)
         return str(file_object.get()['Body'].read(), 'utf-8')
+
+    def download_file(self, bucket_name: str, key: str, file_path: str):
+        bucket = self.__get_bucket(bucket_name)
+        bucket.download_file(key, file_path)
 
     def list_folder_content(self, bucket_name: str, folder: str) -> List[str]:
         """List the content in folder in an s3 bucket. Note it's not recursive,

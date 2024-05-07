@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
     "-f",
     "path_file",
     help="""
-    The file which contain the paths to be invalidated in CF. Pahts in this file follow the
+    The file which contain the paths to be invalidated in CF. Paths in this file follow the
     format of CF defining too, and each path should be in a single line.
     """
 )
