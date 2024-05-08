@@ -1,7 +1,7 @@
 %global owner Commonjava
 %global modulename charon
 
-%global charon_version 1.2.2
+%global charon_version 1.3.1
 %global sdist_tar_name %{modulename}-%{charon_version}
 
 %global python3_pkgversion 3
@@ -80,6 +80,11 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 
 
 %changelog
+* Tue May 7 2024 Gang Li <gli@redhat.com>
+- 1.3.1 release
+- Add checksum refresh command: refresh checksum files for maven artifacts
+- Refactor the CF invalidating commands into cf sub command
+
 * Fri Apr 12 2024 Gang Li <gli@redhat.com>
 - 1.3.0 release
 - Add validate command: validate the checksum for maven artifacts

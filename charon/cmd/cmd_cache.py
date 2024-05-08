@@ -18,7 +18,7 @@ from charon.config import get_config
 from charon.cmd.internal import _decide_mode, _get_buckets
 from charon.cache import CFClient
 from charon.pkgs.pkg_utils import invalidate_cf_paths
-from click import command, option, argument
+from click import command, option, argument, group
 from typing import List, Tuple
 
 import traceback
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
     "-f",
     "path_file",
     help="""
-    The file which contain the paths to be invalidated in CF. Pahts in this file follow the
+    The file which contain the paths to be invalidated in CF. Paths in this file follow the
     format of CF defining too, and each path should be in a single line.
     """
 )
@@ -75,7 +75,7 @@ logger = logging.getLogger(__name__)
     default=False
 )
 @command()
-def cf_invalidate(
+def invalidate(
     target: str,
     paths: List[str],
     path_file: str,
@@ -161,7 +161,7 @@ def cf_invalidate(
     default=False
 )
 @command()
-def cf_check(
+def check(
     invalidation_id: str,
     target: str,
     quiet: bool = False,
@@ -214,3 +214,15 @@ def _init_cmd(target: str) -> Tuple[List[Tuple[str, str, str, str, str]], str]:
         sys.exit(1)
 
     return (_get_buckets([target], conf), aws_profile)
+
+
+@group()
+def cf():
+    """cf commands are responsible for the CloudFront cache operations in
+    products operated by Charon
+    """
+
+
+def init_cf():
+    cf.add_command(invalidate)
+    cf.add_command(check)
