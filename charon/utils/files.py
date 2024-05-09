@@ -27,6 +27,21 @@ class HashType(Enum):
     MD5 = 0
     SHA1 = 1
     SHA256 = 2
+    SHA512 = 3
+
+
+def get_hash_type(type_str: str) -> HashType:
+    """Get hash type from string"""
+    if type_str.lower() == "md5":
+        return HashType.MD5
+    elif type_str.lower() == "sha1":
+        return HashType.SHA1
+    elif type_str.lower() == "sha256":
+        return HashType.SHA256
+    elif type_str.lower() == "sha512":
+        return HashType.SHA512
+    else:
+        raise ValueError("Unsupported hash type: {}".format(type_str))
 
 
 def overwrite_file(file_path: str, content: str):
@@ -45,7 +60,7 @@ def read_sha1(file: str) -> str:
     they are used for hashing, so we will directly calculate its sha1 hash through digesting.
     """
     if os.path.isfile(file):
-        non_search_suffix = [".md5", ".sha1", ".sha256"]
+        non_search_suffix = [".md5", ".sha1", ".sha256", ".sha512"]
         _, suffix = os.path.splitext(file)
         if suffix not in non_search_suffix:
             sha1_file = file + ".sha1"
@@ -89,6 +104,8 @@ def _hash_object(hash_type: HashType):
         hash_obj = hashlib.sha256()
     elif hash_type == HashType.MD5:
         hash_obj = hashlib.md5()
+    elif hash_type == HashType.SHA512:
+        hash_obj = hashlib.sha512()
     else:
         raise Exception("Error: Unknown hash type for digesting.")
     return hash_obj
