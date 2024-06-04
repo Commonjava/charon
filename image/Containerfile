@@ -23,7 +23,7 @@ FROM registry.access.redhat.com/ubi8-minimal:latest
 
 LABEL description="Charon upload image" \
       summary="Charon upload image" \
-      maintainer="RedHat SPMM Team <nos-devel@redhat.com>" \
+      maintainer="RedHat SPMM Dev Team" \
       vendor="Red Hat, Inc." \
       distribution-scope="public" \
       vcs-type="git" 
@@ -43,6 +43,9 @@ RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chown ${USER}:0 ${HOME_DIR} \
     && chmod -R g+rwx ${HOME_DIR} \
     && chmod g+rw /etc/passwd
+
+ADD ./image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
+RUN update-ca-trust extract
 
 COPY ./charon ./charon
 COPY ./requirements.txt ./setup.py ./
