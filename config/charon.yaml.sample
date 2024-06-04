@@ -1,3 +1,6 @@
+#aws_profile: ${profile}
+#aws_cf_enable: True
+
 ignore_patterns:
   - ".*^(redhat).*"
   - ".*snapshot.*"
@@ -30,3 +33,5 @@ targets:
   - bucket: "stage-npm-npmjs"
     prefix: /
     registry: "npm.stage.registry.redhat.com"
+
+#manifest_bucket: manifest
