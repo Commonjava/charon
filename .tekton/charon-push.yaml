@@ -14,7 +14,7 @@ metadata:
     appstudio.openshift.io/component: charon
     pipelines.appstudio.openshift.io/type: build
   name: charon-on-push
-  namespace: spmm-dev-charon-tenant
+  namespace: charon-spmmfea-tenant
 spec:
   params:
   - name: git-url
@@ -22,7 +22,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/spmm-dev-charon-tenant/charon/charon:{{revision}}
+    value: quay.io/redhat-user-workloads/charon-spmmfea-tenant/charon/charon:{{revision}}
   - name: dockerfile
     value: image/Containerfile
   - name: path-context
