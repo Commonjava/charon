@@ -19,42 +19,42 @@
 # 4. Start using uploader
 #   charon upload/delete from /home/charon/upload/...
 ###
-FROM registry.access.redhat.com/ubi8-minimal:latest
+FROM registry.access.redhat.com/ubi8-minimal:latest as builder
 
-LABEL description="Charon upload image" \
-      summary="Charon upload image" \
-      maintainer="RedHat SPMM Dev Team" \
-      vendor="Red Hat, Inc." \
-      distribution-scope="public" \
-      vcs-type="git" 
+ARG GIT_BRANCH=main
+
+RUN microdnf install -y git-core python3.9 && microdnf clean all
+RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 wheel ./charon
+
+FROM registry.access.redhat.com/ubi8-minimal:latest
 
 ARG USER=charon
 ARG UID=10000
 ARG HOME_DIR=/home/${USER}
-ARG GIT_BRANCH=main
 
 WORKDIR ${HOME_DIR}
 
 USER root
 
-RUN microdnf install -y git-core python3.9 shadow-utils \
-    && microdnf clean all
-RUN pip3 install --no-cache-dir --upgrade pip
+RUN microdnf install -y python3.9 shadow-utils && microdnf clean all
 RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chown ${USER}:0 ${HOME_DIR} \
     && chmod -R g+rwx ${HOME_DIR} \
     && chmod g+rw /etc/passwd
 
-RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
-RUN cp ./charon/image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
+COPY --from=builder ./charon/image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
 RUN update-ca-trust extract
 
-RUN pip3 install --no-cache-dir -r ./charon/requirements.txt
-RUN pip3 wheel ./charon
+COPY --from=builder ./charon/requirements.txt ./
+COPY --from=builder ./*.whl ./
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 install --no-cache-dir -r ./requirements.txt
 RUN pip3 install --no-cache-dir ./*.whl
-RUN rm -rf ./charon ./*.whl
+RUN rm -rf ./requirements.txt ./*.whl
 
-RUN microdnf remove git-core shadow-utils && microdnf clean all
+RUN microdnf remove shadow-utils && microdnf clean all
 
 USER ${USER}
 
