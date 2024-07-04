@@ -31,12 +31,13 @@ LABEL description="Charon upload image" \
 ARG USER=charon
 ARG UID=10000
 ARG HOME_DIR=/home/${USER}
+ARG GIT_BRANCH=main
 
 WORKDIR ${HOME_DIR}
 
 USER root
 
-RUN microdnf install -y python3.9 jq shadow-utils \
+RUN microdnf install -y git-core python3.9 shadow-utils \
     && microdnf clean all
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
@@ -44,20 +45,20 @@ RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chmod -R g+rwx ${HOME_DIR} \
     && chmod g+rw /etc/passwd
 
-ADD ./image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
+RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
+RUN cp ./charon/image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
 RUN update-ca-trust extract
 
-COPY ./charon ./charon
-COPY ./requirements.txt ./setup.py ./
+RUN pip3 install --no-cache-dir -r ./charon/requirements.txt
+RUN pip3 wheel ./charon
+RUN pip3 install --no-cache-dir ./*.whl
+RUN rm -rf ./charon ./*.whl
 
-RUN pip3 install --no-cache-dir -r ./requirements.txt
-RUN pip3 install --no-cache-dir .
+RUN microdnf remove git-core shadow-utils && microdnf clean all
 
 USER ${USER}
 
 ENV HOME=${HOME_DIR} \
     LANG=en_US.UTF-8
 
-# this will be invoked when container runs, charon will directly setup
-# from the container and keep running as long as the bash is active
-CMD ["bash"]
+CMD ["/usr/local/bin/charon"]
