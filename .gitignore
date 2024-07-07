@@ -13,6 +13,8 @@ package/
 .local
 local
 .DS_Store
+*.whl
+
 
 # Unit test
 __pytest_reports
