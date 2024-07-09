@@ -23,7 +23,7 @@ FROM registry.access.redhat.com/ubi8-minimal:latest as builder
 
 ARG GIT_BRANCH=main
 
-RUN microdnf install -y git-core python3.9 && microdnf clean all
+RUN microdnf install -y git-core python3.12 python3.12-pip && microdnf clean all
 RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 wheel ./charon
@@ -38,7 +38,7 @@ WORKDIR ${HOME_DIR}
 
 USER root
 
-RUN microdnf install -y python3.9 shadow-utils && microdnf clean all
+RUN microdnf install -y python3.12 python3.12-pip shadow-utils && microdnf clean all
 RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chown ${USER}:0 ${HOME_DIR} \
     && chmod -R g+rwx ${HOME_DIR} \
@@ -47,14 +47,12 @@ RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
 COPY --from=builder ./charon/image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
 RUN update-ca-trust extract
 
-COPY --from=builder ./charon/requirements.txt ./
 COPY --from=builder ./*.whl ./
 RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 install --no-cache-dir -r ./requirements.txt
 RUN pip3 install --no-cache-dir ./*.whl
-RUN rm -rf ./requirements.txt ./*.whl
+RUN rm ./*.whl
 
-RUN microdnf remove shadow-utils && microdnf clean all
+RUN microdnf remove python3.12-pip shadow-utils && microdnf clean all
 
 USER ${USER}
 
