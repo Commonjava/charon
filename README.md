@@ -60,6 +60,7 @@ This command will upload the repo in tarball to S3.
 It will auto-detect if the tarball is for maven or npm
 
 * For maven type, it will:
+
   * Scan the tarball for all paths and collect them all.
   * Check the existence in S3 for all those paths.
   * Filter out the paths in tarball based on:
@@ -70,10 +71,8 @@ It will auto-detect if the tarball is for maven or npm
   * Upload these artifacts to S3 with metadata of the product.
   * If the artifacts already exists in S3, update the metadata
     of the product by appending the new product.
-
 * NPM type (TBH): We need to know the exact tarball structure
   of npm repo
-
 * For both types, after uploading the files, regenerate/refresh
   the index files for these paths.
 
@@ -107,10 +106,30 @@ This command will refresh the index.html for the specified path.
 
 * Note that if the path is a NPM metadata path which contains package.json, this refreshment will not work because this type of folder will display the package.json instead of the index.html in http request.
 
-### charon-validate: validate the checksum of files in specified path in a maven repository
+### charon-cf-check: check the invalidation status of the specified invalidation id for AWS CloudFront
 
 ```bash
-usage: charon validate $path [-t, --target] [-f, --report_file_path] [-i, --includes] [-r, --recursive] [-D, --debug] [-q, --quiet]
+usage: charon cf check $invalidation_id [-t, --target] [-D, --debug] [-q, --quiet]
+```
+
+### charon-cf-invalidate: do invalidating on AWS CloudFront for the specified paths
+
+```bash
+usage: charon cf invalidate [-t, --target] [-p, --path] [-f, --path-file] [-D, --debug] [-q, --quiet]
+```
+
+### charon-checksum-validate: validate the checksum of files in specified path in a maven repository
+
+```bash
+usage: charon checksum validate $path [-t, --target] [-f, --report_file_path] [-i, --includes] [-r, --recursive] [-D, --debug] [-q, --quiet]
 ```
 
 This command will validate the checksum of the specified path for the maven repository. It will calculate the sha1 checksum of all artifact files in the specified path and compare with the companied .sha1 files of the artifacts, then record all mismatched artifacts in the report file. If some artifact files misses the companied .sha1 files, they will also be recorded.
+
+### charon-checksum-refresh: refresh the checksum files for the artifacts in the specified maven repository
+
+```bash
+usage: charon checksum refresh [-t, --target] [-p, --path] [-f, --path-file] [-D, --debug] [-q, --quiet]
+```
+
+This command will refresh the checksum files for the specified artifact files in the maven repository. Sometimes the checksum files are not matched with the artifacts by some reason, so this command will do the refresh to make it match again. It will calculate the checksums of all artifact files in the specified path and compare with the companied checksum files of the artifacts, if the checksum are not matched, they will be refreshed.
