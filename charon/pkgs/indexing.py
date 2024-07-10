@@ -55,11 +55,13 @@ class IndexedHTML(object):
         self.items = items
 
     def generate_index_file_content(self, package_type: str) -> str:
+        template = None
         if package_type == PACKAGE_TYPE_MAVEN:
             template = Template(MAVEN_INDEX_TEMPLATE)
         elif package_type == PACKAGE_TYPE_NPM:
             template = Template(NPM_INDEX_TEMPLATE)
-        return template.render(index=self)
+        if template:
+            return template.render(index=self)
 
 
 def generate_indexes(

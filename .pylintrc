@@ -64,7 +64,12 @@ disable=I,
         useless-import-alias,  # nice to have
         useless-super-delegation,  # nice to have
         wrong-import-order,
-        wrong-import-position
+        wrong-import-position,
+        use-implicit-booleaness-not-comparison-to-zero,
+        use-implicit-booleaness-not-comparison-to-string,
+        unspecified-encoding,
+        broad-exception-raised,
+        consider-using-f-string
 
 [REPORTS]
 
