@@ -15,12 +15,8 @@ limitations under the License.
 """
 from setuptools import setup, find_packages
 
-version = "1.3.1"
+version = "1.3.2"
 
-# f = open('README.md')
-# long_description = f.read().strip()
-# long_description = long_description.split('split here', 1)[1]
-# f.close()
 long_description = """
 This charon is a tool to synchronize several types of
 artifacts repository data to RedHat Ronda service (maven.repository.redhat.com).
