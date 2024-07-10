@@ -1,0 +1,59 @@
+####
+# This Containerfile is used to build the container for charon
+#
+# charon requires python 3
+#
+# 0. Step into the project dir
+#
+# 1. Build the image
+#   docker/podman build -t charon:1.0.0 -f image/Containerfile .
+#
+# 2. Run the container as daemon, mount the host ~/upload/ path to container /root/upload/ path,
+#   the uploading path is the dir location where you will upload the tarballs from
+#   add -e to set specific environment variables, such as: AWS_PROFILE, aws_endpoint_url, bucket
+#   docker/podman run -dit -v ~/upload/:/home/charon/upload/ --name charon charon:1.0.0
+#
+# 3. Execute the container
+#   docker/podman exec -it charon bash
+#
+# 4. Start using uploader
+#   charon upload/delete from /home/charon/upload/...
+###
+FROM registry.access.redhat.com/ubi8-minimal:latest as builder
+
+ARG GIT_BRANCH=main
+
+RUN microdnf install -y git-core python3.12 python3.12-pip && microdnf clean all
+RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 wheel ./charon
+
+FROM registry.access.redhat.com/ubi8-minimal:latest
+
+ARG USER=charon
+ARG UID=10000
+ARG HOME_DIR=/home/${USER}
+
+WORKDIR ${HOME_DIR}
+
+USER root
+
+RUN microdnf install -y python3.12 python3.12-pip shadow-utils && microdnf clean all
+RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
+    && chown ${USER}:0 ${HOME_DIR} \
+    && chmod -R g+rwx ${HOME_DIR} \
+    && chmod g+rw /etc/passwd
+
+COPY --from=builder ./*.whl ./
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 install --no-cache-dir ./*.whl
+RUN rm ./*.whl
+
+RUN microdnf remove python3.12-pip shadow-utils && microdnf clean all
+
+USER ${USER}
+
+ENV HOME=${HOME_DIR} \
+    LANG=en_US.UTF-8
+
+CMD ["/usr/local/bin/charon"]
