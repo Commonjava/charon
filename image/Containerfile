@@ -44,9 +44,6 @@ RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chmod -R g+rwx ${HOME_DIR} \
     && chmod g+rw /etc/passwd
 
-COPY --from=builder ./charon/image/2022-IT-Root-CA.pem /etc/pki/ca-trust/source/anchors/2022-IT-Root-CA.pem
-RUN update-ca-trust extract
-
 COPY --from=builder ./*.whl ./
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 install --no-cache-dir ./*.whl
