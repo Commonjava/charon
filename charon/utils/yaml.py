@@ -19,7 +19,7 @@ import logging
 
 import jsonschema
 import yaml
-from pkg_resources import resource_stream
+import importlib
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,8 @@ def load_schema(package, schema):
     """
     # Read schema from file
     try:
-        resource = resource_stream(package, schema)
+        resource = importlib.resources.files(package).joinpath(schema).open("rb")
+        # resource = resource_stream(package, schema)
         schema = codecs.getreader('utf-8')(resource)
     except ImportError:
         logger.error('Unable to find package %s', package)

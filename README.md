@@ -7,7 +7,7 @@ future. And Ronda service will be hosted in AWS S3.
 
 ## Prerequisites
 
-* python 3.5+
+* python 3.9+
 * git
 
 ### [Optional] Install AWS CLI tool
