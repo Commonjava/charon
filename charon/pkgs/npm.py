@@ -485,6 +485,7 @@ def _scan_metadata_paths_from_archive(
             path=path, target_dir=tmp_root, is_for_upload=True,
             pkg_root=pkg_root, registry=registry
         )
+        package = None
         if len(valid_paths) > 1:
             version = _scan_for_version(valid_paths[1])
             package = NPMPackageMetadata(version, True)
