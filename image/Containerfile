@@ -19,16 +19,16 @@
 # 4. Start using uploader
 #   charon upload/delete from /home/charon/upload/...
 ###
-FROM registry.access.redhat.com/ubi8-minimal:latest as builder
+FROM registry.access.redhat.com/ubi8-minimal:8.10-1052 as builder
 
-ARG GIT_BRANCH=main
+ARG GIT_BRANCH=release
 
 RUN microdnf install -y git-core python3.12 python3.12-pip && microdnf clean all
 RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 wheel ./charon
 
-FROM registry.access.redhat.com/ubi8-minimal:latest
+FROM registry.access.redhat.com/ubi8-minimal:8.10-1052
 
 ARG USER=charon
 ARG UID=10000
