@@ -21,7 +21,7 @@
 ###
 FROM registry.access.redhat.com/ubi8-minimal:8.10-1052 as builder
 
-ARG GIT_BRANCH=release
+ARG GIT_BRANCH=charon-1.3.2
 
 RUN microdnf install -y git-core python3.12 python3.12-pip && microdnf clean all
 RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.git
