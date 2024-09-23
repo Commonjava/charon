@@ -59,6 +59,14 @@ logger = logging.getLogger(__name__)
     """
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--debug",
     "-D",
     "debug",
@@ -79,6 +87,7 @@ def invalidate(
     target: str,
     paths: List[str],
     path_file: str,
+    config: str = None,
     quiet: bool = False,
     debug: bool = False
 ):
@@ -110,7 +119,7 @@ def invalidate(
             break
 
     try:
-        (buckets, aws_profile) = _init_cmd(target)
+        (buckets, aws_profile) = _init_cmd(target, config)
 
         for b in buckets:
             cf_client = CFClient(aws_profile=aws_profile)
@@ -145,6 +154,14 @@ def invalidate(
     required=True
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--debug",
     "-D",
     "debug",
@@ -164,6 +181,7 @@ def invalidate(
 def check(
     invalidation_id: str,
     target: str,
+    config: str = None,
     quiet: bool = False,
     debug: bool = False
 ):
@@ -175,7 +193,7 @@ def check(
         is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     try:
-        (buckets, aws_profile) = _init_cmd(target)
+        (buckets, aws_profile) = _init_cmd(target, config)
         if not buckets:
             sys.exit(1)
 
@@ -203,8 +221,8 @@ def check(
         sys.exit(2)
 
 
-def _init_cmd(target: str) -> Tuple[List[Tuple[str, str, str, str, str]], str]:
-    conf = get_config()
+def _init_cmd(target: str, config: str) -> Tuple[List[Tuple[str, str, str, str, str]], str]:
+    conf = get_config(config)
     if not conf:
         sys.exit(1)
 

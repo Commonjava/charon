@@ -87,7 +87,8 @@ def handle_npm_uploading(
         cf_enable=False,
         key=None,
         dry_run=False,
-        manifest_bucket_name=None
+        manifest_bucket_name=None,
+        config=None
 ) -> Tuple[str, bool]:
     """ Handle the npm product release tarball uploading process.
         For NPM uploading, tgz file and version metadata will be relocated based
@@ -189,7 +190,7 @@ def handle_npm_uploading(
             logger.info("package.json uploading done")
 
         if gen_sign:
-            conf = get_config()
+            conf = get_config(config)
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_NPM, conf)

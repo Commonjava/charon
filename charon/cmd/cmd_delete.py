@@ -97,6 +97,14 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -120,6 +128,7 @@ def delete(
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
+    config: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -136,7 +145,7 @@ def delete(
                         "no files will be deleted.")
         if not _validate_prod_key(product, version):
             return
-        conf = get_config()
+        conf = get_config(config)
         if not conf:
             sys.exit(1)
 

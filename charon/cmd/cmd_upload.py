@@ -98,6 +98,14 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--contain_signature",
     "-s",
     is_flag=True,
@@ -137,6 +145,7 @@ def upload(
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
+    config: str = None,
     contain_signature: bool = False,
     sign_key: str = "redhatdevel",
     debug=False,
@@ -155,7 +164,7 @@ def upload(
                         "no files will be uploaded.")
         if not _validate_prod_key(product, version):
             return
-        conf = get_config()
+        conf = get_config(config)
         if not conf:
             sys.exit(1)
 
@@ -211,7 +220,8 @@ def upload(
                 cf_enable=conf.is_aws_cf_enable(),
                 key=sign_key,
                 dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
+                manifest_bucket_name=manifest_bucket_name,
+                config=config
             )
             if not succeeded:
                 sys.exit(1)
