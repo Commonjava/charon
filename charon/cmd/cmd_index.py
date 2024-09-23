@@ -43,6 +43,14 @@ logger = logging.getLogger(__name__)
     required=True
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -61,6 +69,7 @@ logger = logging.getLogger(__name__)
 def index(
     path: str,
     target: str,
+    config: str = None,
     debug: bool = False,
     quiet: bool = False,
     dryrun: bool = False
@@ -73,7 +82,7 @@ def index(
         is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     try:
-        conf = get_config()
+        conf = get_config(config)
         if not conf:
             sys.exit(1)
 

@@ -272,7 +272,8 @@ def handle_maven_uploading(
     cf_enable=False,
     key=None,
     dry_run=False,
-    manifest_bucket_name=None
+    manifest_bucket_name=None,
+    config=None
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -406,7 +407,7 @@ def handle_maven_uploading(
 
         # 10. Generate signature file if contain_signature is set to True
         if gen_sign:
-            conf = get_config()
+            conf = get_config(config)
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
