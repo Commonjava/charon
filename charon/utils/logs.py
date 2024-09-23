@@ -81,8 +81,10 @@ def set_logging(
 
 
 def set_log_file_handler(product: str, version: str, logger: logging):
+    prd = product.replace(" ", "_")
+    ver = version.replace(" ", "_")
     log_loc = os.getenv("ERROR_LOG_LOCATION")
-    error_log = "".join([product, "-", version, ".", DEFAULT_ERRORS_LOG])
+    error_log = "".join([prd, "-", ver, ".", DEFAULT_ERRORS_LOG])
     if log_loc:
         os.makedirs(log_loc, exist_ok=True)
         error_log = os.path.join(log_loc, error_log)
