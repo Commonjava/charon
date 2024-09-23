@@ -68,8 +68,10 @@ class CharonConfig(object):
         return self.__aws_cf_enable
 
 
-def get_config() -> Optional[CharonConfig]:
-    config_file_path = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
+def get_config(cfgPath=None) -> Optional[CharonConfig]:
+    config_file_path = cfgPath
+    if not config_file_path or not os.path.isfile(config_file_path):
+        config_file_path = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
     data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
     return CharonConfig(data)
 
