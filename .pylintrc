@@ -24,8 +24,7 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-enable=all,
-       python3
+enable=all
 disable=I,
         R,  # refactoring checks
         abstract-method,  # nice to have
@@ -34,14 +33,14 @@ disable=I,
         bad-whitespace,  # pep8, nice to have
         broad-except,
         comprehension-escape, # throws false positives on 1.9.0 (Fedora 29)
-        deprecated-lambda,  # nice to have
+        ; deprecated-lambda,  # nice to have
         import-outside-toplevel,
         import-error,  # requires to having all modules installed
         invalid-name,
         len-as-condition,  # nice to have
         line-too-long,  # pep8, should be enabled
         missing-docstring,
-        misplaced-comparison-constant,
+        ; misplaced-comparison-constant,
         multiple-statements,  # nice to have
         no-absolute-import,  # it was required for py2
         no-init,
@@ -51,7 +50,7 @@ disable=I,
         old-division,  # it was required for py2
         protected-access,
         redefined-outer-name,  # nice to have
-        relative-import,  # nice to have
+        ; relative-import,  # nice to have
         super-init-not-called,  # nice to have
         superfluous-parens,  # nice to have
         too-many-lines,
