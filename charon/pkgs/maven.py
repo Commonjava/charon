@@ -996,8 +996,8 @@ def _generate_metadatas(
        what we should do here is:
        * Scan and get the GA for the poms
        * Search all poms in s3 based on the GA
-       * Use searched poms and scanned poms to generate
-         maven-metadata to refresh
+       * Use searched pomsto generate maven-metadata
+         to refresh
     """
     ga_dict: Dict[str, bool] = {}
     logger.debug("Valid poms: %s", poms)
@@ -1007,6 +1007,8 @@ def _generate_metadatas(
             logger.debug("G: %s, A: %s", g, a)
             g_path = "/".join(g.split("."))
             ga_dict[os.path.join(g_path, a)] = True
+    # Note: here we don't need to add original poms, because
+    # they have already been uploaded to s3.
     all_poms = []
     meta_files = {}
     for path, _ in ga_dict.items():
