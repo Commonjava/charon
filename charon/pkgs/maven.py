@@ -862,10 +862,9 @@ def _generate_upload_archetype_catalog(
        available in the bucket. Merge (or unmerge) these catalogs and
        return a boolean indicating whether the local file should be uploaded.
     """
+    remote = ARCHETYPE_CATALOG_FILENAME
     if prefix:
         remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
-    else:
-        remote = ARCHETYPE_CATALOG_FILENAME
     local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     # As the local archetype will be overwrittern later, we must keep
     # a cache of the original local for multi-targets support
@@ -884,7 +883,7 @@ def _generate_upload_archetype_catalog(
             logger.error(
                 "Error: Can not generate archtype-catalog.xml due to: %s", e
             )
-            return 0
+            return False
         if not existed:
             __gen_all_digest_files(local)
             # If there is no catalog in the bucket, just upload what we have locally
