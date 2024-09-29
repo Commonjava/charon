@@ -19,7 +19,7 @@ import sys
 from json import load, loads, dump, JSONDecodeError, JSONEncoder
 import tarfile
 from tempfile import mkdtemp
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Dict, Optional
 
 from semantic_version import compare
 
@@ -29,6 +29,7 @@ from charon.config import CharonConfig, get_config
 from charon.constants import META_FILE_GEN_KEY, META_FILE_DEL_KEY, PACKAGE_TYPE_NPM
 from charon.storage import S3Client
 from charon.cache import CFClient
+from charon.types import TARGET_TYPE
 from charon.utils.archive import extract_npm_tarball
 from charon.pkgs.pkg_utils import (
     upload_post_process,
@@ -78,7 +79,7 @@ class NPMPackageMetadataEncoder(JSONEncoder):
 def handle_npm_uploading(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]],
+        targets: List[TARGET_TYPE],
         aws_profile=None,
         dir_=None,
         root_path="package",
@@ -96,7 +97,7 @@ def handle_npm_uploading(
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * buckets contains the target name with its bucket name and prefix
+        * targets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir_ is base dir for extracting the tarball, will use system
@@ -109,13 +110,13 @@ def handle_npm_uploading(
     generated_signs = []
     succeeded = True
     root_dir = mkdtemp(prefix=f"npm-charon-{product}-", dir=dir_)
-    for bucket in buckets:
+    for target in targets:
         # prepare cf invalidate files
         cf_invalidate_paths = []
 
-        bucket_name = bucket[1]
-        prefix = remove_prefix(bucket[2], "/")
-        registry = bucket[3]
+        bucket_name = target[1]
+        prefix = remove_prefix(target[2], "/")
+        registry = target[3]
         target_dir, valid_paths, package_metadata = _scan_metadata_paths_from_archive(
             tarball_path, registry, prod=product, dir__=dir_, pkg_root=root_path
         )
@@ -148,10 +149,11 @@ def handle_npm_uploading(
             )
             logger.info("Manifest uploading is done\n")
 
-        logger.info(
-            "Start generating version-level package.json for package: %s in s3 bucket %s",
-            package_metadata.name, bucket_name
-        )
+        if package_metadata:
+            logger.info(
+                "Start generating version-level package.json for package: %s in s3 bucket %s",
+                package_metadata.name, bucket_name
+            )
         failed_metas = []
         _version_metadata_path = valid_paths[1]
         _failed_metas = client.upload_metadatas(
@@ -163,10 +165,11 @@ def handle_npm_uploading(
         failed_metas.extend(_failed_metas)
         logger.info("version-level package.json uploading done")
 
-        logger.info(
-            "Start generating package.json for package: %s in s3 bucket %s",
-            package_metadata.name, bucket_name
-        )
+        if package_metadata:
+            logger.info(
+                "Start generating package.json for package: %s in s3 bucket %s",
+                package_metadata.name, bucket_name
+            )
         meta_files = _gen_npm_package_metadata_for_upload(
             client, bucket_name, target_dir, package_metadata, prefix
         )
@@ -224,7 +227,7 @@ def handle_npm_uploading(
         if do_index:
             logger.info("Start generating index files to s3 bucket %s", bucket_name)
             created_indexes = indexing.generate_indexes(
-                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_name, prefix
+                PACKAGE_TYPE_NPM, target_dir, list(valid_dirs), client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
@@ -246,7 +249,7 @@ def handle_npm_uploading(
         # Do CloudFront invalidating for generated metadata
         if cf_enable and len(cf_invalidate_paths):
             cf_client = CFClient(aws_profile=aws_profile)
-            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
+            invalidate_cf_paths(cf_client, target, cf_invalidate_paths, target_dir)
 
         upload_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
@@ -257,7 +260,7 @@ def handle_npm_uploading(
 def handle_npm_del(
         tarball_path: str,
         product: str,
-        buckets: List[Tuple[str, str, str, str]],
+        targets: List[TARGET_TYPE],
         aws_profile=None,
         dir_=None,
         root_path="package",
@@ -265,12 +268,12 @@ def handle_npm_del(
         cf_enable=False,
         dry_run=False,
         manifest_bucket_name=None
-) -> Tuple[str, str]:
+) -> Tuple[str, bool]:
     """ Handle the npm product release tarball deletion process.
         * tarball_path is the location of the tarball in filesystem
         * product is used to identify which product this repo
           tar belongs to
-        * buckets contains the target name with its bucket name and prefix
+        * targets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
@@ -286,12 +289,12 @@ def handle_npm_del(
 
     client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     succeeded = True
-    for bucket in buckets:
+    for target in targets:
         # prepare cf invalidate files
         cf_invalidate_paths = []
 
-        bucket_name = bucket[1]
-        prefix = remove_prefix(bucket[2], "/")
+        bucket_name = target[1]
+        prefix = remove_prefix(target[2], "/")
         logger.info("Start deleting files from s3 bucket %s", bucket_name)
         failed_files = client.delete_files(
             file_paths=valid_paths,
@@ -301,7 +304,7 @@ def handle_npm_del(
         logger.info("Files deletion done\n")
 
         if manifest_bucket_name:
-            manifest_folder = bucket[1]
+            manifest_folder = target[1]
             logger.info(
                 "Start deleting manifest from s3 bucket %s in folder %s",
                 manifest_bucket_name, manifest_folder
@@ -351,7 +354,7 @@ def handle_npm_del(
                 bucket_name
             )
             created_indexes = indexing.generate_indexes(
-                PACKAGE_TYPE_NPM, target_dir, valid_dirs, client, bucket_name, prefix
+                PACKAGE_TYPE_NPM, target_dir, list(valid_dirs), client, bucket_name, prefix
             )
             logger.info("Index files generation done.\n")
 
@@ -374,7 +377,7 @@ def handle_npm_del(
         # Do CloudFront invalidating for generated metadata
         if cf_enable and len(cf_invalidate_paths):
             cf_client = CFClient(aws_profile=aws_profile)
-            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, target_dir)
+            invalidate_cf_paths(cf_client, target, cf_invalidate_paths, target_dir)
 
         rollback_post_process(failed_files, failed_metas, product, bucket_name)
         succeeded = succeeded and len(failed_files) <= 0 and len(failed_metas) <= 0
@@ -382,19 +385,20 @@ def handle_npm_del(
     return (target_dir, succeeded)
 
 
-def read_package_metadata_from_content(content: str, is_version) -> NPMPackageMetadata:
+def read_package_metadata_from_content(content: str, is_version) -> Optional[NPMPackageMetadata]:
     try:
         package_metadata = loads(content)
         return NPMPackageMetadata(package_metadata, is_version)
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
+    return None
 
 
 def _gen_npm_package_metadata_for_upload(
         client: S3Client, bucket: str,
-        target_dir: str, source_package: NPMPackageMetadata,
+        target_dir: str, source_package: Optional[NPMPackageMetadata],
         prefix: str = None
-) -> dict:
+) -> Dict:
     """Collect NPM versions package.json and generate the package package.json.
        For uploading mode, package.json will merge the original in S3 with the local source.
        What we should do here is:
@@ -403,23 +407,24 @@ def _gen_npm_package_metadata_for_upload(
        * Use converted package.json to generate the package.json then update in S3
     """
     meta_files = {}
-    package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
-    if prefix and prefix != "/":
-        package_metadata_key = os.path.join(prefix, package_metadata_key)
-    (package_json_files, success) = client.get_files(
-        bucket_name=bucket,
-        prefix=package_metadata_key
-    )
-    if not success:
-        logger.warning("Error to get remote metadata files for %s", package_metadata_key)
-    result = source_package
-    if len(package_json_files) > 0:
-        result = _merge_package_metadata(
-            source_package, client, bucket, package_json_files[0]
+    if source_package:
+        package_metadata_key = os.path.join(source_package.name, PACKAGE_JSON)
+        if prefix and prefix != "/":
+            package_metadata_key = os.path.join(prefix, package_metadata_key)
+        (package_json_files, success) = client.get_files(
+            bucket_name=bucket,
+            prefix=package_metadata_key
         )
-        logger.debug("Merge the S3 %s with local source", package_json_files[0])
-    meta_file = _write_package_metadata_to_file(result, target_dir)
-    meta_files[META_FILE_GEN_KEY] = meta_file
+        if not success:
+            logger.warning("Error to get remote metadata files for %s", package_metadata_key)
+        result = source_package
+        if len(package_json_files) > 0:
+            result = _merge_package_metadata(
+                source_package, client, bucket, package_json_files[0]
+            )
+            logger.debug("Merge the S3 %s with local source", package_json_files[0])
+        meta_file = _write_package_metadata_to_file(result, target_dir)
+        meta_files[META_FILE_GEN_KEY] = meta_file
     return meta_files
 
 
@@ -427,7 +432,7 @@ def _gen_npm_package_metadata_for_del(
         client: S3Client, bucket: str,
         target_dir: str, package_path_prefix: str,
         prefix: str = None
-) -> dict:
+) -> Dict:
     """Collect NPM versions package.json and generate the package package.json.
        For del mode, all the version package.json contents to be merged will be read from S3.
        What we should do here is:
@@ -462,7 +467,7 @@ def _gen_npm_package_metadata_for_del(
                 continue
             meta_contents.append(meta)
         if len(meta_contents) == 0:
-            return
+            return {}
         original = meta_contents[0]
         for source in meta_contents:
             source_version = list(source.versions.keys())[0]
@@ -479,7 +484,7 @@ def _gen_npm_package_metadata_for_del(
 
 def _scan_metadata_paths_from_archive(
     path: str, registry: str, prod="", dir__=None, pkg_root="pakage"
-) -> Tuple[str, list, NPMPackageMetadata]:
+) -> Tuple[str, list, Optional[NPMPackageMetadata]]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
         _, valid_paths = extract_npm_tarball(
@@ -507,14 +512,14 @@ def _scan_paths_from_archive(
 
 
 def _merge_package_metadata(
-        package_metadata: NPMPackageMetadata,
+        package_metadata: Optional[NPMPackageMetadata],
         client: S3Client, bucket: str,
         key: str
 ):
     content = client.read_file_content(bucket, key)
     original = read_package_metadata_from_content(content, False)
 
-    if original:
+    if original and package_metadata:
         source_version = list(package_metadata.versions.keys())[0]
         is_latest = _is_latest_version(source_version, list(original.versions.keys()))
         _do_merge(original, package_metadata, is_latest)
@@ -617,9 +622,10 @@ def _write_package_metadata_to_file(package_metadata: NPMPackageMetadata, root='
         logger.error(
             'Can not create file %s because of some missing folders', final_package_metadata_path
         )
+    return ""
 
 
-def __get_path_tree(paths: str, prefix: str) -> Set[str]:
+def __get_path_tree(paths: List[str], prefix: str) -> Set[str]:
     valid_dirs = set()
     for f in paths:
         dir_ = os.path.dirname(f)
@@ -634,5 +640,7 @@ def __get_path_tree(paths: str, prefix: str) -> Set[str]:
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_ignore_signature_suffix(package_type)
+        suffix = conf.get_ignore_signature_suffix(package_type)
+        if suffix:
+            return suffix
     return []

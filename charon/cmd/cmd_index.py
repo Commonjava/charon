@@ -97,7 +97,7 @@ def index(
             sys.exit(1)
 
         for b in tgt:
-            aws_bucket = b.get('bucket')
+            aws_bucket = b.get('bucket', '')
 
             package_type = None
             if "maven" in aws_bucket:
@@ -115,6 +115,7 @@ def index(
                     "The target %s is not supported. Only maven or npm target is supported.",
                     target
                 )
+                continue
 
             if not aws_bucket:
                 logger.error("No bucket specified for target %s!", target)

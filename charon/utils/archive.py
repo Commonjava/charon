@@ -133,6 +133,7 @@ def __parse_npm_package_version_paths(path: str) -> Tuple[dict, list]:
         return data, package_version_paths
     except JSONDecodeError:
         logger.error('Error: Failed to parse json!')
+    return {}, []
 
 
 class NpmArchiveType(Enum):

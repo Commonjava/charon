@@ -15,11 +15,12 @@ limitations under the License.
 """
 
 from charon.config import get_config
-from charon.cmd.internal import _decide_mode, _get_buckets
+from charon.cmd.internal import _decide_mode, _get_targets
 from charon.cache import CFClient
 from charon.pkgs.pkg_utils import invalidate_cf_paths
+from charon.types import TARGET_TYPE
 from click import command, option, argument, group
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import traceback
 import logging
@@ -87,7 +88,7 @@ def invalidate(
     target: str,
     paths: List[str],
     path_file: str,
-    config: str = None,
+    config: str = "",
     quiet: bool = False,
     debug: bool = False
 ):
@@ -119,20 +120,20 @@ def invalidate(
             break
 
     try:
-        (buckets, aws_profile) = _init_cmd(target, config)
+        (targets, aws_profile) = _init_cmd(target, config)
 
-        for b in buckets:
+        for t in targets:
             cf_client = CFClient(aws_profile=aws_profile)
             # Per aws official doc, if the paths contains wildcard, it is
             # limited to 15 as max items in one request. Otherwise it could
             # be 3000
             if use_wildcard:
                 invalidate_cf_paths(
-                    cf_client, b, work_paths
+                    cf_client, t, work_paths
                 )
             else:
                 invalidate_cf_paths(
-                    cf_client, b, work_paths, batch_size=3000
+                    cf_client, t, work_paths, batch_size=3000
                 )
     except Exception:
         print(traceback.format_exc())
@@ -181,7 +182,7 @@ def invalidate(
 def check(
     invalidation_id: str,
     target: str,
-    config: str = None,
+    config: str = "",
     quiet: bool = False,
     debug: bool = False
 ):
@@ -193,14 +194,14 @@ def check(
         is_quiet=quiet, is_debug=debug, use_log_file=False
     )
     try:
-        (buckets, aws_profile) = _init_cmd(target, config)
-        if not buckets:
+        (targets, aws_profile) = _init_cmd(target, config)
+        if not targets:
             sys.exit(1)
 
-        for b in buckets:
+        for t in targets:
             cf_client = CFClient(aws_profile=aws_profile)
-            bucket_name = b[1]
-            domain = b[4]
+            bucket_name = t[1]
+            domain: Optional[str] = t[4]
             if not domain:
                 domain = cf_client.get_domain_by_bucket(bucket_name)
             if domain:
@@ -221,7 +222,7 @@ def check(
         sys.exit(2)
 
 
-def _init_cmd(target: str, config: str) -> Tuple[List[Tuple[str, str, str, str, str]], str]:
+def _init_cmd(target: str, config: str) -> Tuple[List[TARGET_TYPE], str]:
     conf = get_config(config)
     if not conf:
         sys.exit(1)
@@ -231,7 +232,7 @@ def _init_cmd(target: str, config: str) -> Tuple[List[Tuple[str, str, str, str, 
         logger.error("No AWS profile specified!")
         sys.exit(1)
 
-    return (_get_buckets([target], conf), aws_profile)
+    return (_get_targets([target], conf), aws_profile)
 
 
 @group()

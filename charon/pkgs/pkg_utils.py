@@ -1,10 +1,11 @@
-from typing import List, Tuple
+from typing import List, Optional, Dict
 from charon.cache import (
     CFClient,
     INVALIDATION_BATCH_DEFAULT,
     INVALIDATION_BATCH_WILDCARD,
     INVALIDATION_STATUS_COMPLETED
 )
+from charon.types import TARGET_TYPE
 import logging
 import os
 
@@ -69,16 +70,16 @@ def __post_process(
 
 def invalidate_cf_paths(
     cf_client: CFClient,
-    bucket: Tuple[str, str, str, str, str],
+    target: TARGET_TYPE,
     invalidate_paths: List[str],
     root="/",
     batch_size=INVALIDATION_BATCH_DEFAULT
 ):
-    logger.info("Invalidating CF cache for %s", bucket[1])
-    bucket_name = bucket[1]
-    prefix = bucket[2]
+    logger.info("Invalidating CF cache for %s", target[1])
+    bucket_name = target[1]
+    prefix = target[2]
     prefix = "/" + prefix if not prefix.startswith("/") else prefix
-    domain = bucket[4]
+    domain: Optional[str] = target[4]
     slash_root = root
     if not root.endswith("/"):
         slash_root = slash_root + "/"
@@ -105,10 +106,10 @@ def invalidate_cf_paths(
                 distr_id, final_paths, real_batch_size
             )
             if result:
-                output = {}
+                output: Dict[str, List[str]] = {}
                 for invalidation in result:
-                    status = invalidation.get('Status')
-                    if status not in output:
+                    status = invalidation.get('Status', '')
+                    if status and status not in output:
                         output[status] = []
                     output[status].append(invalidation["Id"])
                 non_completed = {}

@@ -33,7 +33,7 @@ class CFInNPMOPSTest(CFBasedTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, "/", DEFAULT_REGISTRY, "npm.registry.redhat.com")],
+            targets=[('', TEST_BUCKET, "/", DEFAULT_REGISTRY, "npm.registry.redhat.com")],
             dir_=self.tempdir, do_index=True,
             cf_enable=True
         )
@@ -53,13 +53,13 @@ class CFInNPMOPSTest(CFBasedTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
+            targets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
             dir_=self.tempdir, do_index=True
         )
 
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
+            targets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
             dir_=self.tempdir, do_index=True,
             cf_enable=True
         )
