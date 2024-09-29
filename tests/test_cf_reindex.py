@@ -37,7 +37,7 @@ class CFReIndexTest(CFBasedTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[('', TEST_BUCKET, 'ga', '', 'maven.repository.redhat.com')],
+            targets=[('', TEST_BUCKET, 'ga', '', 'maven.repository.redhat.com')],
             dir_=self.tempdir
         )
 
@@ -62,7 +62,7 @@ class CFReIndexTest(CFBasedTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
+            targets=[('', TEST_BUCKET, '/', DEFAULT_REGISTRY, 'npm.registry.redhat.com')],
             dir_=self.tempdir, do_index=True
         )
 

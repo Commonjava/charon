@@ -60,14 +60,14 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -132,7 +132,7 @@ class NPMUploadMultiTgtsTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 

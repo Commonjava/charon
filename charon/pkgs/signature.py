@@ -20,7 +20,7 @@ import asyncio
 import logging
 import shlex
 from jinja2 import Template
-from typing import Awaitable, Callable, List, Tuple
+from typing import Callable, List, Tuple
 from charon.storage import S3Client
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def generate_sign(
     s3_client: S3Client,
     bucket: str,
     key: str = None,
-    command: str = None
+    command: str = ""
 ) -> Tuple[List[str], List[str]]:
     """ This Python function generates a digital signature for a list of metadata files using
     the GPG library for uploads to an Amazon S3 bucket.
@@ -100,14 +100,14 @@ def generate_sign(
 
 def __do_path_cut_and(
     file_paths: List[str],
-    path_handler: Callable[[str, List[str], List[str], asyncio.Semaphore], Awaitable[bool]],
+    path_handler: Callable,
     root="/"
-) -> List[str]:
+) -> Tuple[List[str], List[str]]:
     slash_root = root
     if not root.endswith("/"):
         slash_root = slash_root + "/"
-    failed_paths = []
-    generated_signs = []
+    failed_paths: List[str] = []
+    generated_signs: List[str] = []
     tasks = []
     sem = asyncio.BoundedSemaphore(10)
     for full_path in file_paths:

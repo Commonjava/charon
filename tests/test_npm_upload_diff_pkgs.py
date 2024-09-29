@@ -49,7 +49,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -81,7 +81,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)

@@ -44,6 +44,8 @@ DEFAULT_MIME_TYPE = "application/octet-stream"
 
 FILE_REPORT_LIMIT = 1000
 
+PATH_HANDLER_TYPE = Callable[[str, str, int, int, List[str]], Awaitable[bool]]
+
 
 class S3Client(object):
     """The S3Client is a wrapper of the original boto3 s3 client, which will provide
@@ -81,7 +83,7 @@ class S3Client(object):
             config=config
         )
 
-    def __get_endpoint(self, extra_conf) -> str:
+    def __get_endpoint(self, extra_conf) -> Optional[str]:
         endpoint_url = os.getenv(ENDPOINT_ENV)
         if not endpoint_url or endpoint_url.strip() == "":
             if isinstance(extra_conf, Dict):
@@ -276,7 +278,7 @@ class S3Client(object):
                 )
                 if not result:
                     return False
-                return True
+            return True
 
         return self.__do_path_cut_and(
             file_paths=file_paths,
@@ -918,8 +920,8 @@ class S3Client(object):
 
     def __path_handler_count_wrapper(
         self,
-        path_handler: Callable[[str, str, int, int, List[str], asyncio.Semaphore], Awaitable[bool]]
-    ) -> Callable[[str, str, int, int, List[str], asyncio.Semaphore], Awaitable[bool]]:
+        path_handler: PATH_HANDLER_TYPE
+    ) -> PATH_HANDLER_TYPE:
         async def wrapper(
             full_file_path: str, path: str, index: int,
             total: int, failed: List[str]
@@ -933,13 +935,13 @@ class S3Client(object):
 
     def __do_path_cut_and(
         self, file_paths: List[str],
-        path_handler: Callable[[str, str, int, int, List[str], asyncio.Semaphore], Awaitable[bool]],
+        path_handler: PATH_HANDLER_TYPE,
         root="/"
     ) -> List[str]:
         slash_root = root
         if not root.endswith("/"):
             slash_root = slash_root + "/"
-        failed_paths = []
+        failed_paths: List[str] = []
         index = 1
         file_paths_count = len(file_paths)
         tasks = []

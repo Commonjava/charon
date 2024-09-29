@@ -9,6 +9,7 @@ init-venv:
 lint:
 		@python -m tox -e flake8
 		@python -m tox -e pylint
+		@python -m tox -e mypy
 .PHONY: lint
 
 test-only:
