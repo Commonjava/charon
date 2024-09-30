@@ -27,6 +27,10 @@ import pytest
 
 @mock_aws
 class CFReIndexTest(CFBasedTest):
+    '''
+    This test is deprecated because the cf invalidation after re_index
+    is not used anymore.
+    '''
     @pytest.mark.skip(reason="Indexing CF invalidation is abandoned")
     def test_cf_maven_after_reindex(self):
         response = self.mock_cf.list_invalidations(DistributionId=self.test_dist_id)

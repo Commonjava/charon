@@ -18,7 +18,6 @@ from tests.constants import TEST_DS_CONFIG
 from charon.cache import CFClient
 from moto import mock_aws
 import boto3
-import pytest
 
 
 @mock_aws
@@ -62,10 +61,6 @@ class CFClientTest(BaseTest):
             self.assertTrue(r['Id'])
             self.assertEqual('completed', str.lower(r['Status']))
 
-    @pytest.mark.skip(reason="""
-        Because current moto 5.0.3 has not implemented the get_invalidation(),
-        this test will fail. Will enable it when the it is implemented in future moto
-    """)
     def test_check_invalidation(self):
         dist_id = self.cf_client.get_dist_id_by_domain("maven.repository.redhat.com")
         result = self.cf_client.invalidate_paths(dist_id, ["/*"])
