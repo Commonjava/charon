@@ -80,7 +80,7 @@ def set_logging(
         hdlr.setFormatter(formatter)
 
 
-def set_log_file_handler(product: str, version: str, logger: logging):
+def set_log_file_handler(product: str, version: str, logger: logging.Logger):
     prd = product.replace(" ", "_")
     ver = version.replace(" ", "_")
     log_loc = os.getenv("ERROR_LOG_LOCATION")

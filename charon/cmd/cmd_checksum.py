@@ -104,7 +104,7 @@ logger = logging.getLogger(__name__)
 def validate(
     path: str,
     target: str,
-    includes: List[str],
+    includes: str,
     report_file_path: str,
     skips: List[str],
     recursive: bool = False,
@@ -259,12 +259,12 @@ def _init_cmd(target: str) -> Tuple[str, str]:
     conf = get_config()
     if not conf:
         sys.exit(1)
-    aws_bucket = ""
     t = conf.get_target(target)
     if not t:
         sys.exit(1)
+    aws_bucket = ''
     for b in t:
-        aws_bucket = b.get('bucket')
+        aws_bucket = b.get('bucket', '')
         prefix = b.get('prefix', '')
     return (aws_bucket, prefix)
 

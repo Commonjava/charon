@@ -49,7 +49,7 @@ class NpmFileIndexTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
         )
 
@@ -129,7 +129,7 @@ class NpmFileIndexTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, prefix, '')],
+            targets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -160,7 +160,7 @@ class NpmFileIndexTest(PackageBaseTest):
         test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            buckets=[('', TEST_BUCKET, prefix, '')],
+            targets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir
         )
 
@@ -172,7 +172,7 @@ class NpmFileIndexTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
 
@@ -180,7 +180,7 @@ class NpmFileIndexTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
 
@@ -191,7 +191,7 @@ class NpmFileIndexTest(PackageBaseTest):
 
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, SHORT_TEST_PREFIX, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, SHORT_TEST_PREFIX, DEFAULT_REGISTRY)],
             dir_=self.tempdir,
         )
 

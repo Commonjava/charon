@@ -69,7 +69,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         ]
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -77,7 +77,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -187,7 +187,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         ]
         handle_maven_uploading(
             test_zip, product_456, [".*.sha1"],
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -222,7 +222,7 @@ class MavenUploadMultiTgtsTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=targets,
+            targets=targets,
             dir_=self.tempdir,
             do_index=False
         )

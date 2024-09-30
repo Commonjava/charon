@@ -39,7 +39,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -82,7 +82,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket_1 = self.mock_s3.Bucket(TEST_BUCKET)
@@ -117,7 +117,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
         test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
@@ -138,7 +138,7 @@ class NPMUploadTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=targets_overlapping_,
+            targets=targets_overlapping_,
             dir_=self.tempdir, do_index=False
         )
 
