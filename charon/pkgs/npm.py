@@ -447,6 +447,11 @@ def _gen_npm_package_metadata_for_del(
     if prefix and prefix != "/":
         prefix_meta_key = os.path.join(prefix, package_metadata_key)
         path_prefix = os.path.join(prefix, package_path_prefix)
+    # MMENG-4284 we should make sure each path_prefix ends with "/" to avoid
+    # overlapping, like "backstage-plugin-orchestrator" vs
+    # "backstage-plugin-orchestrator-backend-dynamic"
+    if not path_prefix.endswith("/"):
+        path_prefix = path_prefix + "/"
     (existed_version_metas, success) = client.get_files(
         bucket_name=bucket, prefix=path_prefix, suffix=PACKAGE_JSON
     )
@@ -572,15 +577,23 @@ def _do_merge(original: NPMPackageMetadata, source: NPMPackageMetadata, is_lates
             original.repository = source.repository
             changed = True
     if source.maintainers:
-        for m in source.maintainers:
-            if m not in original.maintainers:
-                original.maintainers.append(m)
-                changed = True
+        if not original.maintainers:
+            original.maintainers = source.maintainers
+            changed = True
+        else:
+            for m in source.maintainers:
+                if m not in original.maintainers:
+                    original.maintainers.append(m)
+                    changed = True
     if source.keywords:
-        for k in source.keywords:
-            if k not in original.keywords:
-                original.keywords.append(k)
-                changed = True
+        if not original.keywords:
+            original.keywords = source.keywords
+            changed = True
+        else:
+            for k in source.keywords:
+                if k not in original.keywords:
+                    original.keywords.append(k)
+                    changed = True
     if source.users:
         for u in source.users.keys():
             original.users[u] = source.users.get(u)
