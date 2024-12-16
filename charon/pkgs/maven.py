@@ -21,6 +21,7 @@ from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
 from charon.storage import S3Client
 from charon.cache import CFClient
+from charon.types import TARGET_TYPE
 from charon.pkgs.pkg_utils import (
     upload_post_process,
     rollback_post_process,
@@ -204,7 +205,7 @@ def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]
     from them. The result will be a dict like {groupId: {artifactId: [versions list]}}.
     Root is like a prefix of the path which is not part of the maven GAV
     """
-    gavs = dict()
+    gavs: Dict[str, Dict] = dict()
     for pom in pom_paths:
         (g, a, v) = __parse_gav(pom, root)
         avs = gavs.get(g, dict())
@@ -264,7 +265,7 @@ def handle_maven_uploading(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    buckets: List[Tuple[str, str, str, str, str]] = None,
+    targets: List[TARGET_TYPE] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
@@ -272,7 +273,8 @@ def handle_maven_uploading(
     cf_enable=False,
     key=None,
     dry_run=False,
-    manifest_bucket_name=None
+    manifest_bucket_name=None,
+    config=None
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -290,6 +292,8 @@ def handle_maven_uploading(
 
         Returns the directory used for archive processing and if the uploading is successful
     """
+    if targets is None:
+        targets = []
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
@@ -315,10 +319,10 @@ def handle_maven_uploading(
 
     # 4. Do uploading
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-    targets_ = [(bucket[1], remove_prefix(bucket[2], "/")) for bucket in buckets]
+    targets_ = [(target[1], remove_prefix(target[2], "/")) for target in targets]
     logger.info(
         "Start uploading files to s3 buckets: %s",
-        [bucket[1] for bucket in buckets]
+        [target[1] for target in targets]
     )
     failed_files = s3_client.upload_files(
         file_paths=valid_mvn_paths,
@@ -329,7 +333,7 @@ def handle_maven_uploading(
     logger.info("Files uploading done\n")
     succeeded = True
     generated_signs = []
-    for bucket in buckets:
+    for bucket in targets:
         # prepare cf invalidate files
         cf_invalidate_paths = []
 
@@ -406,7 +410,7 @@ def handle_maven_uploading(
 
         # 10. Generate signature file if contain_signature is set to True
         if gen_sign:
-            conf = get_config()
+            conf = get_config(config)
             if not conf:
                 sys.exit(1)
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
@@ -476,7 +480,7 @@ def handle_maven_del(
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
-    buckets: List[Tuple[str, str, str, str, str]] = None,
+    targets: List[TARGET_TYPE] = None,
     aws_profile=None,
     dir_=None,
     do_index=True,
@@ -492,7 +496,7 @@ def handle_maven_del(
           need to upload in the tarball
         * root is a prefix in the tarball to identify which path is
           the beginning of the maven GAV path
-        * buckets contains the target name with its bucket name and prefix
+        * targets contains the target name with its bucket name and prefix
           for the bucket, which will be used to store artifacts with the
           prefix. See target definition in Charon configuration for details
         * dir is base dir for extracting the tarball, will use system
@@ -500,6 +504,9 @@ def handle_maven_del(
 
         Returns the directory used for archive processing and if the rollback is successful
     """
+    if targets is None:
+        targets = []
+
     # 1. extract tarball
     tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
 
@@ -513,13 +520,13 @@ def handle_maven_del(
     # 3. Delete all valid_paths from s3
     logger.debug("Valid poms: %s", valid_poms)
     succeeded = True
-    for bucket in buckets:
+    for target in targets:
         # prepare cf invalidation paths
         cf_invalidate_paths = []
 
-        prefix = remove_prefix(bucket[2], "/")
+        prefix = remove_prefix(target[2], "/")
         s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
-        bucket_name = bucket[1]
+        bucket_name = target[1]
         logger.info("Start deleting files from s3 bucket %s", bucket_name)
         failed_files = s3_client.delete_files(
             valid_mvn_paths,
@@ -530,7 +537,7 @@ def handle_maven_del(
         logger.info("Files deletion done\n")
 
         # 4. Delete related manifest from s3
-        manifest_folder = bucket[1]
+        manifest_folder = target[1]
         logger.info(
             "Start deleting manifest from s3 bucket %s in folder %s",
             manifest_bucket_name, manifest_folder
@@ -643,7 +650,7 @@ def handle_maven_del(
         if cf_enable and len(cf_invalidate_paths):
             cf_client = CFClient(aws_profile=aws_profile)
             cf_invalidate_paths = __wildcard_metadata_paths(cf_invalidate_paths)
-            invalidate_cf_paths(cf_client, bucket, cf_invalidate_paths, top_level)
+            invalidate_cf_paths(cf_client, target, cf_invalidate_paths, top_level)
 
         rollback_post_process(failed_files, failed_metas, prod_key, bucket_name)
         succeeded = succeeded and len(failed_files) == 0 and len(failed_metas) == 0
@@ -861,10 +868,9 @@ def _generate_upload_archetype_catalog(
        available in the bucket. Merge (or unmerge) these catalogs and
        return a boolean indicating whether the local file should be uploaded.
     """
+    remote = ARCHETYPE_CATALOG_FILENAME
     if prefix:
         remote = os.path.join(prefix, ARCHETYPE_CATALOG_FILENAME)
-    else:
-        remote = ARCHETYPE_CATALOG_FILENAME
     local = os.path.join(root, ARCHETYPE_CATALOG_FILENAME)
     # As the local archetype will be overwrittern later, we must keep
     # a cache of the original local for multi-targets support
@@ -883,7 +889,7 @@ def _generate_upload_archetype_catalog(
             logger.error(
                 "Error: Can not generate archtype-catalog.xml due to: %s", e
             )
-            return 0
+            return False
         if not existed:
             __gen_all_digest_files(local)
             # If there is no catalog in the bucket, just upload what we have locally
@@ -995,8 +1001,8 @@ def _generate_metadatas(
        what we should do here is:
        * Scan and get the GA for the poms
        * Search all poms in s3 based on the GA
-       * Use searched poms and scanned poms to generate
-         maven-metadata to refresh
+       * Use searched pomsto generate maven-metadata
+         to refresh
     """
     ga_dict: Dict[str, bool] = {}
     logger.debug("Valid poms: %s", poms)
@@ -1006,8 +1012,10 @@ def _generate_metadatas(
             logger.debug("G: %s, A: %s", g, a)
             g_path = "/".join(g.split("."))
             ga_dict[os.path.join(g_path, a)] = True
-    all_poms = []
-    meta_files = {}
+    # Note: here we don't need to add original poms, because
+    # they have already been uploaded to s3.
+    all_poms: List[str] = []
+    meta_files: Dict[str, List[str]] = {}
     for path, _ in ga_dict.items():
         # avoid some wrong prefix, like searching org/apache
         # but got org/apache-commons
@@ -1082,7 +1090,7 @@ def _is_ignored(filename: str, ignore_patterns: List[str]) -> bool:
 
 def _validate_maven(paths: List[str]) -> Tuple[List[str], bool]:
     # Reminder: need to implement later
-    return (list, True)
+    return (list(), True)
 
 
 def _handle_error(err_msgs: List[str]):
@@ -1092,7 +1100,9 @@ def _handle_error(err_msgs: List[str]):
 
 def __get_suffix(package_type: str, conf: CharonConfig) -> List[str]:
     if package_type:
-        return conf.get_ignore_signature_suffix(package_type)
+        suffix = conf.get_ignore_signature_suffix(package_type)
+        if suffix:
+            return suffix
     return []
 
 

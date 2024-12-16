@@ -21,7 +21,7 @@ from charon.pkgs.maven import handle_maven_del
 from charon.pkgs.npm import handle_npm_del
 from charon.cmd.internal import (
     _decide_mode, _validate_prod_key,
-    _get_local_repo, _get_buckets,
+    _get_local_repo, _get_targets,
     _get_ignore_patterns, _safe_delete
 )
 from click import command, option, argument
@@ -97,6 +97,14 @@ logger = logging.getLogger(__name__)
     """,
 )
 @option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
+@option(
     "--debug",
     "-D",
     help="Debug mode, will print all debug logs for problem tracking.",
@@ -120,6 +128,7 @@ def delete(
     root_path="maven-repository",
     ignore_patterns: List[str] = None,
     work_dir: str = None,
+    config: str = None,
     debug=False,
     quiet=False,
     dryrun=False
@@ -136,7 +145,7 @@ def delete(
                         "no files will be deleted.")
         if not _validate_prod_key(product, version):
             return
-        conf = get_config()
+        conf = get_config(config)
         if not conf:
             sys.exit(1)
 
@@ -149,19 +158,19 @@ def delete(
         npm_archive_type = detect_npm_archive(archive_path)
         product_key = f"{product}-{version}"
         manifest_bucket_name = conf.get_manifest_bucket()
-        buckets = _get_buckets(targets, conf)
-        if not buckets:
+        targets_ = _get_targets(targets, conf)
+        if not targets_:
             logger.error(
                 "The targets %s can not be found! Please check"
                 " your charon configuration to confirm the targets"
-                " are set correctly.", targets
+                " are set correctly.", targets_
             )
         if npm_archive_type != NpmArchiveType.NOT_NPM:
             logger.info("This is a npm archive")
             tmp_dir, succeeded = handle_npm_del(
                 archive_path,
                 product_key,
-                buckets=buckets,
+                targets=targets_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 cf_enable=conf.is_aws_cf_enable(),
@@ -182,7 +191,7 @@ def delete(
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
-                buckets=buckets,
+                targets=targets_,
                 aws_profile=aws_profile,
                 dir_=work_dir,
                 cf_enable=conf.is_aws_cf_enable(),
@@ -195,5 +204,5 @@ def delete(
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state
     finally:
-        if not debug:
+        if not debug and tmp_dir:
             _safe_delete(tmp_dir)
