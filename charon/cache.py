@@ -1,6 +1,6 @@
 from boto3 import session
 from botocore.exceptions import ClientError
-from typing import Dict, List
+from typing import Dict, List, Optional
 import os
 import logging
 import uuid
@@ -57,7 +57,7 @@ class CFClient(object):
             endpoint_url=endpoint_url
         )
 
-    def __get_endpoint(self, extra_conf) -> str:
+    def __get_endpoint(self, extra_conf) -> Optional[str]:
         endpoint_url = os.getenv(ENDPOINT_ENV)
         if not endpoint_url or not endpoint_url.strip():
             if isinstance(extra_conf, Dict):
@@ -97,14 +97,14 @@ class CFClient(object):
                     " will take more than %d seconds",
                     len(real_paths), total_time_approx)
         results = []
-        current_invalidation = {}
+        current_invalidation: Dict[str, str] = {}
         processed_count = 0
         for batch_paths in real_paths:
             while (current_invalidation and
                     INVALIDATION_STATUS_INPROGRESS == current_invalidation.get('Status', '')):
                 time.sleep(INPRO_W_SECS)
                 try:
-                    result = self.check_invalidation(distr_id, current_invalidation.get('Id'))
+                    result = self.check_invalidation(distr_id, current_invalidation.get('Id', ''))
                     if result:
                         current_invalidation = {
                             'Id': result.get('Id', None),
@@ -159,7 +159,7 @@ class CFClient(object):
             results.append(current_invalidation)
         return results
 
-    def check_invalidation(self, distr_id: str, invalidation_id: str) -> dict:
+    def check_invalidation(self, distr_id: str, invalidation_id: str) -> Optional[dict]:
         try:
             response = self.__client.get_invalidation(
                 DistributionId=distr_id,
@@ -177,8 +177,9 @@ class CFClient(object):
                 "[CloudFront] Error occurred while check invalidation of id %s, "
                 "error: %s", invalidation_id, err
             )
+        return None
 
-    def get_dist_id_by_domain(self, domain: str) -> str:
+    def get_dist_id_by_domain(self, domain: str) -> Optional[str]:
         """Get distribution id by a domain name. The id can be used to send invalidating
         request through #invalidate_paths function
            * Domain are Ronda domains, like "maven.repository.redhat.com"
@@ -200,5 +201,5 @@ class CFClient(object):
             )
         return None
 
-    def get_domain_by_bucket(self, bucket: str) -> str:
+    def get_domain_by_bucket(self, bucket: str) -> Optional[str]:
         return DEFAULT_BUCKET_TO_DOMAIN.get(bucket, None)

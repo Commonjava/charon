@@ -31,7 +31,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -47,7 +47,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -61,7 +61,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -77,7 +77,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             dry_run=True
         )
@@ -91,7 +91,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -99,7 +99,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir
         )
 
@@ -108,7 +108,7 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )
 
@@ -116,6 +116,6 @@ class PkgsDryRunTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir
         )

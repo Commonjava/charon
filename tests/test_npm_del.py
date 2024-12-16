@@ -44,7 +44,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, prefix, '')],
+            targets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir, do_index=False
         )
 
@@ -88,7 +88,7 @@ class NPMDeleteTest(PackageBaseTest):
         test_tgz = os.path.join(INPUTS, "code-frame-7.15.8.tgz")
         handle_npm_del(
             test_tgz, product_7_15_8,
-            buckets=[('', TEST_BUCKET, prefix, '')],
+            targets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir, do_index=False
         )
         objs = list(test_bucket.objects.all())
@@ -99,7 +99,7 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_14_5 = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product_7_14_5,
-            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
 
@@ -107,6 +107,109 @@ class NPMDeleteTest(PackageBaseTest):
         product_7_15_8 = "code-frame-7.15.8"
         handle_npm_uploading(
             test_tgz, product_7_15_8,
-            buckets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+            targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
             dir_=self.tempdir, do_index=False
         )
+
+    def test_overlap_prefix_del(self):
+        self.__prepare_content_backstage()
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(18, len(actual_files))
+
+        meta_obj = test_bucket.Object("@janus-idp/backstage-plugin-orchestrator/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("\"name\": \"@janus-idp/backstage-plugin-orchestrator\"", meta_content_client)
+        self.assertIn("\"version\": \"1.21.102\"", meta_content_client)
+        self.assertIn("\"version\": \"1.21.103\"", meta_content_client)
+        self.assertIn("\"1.21.103\": {\"name\":", meta_content_client)
+
+        meta_obj = test_bucket.Object(
+            "@janus-idp/backstage-plugin-orchestrator-backend-dynamic/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "\"name\": \"@janus-idp/backstage-plugin-orchestrator-backend-dynamic\"",
+            meta_content_client)
+        self.assertIn("\"version\": \"0.0.1\"", meta_content_client)
+        self.assertIn("\"version\": \"2.3.0\"", meta_content_client)
+        self.assertIn("\"2.3.0\": {\"name\":", meta_content_client)
+
+        test_prod = "backstage-plugin-orchestrator-1.21.103"
+        test_tgz = os.path.join(INPUTS, test_prod+".tgz")
+        handle_npm_del(
+            test_tgz, test_prod,
+            targets=[('', TEST_BUCKET, None, '')],
+            dir_=self.tempdir, do_index=False
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(14, len(actual_files))
+
+        meta_obj = test_bucket.Object("@janus-idp/backstage-plugin-orchestrator/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn("\"name\": \"@janus-idp/backstage-plugin-orchestrator\"", meta_content_client)
+        self.assertIn("\"version\": \"1.21.102\"", meta_content_client)
+        self.assertNotIn("\"version\": \"1.21.103\"", meta_content_client)
+        self.assertNotIn("\"1.21.103\": {\"name\":", meta_content_client)
+
+        meta_obj = test_bucket.Object(
+            "@janus-idp/backstage-plugin-orchestrator-backend-dynamic/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "\"name\": \"@janus-idp/backstage-plugin-orchestrator-backend-dynamic\"",
+            meta_content_client)
+        self.assertIn("\"version\": \"0.0.1\"", meta_content_client)
+        self.assertIn("\"version\": \"2.3.0\"", meta_content_client)
+        self.assertIn("\"2.3.0\": {\"name\":", meta_content_client)
+
+        test_prod = "backstage-plugin-orchestrator-backend-dynamic-2.3.0"
+        test_tgz = os.path.join(INPUTS, test_prod+".tgz")
+        handle_npm_del(
+            test_tgz, test_prod,
+            targets=[('', TEST_BUCKET, None, '')],
+            dir_=self.tempdir, do_index=False
+        )
+
+        test_bucket = self.mock_s3.Bucket(TEST_BUCKET)
+        objs = list(test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        self.assertEqual(10, len(actual_files))
+
+        meta_obj = test_bucket.Object(
+            "@janus-idp/backstage-plugin-orchestrator/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "\"name\": \"@janus-idp/backstage-plugin-orchestrator\"",
+            meta_content_client)
+        self.assertIn("\"version\": \"1.21.102\"", meta_content_client)
+        self.assertNotIn("\"version\": \"1.21.103\"", meta_content_client)
+        self.assertNotIn("\"1.21.103\": {\"name\":", meta_content_client)
+
+        meta_obj = test_bucket.Object(
+            "@janus-idp/backstage-plugin-orchestrator-backend-dynamic/package.json")
+        meta_content_client = str(meta_obj.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "\"name\": \"@janus-idp/backstage-plugin-orchestrator-backend-dynamic\"",
+            meta_content_client)
+        self.assertIn("\"version\": \"0.0.1\"", meta_content_client)
+        self.assertNotIn("\"version\": \"2.3.0\"", meta_content_client)
+        self.assertNotIn("\"2.3.0\": {\"name\":", meta_content_client)
+
+    def __prepare_content_backstage(self, prefix: str = None):
+        test_prods = [
+            "backstage-plugin-orchestrator-1.21.102",
+            "backstage-plugin-orchestrator-1.21.103",
+            "backstage-plugin-orchestrator-backend-dynamic-0.0.1",
+            "backstage-plugin-orchestrator-backend-dynamic-2.3.0"
+        ]
+        for p in test_prods:
+            test_tgz = os.path.join(INPUTS, p+".tgz")
+            handle_npm_uploading(
+                test_tgz, p,
+                targets=[('', TEST_BUCKET, prefix, DEFAULT_REGISTRY)],
+                dir_=self.tempdir, do_index=False
+            )

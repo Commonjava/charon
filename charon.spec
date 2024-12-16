@@ -1,7 +1,7 @@
 %global owner Commonjava
 %global modulename charon
 
-%global charon_version 1.2.2
+%global charon_version 1.3.3
 %global sdist_tar_name %{modulename}-%{charon_version}
 
 %global python3_pkgversion 3
@@ -23,33 +23,17 @@ BuildArch: x86_64
 BuildRequires: python%{python3_pkgversion}-setuptools
 BuildRequires: python%{python3_pkgversion}-devel
 
+Requires: python%{python3_pkgversion}-jinja2
 Requires: python%{python3_pkgversion}-boto3
 Requires: python%{python3_pkgversion}-botocore
-Requires: python%{python3_pkgversion}-jinja2
-Requires: python%{python3_pkgversion}-markupsafe
-Requires: python%{python3_pkgversion}-dateutil
-Requires: python%{python3_pkgversion}-six
-Requires: python%{python3_pkgversion}-jmespath
-Requires: python%{python3_pkgversion}-urllib3
-Requires: python%{python3_pkgversion}-s3transfer
 Requires: python%{python3_pkgversion}-click
 Requires: python%{python3_pkgversion}-requests
-Requires: python%{python3_pkgversion}-idna
-Requires: python%{python3_pkgversion}-chardet
-Requires: python%{python3_pkgversion}-cryptography
-Requires: python%{python3_pkgversion}-cffi
-Requires: python%{python3_pkgversion}-pycparser
-Requires: python%{python3_pkgversion}-certifi
-Requires: python%{python3_pkgversion}-pyOpenSSL
-Requires: python%{python3_pkgversion}-ruamel-yaml
+Requires: python%{python3_pkgversion}-pyyaml
 Requires: python%{python3_pkgversion}-defusedxml
-Requires: python%{python3_pkgversion}-semantic-version
 Requires: python%{python3_pkgversion}-subresource-integrity
 Requires: python%{python3_pkgversion}-jsonschema
-Requires: python%{python3_pkgversion}-importlib-metadata
-Requires: python%{python3_pkgversion}-zipp
-Requires: python%{python3_pkgversion}-attrs
-Requires: python%{python3_pkgversion}-pyrsistent
+Requires: python%{python3_pkgversion}-urllib3
+Requires: python%{python3_pkgversion}-semantic-version
 
 %description
 Simple Python tool with command line interface for charon init,

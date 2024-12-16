@@ -23,7 +23,7 @@ from charon.utils.files import digest_content
 from jinja2 import Template
 import os
 import logging
-from typing import List, Set, Tuple
+from typing import List, Set, Dict
 
 from charon.utils.strings import remove_prefix
 
@@ -37,10 +37,9 @@ def __get_index_template(package_type: str) -> str:
     except FileNotFoundError:
         logger.info("index template file not defined,"
                     " will use default template.")
-        if package_type == PACKAGE_TYPE_MAVEN:
-            return INDEX_HTML_TEMPLATE
-        elif package_type == PACKAGE_TYPE_NPM:
+        if package_type == PACKAGE_TYPE_NPM:
             return NPM_INDEX_HTML_TEMPLATE
+    return INDEX_HTML_TEMPLATE
 
 
 MAVEN_INDEX_TEMPLATE = __get_index_template(PACKAGE_TYPE_MAVEN)
@@ -55,13 +54,10 @@ class IndexedHTML(object):
         self.items = items
 
     def generate_index_file_content(self, package_type: str) -> str:
-        template = None
-        if package_type == PACKAGE_TYPE_MAVEN:
-            template = Template(MAVEN_INDEX_TEMPLATE)
-        elif package_type == PACKAGE_TYPE_NPM:
+        template = Template(MAVEN_INDEX_TEMPLATE)
+        if package_type == PACKAGE_TYPE_NPM:
             template = Template(NPM_INDEX_TEMPLATE)
-        if template:
-            return template.render(index=self)
+        return template.render(index=self)
 
 
 def generate_indexes(
@@ -70,7 +66,7 @@ def generate_indexes(
     changed_dirs: List[str],
     s3_client: S3Client,
     bucket: str,
-    prefix: str = None
+    prefix: str = ""
 ) -> List[str]:
     if top_level[-1] != '/':
         top_level += '/'
@@ -87,8 +83,8 @@ def generate_indexes(
         s3_folders.add(path)
 
     generated_htmls = []
-    s3_folders = sorted(s3_folders, key=FolderLenCompareKey)
-    for folder_ in s3_folders:
+    s3_folders_list = sorted(list(s3_folders), key=FolderLenCompareKey)
+    for folder_ in s3_folders_list:
         index_html = __generate_index_html(
             package_type, s3_client, bucket, folder_, top_level, prefix
         )
@@ -110,7 +106,7 @@ def __generate_index_html(
     bucket: str,
     folder_: str,
     top_level: str,
-    prefix: str = None
+    prefix: str = ""
 ) -> str:
     if folder_ != "/":
         search_folder = os.path.join(prefix, folder_) if prefix else folder_
@@ -122,7 +118,7 @@ def __generate_index_html(
     )
     # Should filter out the .prodinfo files
     contents = [c for c in contents if not c.endswith(PROD_INFO_SUFFIX)]
-    index = None
+    index = ""
     if len(contents) == 1 and contents[0].endswith("index.html"):
         logger.info("The folder %s only contains index.html, "
                     "will remove it.", folder_)
@@ -178,8 +174,8 @@ def __to_html_content(package_type: str, contents: List[str], folder: str) -> st
             items = temp_items
     else:
         items.extend(contents)
-    items = __sort_index_items(items)
-    index = IndexedHTML(title=folder, header=folder, items=items)
+    items_set = set(__sort_index_items(items))
+    index = IndexedHTML(title=folder, header=folder, items=items_set)
     return index.generate_index_file_content(package_type)
 
 
@@ -267,7 +263,7 @@ class IndexedItemsCompareKey:
 
 
 def re_index(
-    bucket: Tuple[str, str, str, str, str],
+    target: Dict[str, str],
     path: str,
     package_type: str,
     aws_profile: str = None,
@@ -276,8 +272,8 @@ def re_index(
 ):
     """Refresh the index.html for the specified folder in the bucket.
     """
-    bucket_name = bucket.get("bucket")
-    prefix = bucket.get("prefix")
+    bucket_name = target.get("bucket", "")
+    prefix = target.get("prefix", "")
     s3_client = S3Client(aws_profile=aws_profile, dry_run=dry_run)
     real_prefix = prefix if prefix.strip() != "/" else ""
     s3_folder = os.path.join(real_prefix, path)

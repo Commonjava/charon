@@ -43,7 +43,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
+            targets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -64,7 +64,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_del(
             test_tgz, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
+            targets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -78,7 +78,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, '', '')],
+            targets=[(TEST_TARGET, TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET
@@ -89,7 +89,7 @@ class ManifestDeleteTest(PackageBaseTest):
         product = "code-frame-7.14.5"
         handle_npm_uploading(
             test_tgz, product,
-            buckets=[(TEST_TARGET, TEST_BUCKET, '', DEFAULT_REGISTRY)],
+            targets=[(TEST_TARGET, TEST_BUCKET, '', DEFAULT_REGISTRY)],
             dir_=self.tempdir,
             do_index=False,
             manifest_bucket_name=TEST_MANIFEST_BUCKET

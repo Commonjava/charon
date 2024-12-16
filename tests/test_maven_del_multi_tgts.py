@@ -65,7 +65,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         handle_maven_del(
             test_zip, product_456,
             ignore_patterns=[".*.sha1"],
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             do_index=False
         )
@@ -115,7 +115,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_del(
             test_zip, product_456,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir, do_index=False
         )
 
@@ -243,7 +243,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         handle_maven_del(
             test_zip, product_459,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir,
             do_index=False
         )
@@ -260,7 +260,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         targets_ = [('', TEST_BUCKET, prefix, ''), ('', TEST_BUCKET_2, prefix, '')]
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir,
             do_index=False
         )
@@ -269,7 +269,7 @@ class MavenDeleteMultiTgtsTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=targets_,
+            targets=targets_,
             dir_=self.tempdir,
             do_index=False
         )
