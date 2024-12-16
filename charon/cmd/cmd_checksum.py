@@ -104,7 +104,7 @@ logger = logging.getLogger(__name__)
 def validate(
     path: str,
     target: str,
-    includes: List[str],
+    includes: str,
     report_file_path: str,
     skips: List[str],
     recursive: bool = False,
@@ -191,11 +191,20 @@ def validate(
     """,
     required=True
 )
+@option(
+    "--config",
+    "-c",
+    help="""
+    The charon configuration yaml file path. Default is
+    $HOME/.charon/charon.yaml
+    """
+)
 @command()
 def refresh(
     target: str,
     paths: List[str],
     path_file: str,
+    config: str = None,
     quiet: bool = False,
     debug: bool = False
 ):
@@ -219,7 +228,7 @@ def refresh(
     if paths:
         work_paths.extend(paths)
 
-    conf = get_config()
+    conf = get_config(config)
     aws_profile = os.getenv("AWS_PROFILE") or conf.get_aws_profile()
     if not aws_profile:
         logger.error("No AWS profile specified!")
@@ -250,12 +259,12 @@ def _init_cmd(target: str) -> Tuple[str, str]:
     conf = get_config()
     if not conf:
         sys.exit(1)
-    aws_bucket = ""
     t = conf.get_target(target)
     if not t:
         sys.exit(1)
+    aws_bucket = ''
     for b in t:
-        aws_bucket = b.get('bucket')
+        aws_bucket = b.get('bucket', '')
         prefix = b.get('prefix', '')
     return (aws_bucket, prefix)
 

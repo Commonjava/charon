@@ -33,7 +33,7 @@ class MavenFileSignTest(PackageBaseTest):
         product = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             gen_sign=True,
             key="random"
@@ -64,7 +64,7 @@ class MavenFileSignTest(PackageBaseTest):
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
             test_zip, product_456,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             gen_sign=True,
             key="random"
@@ -74,7 +74,7 @@ class MavenFileSignTest(PackageBaseTest):
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
             test_zip, product_459,
-            buckets=[('', TEST_BUCKET, '', '')],
+            targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir,
             gen_sign=True,
             key="random"

@@ -15,7 +15,7 @@ limitations under the License.
 """
 from charon.utils.files import digest, HashType
 from charon.storage import S3Client
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 from html.parser import HTMLParser
 import tempfile
 import os
@@ -51,7 +51,7 @@ def handle_checksum_validation_http(
         checksum files. Will use sha1 to do the validation.
     """
     local_dir = tempfile.mkdtemp()
-    results = ([], [], [])
+    results: Tuple[List[str], List[str], List[Dict[str, str]]] = ([], [], [])
     try:
         if not os.path.exists(local_dir):
             os.makedirs(local_dir)
@@ -76,7 +76,7 @@ def _collect_invalid_files(
     includes: str,
     work_dir: str,
     recursive: bool,
-    skips: List[str],
+    skips: Optional[List[str]],
     results: Tuple[List[str], List[str], List[Dict[str, str]]]
 ):
     if skips and path in skips:
@@ -250,14 +250,14 @@ class _IndexParser(HTMLParser):
         return [os.path.join(parent, i) for i in self.__content]
 
 
-def _read_remote_file_content(remote_file_url: str) -> str:
+def _read_remote_file_content(remote_file_url: str) -> Optional[str]:
     try:
         with requests.get(remote_file_url) as r:
             if r.status_code == 200:
                 return r.text.strip() if r.text else ""
     except Exception as e:
         logger.error("Can not read file %s. The error is %s", remote_file_url, e)
-        return None
+    return None
 
 
 def _decide_root_url(bucket: str) -> str:
@@ -265,7 +265,7 @@ def _decide_root_url(bucket: str) -> str:
         return "https://maven.repository.redhat.com"
     if bucket.strip().startswith("stage-maven"):
         return "https://maven.stage.repository.redhat.com"
-    return None
+    return ""
 
 
 def refresh_checksum(

@@ -22,8 +22,10 @@ from jsonschema.exceptions import ValidationError
 
 import charon.config as config
 import re
+import tempfile
 
 from charon.constants import DEFAULT_REGISTRY
+from charon.utils.files import overwrite_file
 from tests.base import BaseTest
 
 
@@ -48,6 +50,26 @@ class ConfigTest(unittest.TestCase):
         self.__base.change_home()
         with pytest.raises(FileNotFoundError):
             config.get_config()
+
+    def test_non_default_config(self):
+        self.__base.setUp()
+        config_content = """
+ignore_patterns:
+    - ".*^(redhat).*"
+
+targets:
+    changed:
+    - bucket: changed-bucket
+      prefix: changed-prefix
+        """
+        _, tmp_config_file = tempfile.mkstemp(prefix="charon-test-config", suffix=".yaml")
+        overwrite_file(tmp_config_file, config_content)
+        conf = config.get_config(tmp_config_file)
+        self.assertIsNotNone(conf)
+        self.assertEqual("changed-bucket", conf.get_target("changed")[0].get('bucket', ''))
+        self.assertEqual("changed-prefix", conf.get_target("changed")[0].get('prefix', ''))
+        self.assertEqual([], conf.get_target("ga"))
+        os.remove(tmp_config_file)
 
     def test_config_missing_targets(self):
         content_missing_targets = """

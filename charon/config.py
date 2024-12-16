@@ -55,8 +55,8 @@ class CharonConfig(object):
     def get_manifest_bucket(self) -> str:
         return self.__manifest_bucket
 
-    def get_ignore_signature_suffix(self, package_type: str) -> List[str]:
-        xartifact_list: List = self.__ignore_signature_suffix.get(package_type)
+    def get_ignore_signature_suffix(self, package_type: str) -> Optional[List[str]]:
+        xartifact_list = self.__ignore_signature_suffix.get(package_type)
         if not xartifact_list:
             logger.error("package type %s does not have ignore artifact config.", package_type)
         return xartifact_list
@@ -68,8 +68,10 @@ class CharonConfig(object):
         return self.__aws_cf_enable
 
 
-def get_config() -> Optional[CharonConfig]:
-    config_file_path = os.path.join(os.getenv("HOME"), ".charon", CONFIG_FILE)
+def get_config(cfgPath=None) -> CharonConfig:
+    config_file_path = cfgPath
+    if not config_file_path or not os.path.isfile(config_file_path):
+        config_file_path = os.path.join(os.getenv("HOME", ""), ".charon", CONFIG_FILE)
     data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
     return CharonConfig(data)
 

@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from typing import List, Tuple
+from typing import List, Optional
 
 from charon.config import CharonConfig
 from charon.constants import DEFAULT_REGISTRY
+from charon.types import TARGET_TYPE
 from charon.utils.logs import set_logging
 from charon.utils.archive import download_archive
 from json import loads
@@ -28,18 +29,18 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def _get_buckets(
-    targets: List[str], conf: CharonConfig
-) -> List[Tuple[str, str, str, str, str]]:
-    buckets = []
-    for target in targets:
+def _get_targets(
+    target_names: List[str], conf: CharonConfig
+) -> List[TARGET_TYPE]:
+    targets: List[TARGET_TYPE] = []
+    for target in target_names:
         for bucket in conf.get_target(target):
-            aws_bucket = bucket.get('bucket')
+            aws_bucket = bucket.get('bucket', '')
             prefix = bucket.get('prefix', '')
             registry = bucket.get('registry', DEFAULT_REGISTRY)
             cf_domain = bucket.get('domain', None)
-            buckets.append((target, aws_bucket, prefix, registry, cf_domain))
-    return buckets
+            targets.append((target, aws_bucket, prefix, registry, cf_domain))
+    return targets
 
 
 def _safe_delete(tmp_dir: str):
@@ -51,7 +52,7 @@ def _safe_delete(tmp_dir: str):
             logger.error("Failed to clear work directory. %s", e)
 
 
-def _get_ignore_patterns(conf: CharonConfig) -> List[str]:
+def _get_ignore_patterns(conf: CharonConfig) -> Optional[List[str]]:
     ignore_patterns = os.getenv("CHARON_IGNORE_PATTERNS")
     if ignore_patterns:
         try:
