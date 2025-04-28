@@ -19,6 +19,7 @@ from charon.cmd.cmd_delete import delete
 from charon.cmd.cmd_index import index
 from charon.cmd.cmd_checksum import init_checksum, checksum
 from charon.cmd.cmd_cache import init_cf, cf
+from charon.cmd.cmd_sign import sign
 
 
 @group()
@@ -43,3 +44,6 @@ cli.add_command(cf)
 # init checksum command
 init_checksum()
 cli.add_command(checksum)
+
+# radas sign cmd
+cli.add_command(sign)
