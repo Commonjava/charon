@@ -39,6 +39,14 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
+        self.__amqp_queue: str = data.get("amqp_queue", None)
+        self.__sign_result_loc: str = data.get("sign_result_loc", None)
+        self.__quay_radas_auth_enabled: bool = data.get("quay_radas_auth_enabled", False)
+        self.__quay_radas_registry: str = data.get("quay_radas_registry", None)
+        self.__quay_radas_username: str = data.get("quay_radas_username", None)
+        self.__quay_radas_password: str = data.get("quay_radas_password", None)
+        self.__radas_sign_timeout_count: int = data.get("radas_sign_timeout_count", 10)
+        self.__radas_sign_wait_interval_sec: int = data.get("radas_sign_wait_interval_sec", 60)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -67,6 +75,29 @@ class CharonConfig(object):
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
 
+    def get_amqp_queue(self) -> str:
+        return self.__amqp_queue
+
+    def get_sign_result_loc(self) -> str:
+        return self.__sign_result_loc
+
+    def is_quay_radas_auth_enabled(self) -> bool:
+        return self.__quay_radas_auth_enabled
+
+    def get_quay_radas_registry(self) -> str:
+        return self.__quay_radas_registry
+
+    def get_quay_radas_username(self) -> str:
+        return self.__quay_radas_username
+
+    def get_quay_radas_password(self) -> str:
+        return self.__quay_radas_password
+
+    def get_radas_sign_timeout_count(self) -> int:
+        return self.__radas_sign_timeout_count
+
+    def get_radas_sign_wait_interval_sec(self) -> int:
+        return self.__radas_sign_wait_interval_sec
 
 def get_config(cfgPath=None) -> CharonConfig:
     config_file_path = cfgPath
