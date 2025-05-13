@@ -141,14 +141,12 @@ def get_config(cfgPath=None) -> CharonConfig:
     config_file_path = cfgPath
     if not config_file_path or not os.path.isfile(config_file_path):
         config_file_path = os.path.join(os.getenv("HOME", ""), ".charon", CONFIG_FILE)
-    data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
+    data = read_yaml_from_file_path(config_file_path, "schemas/charon.json")
     return CharonConfig(data)
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME", ''), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME", ""), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()

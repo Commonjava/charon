@@ -409,12 +409,13 @@ def handle_maven_uploading(
                 if cf_enable:
                     cf_invalidate_paths.extend(archetype_files)
 
-        # 10. Generate signature file if radas sign is enabled, or do detached sign if contain_signature is set to True
+        # 10. Generate signature file if radas sign is enabled,
+        # or do detached sign if contain_signature is set to True
         conf = get_config(config)
         if not conf:
             sys.exit(1)
 
-        if conf.get_radas_sign_enabled():
+        if conf.is_radas_sign_enabled():
             logger.info("Start generating radas signature files for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(top_level)
             if not _generated_signs:
