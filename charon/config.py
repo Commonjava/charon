@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 from typing import Dict, List, Optional
@@ -45,6 +46,7 @@ class CharonConfig(object):
         self.__quay_radas_registry: str = data.get("quay_radas_registry", None)
         self.__quay_radas_username: str = data.get("quay_radas_username", None)
         self.__quay_radas_password: str = data.get("quay_radas_password", None)
+        self.__radas_sign_enabled: bool = data.get("radas_sign_enabled", False)
         self.__radas_sign_timeout_count: int = data.get("radas_sign_timeout_count", 10)
         self.__radas_sign_wait_interval_sec: int = data.get("radas_sign_wait_interval_sec", 60)
 
@@ -93,24 +95,26 @@ class CharonConfig(object):
     def get_quay_radas_password(self) -> str:
         return self.__quay_radas_password
 
+    def is_radas_sign_enabled(self) -> bool:
+        return self.__radas_sign_enabled
+
     def get_radas_sign_timeout_count(self) -> int:
         return self.__radas_sign_timeout_count
 
     def get_radas_sign_wait_interval_sec(self) -> int:
         return self.__radas_sign_wait_interval_sec
 
+
 def get_config(cfgPath=None) -> CharonConfig:
     config_file_path = cfgPath
     if not config_file_path or not os.path.isfile(config_file_path):
         config_file_path = os.path.join(os.getenv("HOME", ""), ".charon", CONFIG_FILE)
-    data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
+    data = read_yaml_from_file_path(config_file_path, "schemas/charon.json")
     return CharonConfig(data)
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME", ''), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME", ""), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()

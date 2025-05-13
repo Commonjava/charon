@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import proton
 import proton.handlers
 import threading
@@ -20,6 +21,8 @@ import logging
 import json
 import os
 import asyncio
+import sys
+import time
 from typing import List, Any, Tuple, Callable, Dict
 from charon.config import get_config
 from charon.constants import DEFAULT_SIGN_RESULT_LOC
@@ -29,10 +32,12 @@ from charon.pkgs.oras_client import OrasClient
 
 logger = logging.getLogger(__name__)
 
+
 class SignHandler:
     """
     Handle the sign result status management
     """
+
     _is_processing: bool = True
     _downloaded_files: List[str] = []
 
@@ -51,6 +56,7 @@ class SignHandler:
     @classmethod
     def set_downloaded_files(cls, files: List[str]) -> None:
         cls._downloaded_files = files
+
 
 class UmbListener(proton.handlers.MessagingHandler):
     """
@@ -74,10 +80,7 @@ class UmbListener(proton.handlers.MessagingHandler):
         On message callback
         """
         # handle response from radas in a thread
-        thread = threading.Thread(
-            target=self._process_message,
-            args=[event.message.body]
-        )
+        thread = threading.Thread(target=self._process_message, args=[event.message.body])
         thread.start()
 
     def on_error(self, event: proton.Event) -> None:
@@ -103,8 +106,8 @@ class UmbListener(proton.handlers.MessagingHandler):
             result_reference_url = msg_dict.get("result_reference")
 
             if not result_reference_url:
-                 logger.warning("Not found result_reference in message，ignore.")
-                 return
+                logger.warning("Not found result_reference in message，ignore.")
+                return
 
             conf = get_config()
             if not conf:
@@ -117,20 +120,24 @@ class UmbListener(proton.handlers.MessagingHandler):
 
             oras_client = OrasClient()
             files = oras_client.pull(
-                result_reference_url=result_reference_url,
-                sign_result_loc=sign_result_loc
+                result_reference_url=result_reference_url, sign_result_loc=sign_result_loc
             )
             SignHandler.set_downloaded_files(files)
         finally:
             SignHandler.set_processing(False)
+
 
 def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
     """
     Generate .asc files based on RADAS sign result json file
     """
     conf = get_config()
-    timeout_count = conf.get_radas_sign_timeout_count() if conf else DEFAULT_RADAS_SIGN_TIMEOUT_COUNT
-    wait_interval_sec = conf.get_radas_sign_wait_interval_sec() if conf else DEFAULT_RADAS_SIGN_WAIT_INTERVAL_SEC
+    timeout_count = (
+        conf.get_radas_sign_timeout_count() if conf else DEFAULT_RADAS_SIGN_TIMEOUT_COUNT
+    )
+    wait_interval_sec = (
+        conf.get_radas_sign_wait_interval_sec() if conf else DEFAULT_RADAS_SIGN_WAIT_INTERVAL_SEC
+    )
     wait_count = 0
     while SignHandler.is_processing():
         wait_count += 1
@@ -146,23 +153,25 @@ def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
     # should only have the single sign result json file from the radas registry
     json_file_path = files[0]
     try:
-        with open(json_file_path, 'r') as f:
+        with open(json_file_path, "r") as f:
             data = json.load(f)
     except Exception as e:
-        logger.error(f"Failed to read or parse the JSON file: {e}")
+        logger.error("Failed to read or parse the JSON file: %s", e)
         raise
 
     async def generate_single_sign_file(
-        file_path: str, signature: str, failed_paths: List[str], generated_signs: List[str],
-        sem: asyncio.BoundedSemaphore
+        file_path: str,
+        signature: str,
+        failed_paths: List[str],
+        generated_signs: List[str],
+        sem: asyncio.BoundedSemaphore,
     ):
         async with sem:
             if not file_path or not signature:
-                logger.error(f"Invalid JSON entry")
+                logger.error("Invalid JSON entry")
                 return
             # remove the root path maven-repository
             filename = file_path.split("/", 1)[1]
-            signature = item.get("signature")
 
             artifact_path = os.path.join(top_level, filename)
             asc_filename = f"{filename}.asc"
@@ -173,23 +182,20 @@ def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
                 return
 
             try:
-                with open(signature_path, 'w') as asc_file:
+                with open(signature_path, "w") as asc_file:
                     asc_file.write(signature)
                 generated_signs.append(signature_path)
-                logger.info(f"Generated .asc file: {signature_path}")
+                logger.info("Generated .asc file: %s", signature_path)
             except Exception as e:
                 failed_paths.append(signature_path)
-                logger.error(f"Failed to write .asc file for {artifact_path}: {e}")
+                logger.error("Failed to write .asc file for %s: %s", artifact_path, e)
 
     result = data.get("result", [])
-    return __do_path_cut_and(
-            path_handler=generate_single_sign_file,
-            data=result
-        )
+    return __do_path_cut_and(path_handler=generate_single_sign_file, data=result)
+
 
 def __do_path_cut_and(
-    path_handler: Callable,
-    data: List[Dict[str, str]]
+    path_handler: Callable, data: List[Dict[str, str]]
 ) -> Tuple[List[str], List[str]]:
 
     failed_paths: List[str] = []
