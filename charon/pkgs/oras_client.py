@@ -13,12 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import oras.client
 import logging
 from charon.config import get_config
 from typing import List
 
 logger = logging.getLogger(__name__)
+
 
 class OrasClient:
     """
@@ -49,16 +51,18 @@ class OrasClient:
         """
         Call oras‑py’s pull method to pull the remote file to local.
         Args:
-            result_reference_url (str): Reference of the remote file (e.g. “quay.io/repository/signing/radas@hash”).
-            sign_result_loc (str): Local save path (e.g. “/tmp/sign”).
+            result_reference_url (str):
+                Reference of the remote file (e.g. “quay.io/repository/signing/radas@hash”).
+            sign_result_loc (str):
+                Local save path (e.g. “/tmp/sign”).
         """
         files = []
         try:
             self.login_if_needed()
-            # the filename should be possibly named by the digest hash value based on the oras source code
             files = self.client.pull(target=result_reference_url, outdir=sign_result_loc)
             logger.info("Pull file from %s to %s", result_reference_url, sign_result_loc)
         except Exception as e:
-            logger.error("Failed to pull file from %s to %s: %s", result_reference_url, sign_result_loc, e)
-        finally:
-            return files
+            logger.error(
+                "Failed to pull file from %s to %s: %s", result_reference_url, sign_result_loc, e
+            )
+        return files
