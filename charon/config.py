@@ -24,6 +24,69 @@ CONFIG_FILE = "charon.yaml"
 logger = logging.getLogger(__name__)
 
 
+class RadasConfig(object):
+    def __init__(self, data: Dict):
+        self.__umb_host: str = data.get("umb_host", None)
+        self.__umb_host_port: str = data.get("umb_host_port", "5671")
+        self.__result_queue: str = data.get("result_queue", None)
+        self.__request_queue: str = data.get("request_queue", None)
+        self.__client_ca: str = data.get("client_ca", None)
+        self.__client_key: str = data.get("client_key", None)
+        self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
+        self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
+
+    def validate(self) -> bool:
+        if not self.__umb_host:
+            logger.error("Missing host name setting for UMB!")
+            return False
+        if not self.__result_queue:
+            logger.error("Missing the queue setting to receive siging result in UMB!")
+            return False
+        if not self.__request_queue:
+            logger.error("Missing the queue setting to send signing request in UMB!")
+            return False
+        if self.__client_ca and not os.access(self.__client_ca, os.R_OK):
+            logger.error("The client CA file is not valid!")
+            return False
+        if self.__client_key and not os.access(self.__client_key, os.R_OK):
+            logger.error("The client key file is not valid!")
+            return False
+        if self.__client_key_pass_file and not os.access(self.__client_key_pass_file, os.R_OK):
+            logger.error("The client key password file is not valid!")
+            return False
+        if self.__root_ca and not os.access(self.__root_ca, os.R_OK):
+            logger.error("The root ca file is not valid!")
+            return False
+        return True
+
+    def umb_target(self) -> str:
+        return f'amqps://{self.__umb_host}:{self.__umb_host_port}'
+
+    def result_queue(self) -> str:
+        return self.__result_queue
+
+    def request_queue(self) -> str:
+        return self.__request_queue
+
+    def client_ca(self) -> str:
+        return self.__client_ca
+
+    def client_key(self) -> str:
+        return self.__client_key
+
+    def client_key_password(self) -> str:
+        pass_file = self.__client_key_pass_file
+        if os.access(pass_file, os.R_OK):
+            with open(pass_file, 'r') as f:
+                return f.read()
+        elif pass_file:
+            logger.warning("The key password file is not accessible. Will ignore the password.")
+        return ""
+
+    def root_ca(self) -> str:
+        return self.__root_ca
+
+
 class CharonConfig(object):
     """CharonConfig is used to store all configurations for charon
     tools.
@@ -39,6 +102,9 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
+        radas_config: Dict = data.get("radas", None)
+        if radas_config:
+            self.__radas_config__: RadasConfig = RadasConfig(radas_config)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -66,6 +132,9 @@ class CharonConfig(object):
 
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
+
+    def get_radas_config(self) -> RadasConfig:
+        return self.__radas_config__
 
 
 def get_config(cfgPath=None) -> CharonConfig:
