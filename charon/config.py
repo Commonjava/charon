@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 from typing import Dict, List, Optional
@@ -34,6 +35,10 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
+        self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
+        self.__radas_sign_timeout_retry_interval: int = data.get(
+            "radas_sign_timeout_retry_interval", 60
+        )
 
     def validate(self) -> bool:
         if not self.__umb_host:
@@ -60,7 +65,7 @@ class RadasConfig(object):
         return True
 
     def umb_target(self) -> str:
-        return f'amqps://{self.__umb_host}:{self.__umb_host_port}'
+        return f"amqps://{self.__umb_host}:{self.__umb_host_port}"
 
     def result_queue(self) -> str:
         return self.__result_queue
@@ -77,7 +82,7 @@ class RadasConfig(object):
     def client_key_password(self) -> str:
         pass_file = self.__client_key_pass_file
         if os.access(pass_file, os.R_OK):
-            with open(pass_file, 'r') as f:
+            with open(pass_file, "r") as f:
                 return f.read()
         elif pass_file:
             logger.warning("The key password file is not accessible. Will ignore the password.")
@@ -85,6 +90,12 @@ class RadasConfig(object):
 
     def root_ca(self) -> str:
         return self.__root_ca
+
+    def radas_sign_timeout_retry_count(self) -> int:
+        return self.__radas_sign_timeout_retry_count
+
+    def radas_sign_timeout_retry_interval(self) -> int:
+        return self.__radas_sign_timeout_retry_interval
 
 
 class CharonConfig(object):
