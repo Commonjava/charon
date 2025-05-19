@@ -26,8 +26,8 @@ import time
 from typing import List, Any, Tuple, Callable, Dict
 from charon.config import get_config
 from charon.constants import DEFAULT_SIGN_RESULT_LOC
-from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_COUNT
-from charon.constants import DEFAULT_RADAS_SIGN_WAIT_INTERVAL_SEC
+from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT
+from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
 from charon.pkgs.oras_client import OrasClient
 
 logger = logging.getLogger(__name__)
@@ -132,19 +132,22 @@ def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
     Generate .asc files based on RADAS sign result json file
     """
     conf = get_config()
-    timeout_count = (
-        conf.get_radas_sign_timeout_count() if conf else DEFAULT_RADAS_SIGN_TIMEOUT_COUNT
+    rconf = conf.get_radas_config() if conf else None
+    timeout_retry_count = (
+        rconf.radas_sign_timeout_retry_count() if rconf else DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT
     )
-    wait_interval_sec = (
-        conf.get_radas_sign_wait_interval_sec() if conf else DEFAULT_RADAS_SIGN_WAIT_INTERVAL_SEC
+    timeout_retry_interval = (
+        rconf.radas_sign_timeout_retry_interval()
+        if conf
+        else DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
     )
     wait_count = 0
     while SignHandler.is_processing():
         wait_count += 1
-        if wait_count > timeout_count:
+        if wait_count > timeout_retry_count:
             logger.warning("Timeout when waiting for sign response.")
             break
-        time.sleep(wait_interval_sec)
+        time.sleep(timeout_retry_interval)
 
     files = SignHandler.get_downloaded_files()
     if not files:
