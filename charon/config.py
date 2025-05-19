@@ -35,6 +35,9 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
+        self.__quay_radas_registry_config: str = data.get(
+            "quay_radas_registry_config", os.path.join(os.getenv("HOME", ""), ".oras/config.json")
+        )
         self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
         self.__radas_sign_timeout_retry_interval: int = data.get(
             "radas_sign_timeout_retry_interval", 60
@@ -61,6 +64,11 @@ class RadasConfig(object):
             return False
         if self.__root_ca and not os.access(self.__root_ca, os.R_OK):
             logger.error("The root ca file is not valid!")
+            return False
+        if self.__quay_radas_registry_config and not os.access(
+            self.__quay_radas_registry_config, os.R_OK
+        ):
+            logger.error("The quay registry config for oras is not valid!")
             return False
         return True
 
@@ -90,6 +98,9 @@ class RadasConfig(object):
 
     def root_ca(self) -> str:
         return self.__root_ca
+
+    def quay_radas_registry_config(self) -> str:
+        return self.__quay_radas_registry_config
 
     def radas_sign_timeout_retry_count(self) -> int:
         return self.__radas_sign_timeout_retry_count
