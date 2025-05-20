@@ -35,7 +35,9 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
-        self.__quay_radas_registry_config: str = data.get("quay_radas_registry_config", None)
+        self.__quay_radas_registry_config: Optional[str] = data.get(
+            "quay_radas_registry_config", None
+        )
         self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
         self.__radas_sign_timeout_retry_interval: int = data.get(
             "radas_sign_timeout_retry_interval", 60
@@ -66,8 +68,10 @@ class RadasConfig(object):
         if self.__quay_radas_registry_config and not os.access(
             self.__quay_radas_registry_config, os.R_OK
         ):
-            logger.error("The quay registry config for oras is not valid!")
-            return False
+            self.__quay_radas_registry_config = None
+            logger.warning(
+                "The quay registry config for oras is not valid, will ignore the registry config!"
+            )
         return True
 
     def umb_target(self) -> str:
@@ -97,7 +101,7 @@ class RadasConfig(object):
     def root_ca(self) -> str:
         return self.__root_ca
 
-    def quay_radas_registry_config(self) -> str:
+    def quay_radas_registry_config(self) -> Optional[str]:
         return self.__quay_radas_registry_config
 
     def radas_sign_timeout_retry_count(self) -> int:
