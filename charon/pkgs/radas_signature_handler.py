@@ -49,8 +49,12 @@ class UmbListener(MessagingHandler):
         On start callback
         """
         conf = get_config()
-        rconf = conf.get_radas_config() if conf else None
-        if not rconf:
+        if not (conf and conf.is_radas_enabled()):
+            sys.exit(1)
+
+        rconf = conf.get_radas_config()
+        # explicit check to pass the type checker
+        if rconf is None:
             sys.exit(1)
         conn = event.container.connect(rconf.umb_target())
         event.container.create_receiver(conn, rconf.result_queue())

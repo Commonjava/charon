@@ -158,6 +158,9 @@ class CharonConfig(object):
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
 
+    def is_radas_enabled(self) -> bool:
+        return bool(self.__radas_config__ and self.__radas_config__.validate())
+
     def get_radas_config(self) -> Optional[RadasConfig]:
         return self.__radas_config__
 
