@@ -35,9 +35,7 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
-        self.__quay_radas_registry_config: str = data.get(
-            "quay_radas_registry_config", os.path.join(os.getenv("HOME", ""), ".oras/config.json")
-        )
+        self.__quay_radas_registry_config: str = data.get("quay_radas_registry_config", None)
         self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
         self.__radas_sign_timeout_retry_interval: int = data.get(
             "radas_sign_timeout_retry_interval", 60
