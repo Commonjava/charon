@@ -48,7 +48,7 @@ class RadasConfig(object):
             logger.error("Missing host name setting for UMB!")
             return False
         if not self.__result_queue:
-            logger.error("Missing the queue setting to receive siging result in UMB!")
+            logger.error("Missing the queue setting to receive signing result in UMB!")
             return False
         if not self.__request_queue:
             logger.error("Missing the queue setting to send signing request in UMB!")
@@ -124,8 +124,10 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
+        self.__radas_config_enable: bool = data.get("radas_config_enable", False)
         radas_config: Dict = data.get("radas", None)
         if radas_config:
+            self.__radas_config_enable = True
             self.__radas_config__: RadasConfig = RadasConfig(radas_config)
 
     def get_ignore_patterns(self) -> List[str]:
@@ -154,6 +156,9 @@ class CharonConfig(object):
 
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
+
+    def is_radas_config_enable(self) -> bool:
+        return self.__radas_config_enable
 
     def get_radas_config(self) -> RadasConfig:
         return self.__radas_config__

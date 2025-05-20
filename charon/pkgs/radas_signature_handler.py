@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import proton
-import proton.handlers
 import threading
 import logging
 import json
@@ -25,57 +23,40 @@ import sys
 import time
 from typing import List, Any, Tuple, Callable, Dict
 from charon.config import get_config
-from charon.constants import DEFAULT_SIGN_RESULT_LOC
 from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT
 from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
 from charon.pkgs.oras_client import OrasClient
+from proton import Event
+from proton.handlers import MessagingHandler
 
 logger = logging.getLogger(__name__)
 
 
-class SignHandler:
-    """
-    Handle the sign result status management
-    """
-
-    _is_processing: bool = True
-    _downloaded_files: List[str] = []
-
-    @classmethod
-    def is_processing(cls) -> bool:
-        return cls._is_processing
-
-    @classmethod
-    def get_downloaded_files(cls) -> List[str]:
-        return cls._downloaded_files.copy()
-
-    @classmethod
-    def set_processing(cls, value: bool) -> None:
-        cls._is_processing = value
-
-    @classmethod
-    def set_downloaded_files(cls, files: List[str]) -> None:
-        cls._downloaded_files = files
-
-
-class UmbListener(proton.handlers.MessagingHandler):
+class UmbListener(MessagingHandler):
     """
     UmbListener class (AMQP version), register this when setup UmbClient
+    Attributes:
+        sign_result_loc (str): Local save path (e.g. “/tmp/sign”) for oras pull result,
+        this value transfers from the cmd flag, should register UmbListener when the client starts
     """
 
-    def __init__(self) -> None:
+    def __init__(self, sign_result_loc: str) -> None:
         super().__init__()
+        self.sign_result_loc = sign_result_loc
 
-    def on_start(self, event: proton.Event) -> None:
+    def on_start(self, event: Event) -> None:
         """
         On start callback
         """
         conf = get_config()
-        if not conf:
+        rconf = conf.get_radas_config() if conf else None
+        if not rconf:
             sys.exit(1)
-        event.container.create_receiver(conf.get_amqp_queue())
+        conn = event.container.connect(rconf.umb_target())
+        event.container.create_receiver(conn, rconf.result_queue())
+        logger.info("Listening on %s, queue: %s", rconf.umb_target(), rconf.result_queue())
 
-    def on_message(self, event: proton.Event) -> None:
+    def on_message(self, event: Event) -> None:
         """
         On message callback
         """
@@ -83,51 +64,43 @@ class UmbListener(proton.handlers.MessagingHandler):
         thread = threading.Thread(target=self._process_message, args=[event.message.body])
         thread.start()
 
-    def on_error(self, event: proton.Event) -> None:
+    def on_connection_error(self, event: Event) -> None:
         """
-        On error callback
+        On connection error callback
         """
         logger.error("Received an error event:\n%s", event)
 
-    def on_disconnected(self, event: proton.Event) -> None:
+    def on_disconnected(self, event: Event) -> None:
         """
         On disconnected callback
         """
         logger.error("Disconnected from AMQP broker.")
 
-    def _process_message(msg: Any) -> None:
+    def _process_message(self, msg: Any) -> None:
         """
         Process a message received from UMB
         Args:
             msg: The message body received
         """
-        try:
-            msg_dict = json.loads(msg)
-            result_reference_url = msg_dict.get("result_reference")
+        msg_dict = json.loads(msg)
+        result_reference_url = msg_dict.get("result_reference")
 
-            if not result_reference_url:
-                logger.warning("Not found result_reference in message，ignore.")
-                return
+        if not result_reference_url:
+            logger.warning("Not found result_reference in message，ignore.")
+            return
 
-            conf = get_config()
-            if not conf:
-                sign_result_loc = DEFAULT_SIGN_RESULT_LOC
-            sign_result_loc = os.getenv("SIGN_RESULT_LOC") or conf.get_sign_result_loc()
-            logger.info("Using SIGN RESULT LOC: %s", sign_result_loc)
+        logger.info("Using SIGN RESULT LOC: %s", self.sign_result_loc)
+        sign_result_parent_dir = os.path.dirname(self.sign_result_loc)
+        os.makedirs(sign_result_parent_dir, exist_ok=True)
 
-            sign_result_parent_dir = os.path.dirname(sign_result_loc)
-            os.makedirs(sign_result_parent_dir, exist_ok=True)
-
-            oras_client = OrasClient()
-            files = oras_client.pull(
-                result_reference_url=result_reference_url, sign_result_loc=sign_result_loc
-            )
-            SignHandler.set_downloaded_files(files)
-        finally:
-            SignHandler.set_processing(False)
+        oras_client = OrasClient()
+        files = oras_client.pull(
+            result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
+        )
+        logger.info("Number of files pulled: %d, path: %s", len(files), files[0])
 
 
-def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
+def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str], List[str]]:
     """
     Generate .asc files based on RADAS sign result json file
     """
@@ -138,19 +111,32 @@ def generate_radas_sign(top_level: str) -> Tuple[List[str], List[str]]:
     )
     timeout_retry_interval = (
         rconf.radas_sign_timeout_retry_interval()
-        if conf
+        if rconf
         else DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
     )
     wait_count = 0
-    while SignHandler.is_processing():
+
+    # Wait until files appear in the sign_result_loc directory
+    while True:
+        files = [
+            os.path.join(sign_result_loc, f)
+            for f in os.listdir(sign_result_loc)
+            if os.path.isfile(os.path.join(sign_result_loc, f))
+        ]
+        if files:  # If files exist, break the loop
+            break
+
         wait_count += 1
         if wait_count > timeout_retry_count:
             logger.warning("Timeout when waiting for sign response.")
             break
         time.sleep(timeout_retry_interval)
 
-    files = SignHandler.get_downloaded_files()
     if not files:
+        return [], []
+
+    if len(files) > 1:
+        logger.error("Multiple files found in %s. Expected only one file.", sign_result_loc)
         return [], []
 
     # should only have the single sign result json file from the radas registry
