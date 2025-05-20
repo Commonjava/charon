@@ -416,7 +416,8 @@ def handle_maven_uploading(
         if not conf:
             sys.exit(1)
 
-        if conf.is_radas_config_enable():
+        rconf = conf.get_radas_config()
+        if rconf and rconf.validate():
             logger.info("Start generating radas signature files for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(
                 top_level=top_level, sign_result_loc=sign_result_loc
