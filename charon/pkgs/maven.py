@@ -275,7 +275,8 @@ def handle_maven_uploading(
     key=None,
     dry_run=False,
     manifest_bucket_name=None,
-    config=None
+    config=None,
+    sign_result_loc="/tmp/sign"
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -415,9 +416,11 @@ def handle_maven_uploading(
         if not conf:
             sys.exit(1)
 
-        if conf.is_radas_sign_enabled():
+        if conf.is_radas_config_enable():
             logger.info("Start generating radas signature files for s3 bucket %s\n", bucket_name)
-            (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(top_level)
+            (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(
+                top_level=top_level, sign_result_loc=sign_result_loc
+            )
             if not _generated_signs:
                 logger.error(
                     "No sign result files were downloaded, "
@@ -426,9 +429,9 @@ def handle_maven_uploading(
 
             failed_metas.extend(_failed_metas)
             generated_signs.extend(_generated_signs)
-            logger.info("Singature generation against radas done.\n")
+            logger.info("Radas signature files generation done.\n")
 
-            logger.info("Start upload radas singature files to s3 bucket %s\n", bucket_name)
+            logger.info("Start upload radas signature files to s3 bucket %s\n", bucket_name)
             _failed_metas = s3_client.upload_signatures(
                 meta_file_paths=generated_signs,
                 target=(bucket_name, prefix),
@@ -436,7 +439,7 @@ def handle_maven_uploading(
                 root=top_level
             )
             failed_metas.extend(_failed_metas)
-            logger.info("Signature files uploading against radas done.\n")
+            logger.info("Radas signature files uploading done.\n")
 
         elif gen_sign:
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
