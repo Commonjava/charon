@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import threading
 import logging
 import json
 import os
@@ -64,9 +63,7 @@ class UmbListener(MessagingHandler):
         """
         On message callback
         """
-        # handle response from radas in a thread
-        thread = threading.Thread(target=self._process_message, args=[event.message.body])
-        thread.start()
+        self._process_message(event.message.body)
 
     def on_connection_error(self, event: Event) -> None:
         """
