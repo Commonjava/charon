@@ -19,11 +19,8 @@ import json
 import os
 import asyncio
 import sys
-import time
 from typing import List, Any, Tuple, Callable, Dict
 from charon.config import get_config
-from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT
-from charon.constants import DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
 from charon.pkgs.oras_client import OrasClient
 from proton import Event
 from proton.handlers import MessagingHandler
@@ -105,33 +102,11 @@ def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str]
     """
     Generate .asc files based on RADAS sign result json file
     """
-    conf = get_config()
-    rconf = conf.get_radas_config() if conf else None
-    timeout_retry_count = (
-        rconf.radas_sign_timeout_retry_count() if rconf else DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT
-    )
-    timeout_retry_interval = (
-        rconf.radas_sign_timeout_retry_interval()
-        if rconf
-        else DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL
-    )
-    wait_count = 0
-
-    # Wait until files appear in the sign_result_loc directory
-    while True:
-        files = [
-            os.path.join(sign_result_loc, f)
-            for f in os.listdir(sign_result_loc)
-            if os.path.isfile(os.path.join(sign_result_loc, f))
-        ]
-        if files:  # If files exist, break the loop
-            break
-
-        wait_count += 1
-        if wait_count > timeout_retry_count:
-            logger.warning("Timeout when waiting for sign response.")
-            break
-        time.sleep(timeout_retry_interval)
+    files = [
+        os.path.join(sign_result_loc, f)
+        for f in os.listdir(sign_result_loc)
+        if os.path.isfile(os.path.join(sign_result_loc, f))
+    ]
 
     if not files:
         return [], []
