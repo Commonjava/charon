@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 from typing import Dict, List, Optional
@@ -34,13 +35,20 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
+        self.__quay_radas_registry_config: Optional[str] = data.get(
+            "quay_radas_registry_config", None
+        )
+        self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
+        self.__radas_sign_timeout_retry_interval: int = data.get(
+            "radas_sign_timeout_retry_interval", 60
+        )
 
     def validate(self) -> bool:
         if not self.__umb_host:
             logger.error("Missing host name setting for UMB!")
             return False
         if not self.__result_queue:
-            logger.error("Missing the queue setting to receive siging result in UMB!")
+            logger.error("Missing the queue setting to receive signing result in UMB!")
             return False
         if not self.__request_queue:
             logger.error("Missing the queue setting to send signing request in UMB!")
@@ -57,10 +65,17 @@ class RadasConfig(object):
         if self.__root_ca and not os.access(self.__root_ca, os.R_OK):
             logger.error("The root ca file is not valid!")
             return False
+        if self.__quay_radas_registry_config and not os.access(
+            self.__quay_radas_registry_config, os.R_OK
+        ):
+            self.__quay_radas_registry_config = None
+            logger.warning(
+                "The quay registry config for oras is not valid, will ignore the registry config!"
+            )
         return True
 
     def umb_target(self) -> str:
-        return f'amqps://{self.__umb_host}:{self.__umb_host_port}'
+        return f"amqps://{self.__umb_host}:{self.__umb_host_port}"
 
     def result_queue(self) -> str:
         return self.__result_queue
@@ -77,7 +92,7 @@ class RadasConfig(object):
     def client_key_password(self) -> str:
         pass_file = self.__client_key_pass_file
         if os.access(pass_file, os.R_OK):
-            with open(pass_file, 'r') as f:
+            with open(pass_file, "r") as f:
                 return f.read()
         elif pass_file:
             logger.warning("The key password file is not accessible. Will ignore the password.")
@@ -85,6 +100,15 @@ class RadasConfig(object):
 
     def root_ca(self) -> str:
         return self.__root_ca
+
+    def quay_radas_registry_config(self) -> Optional[str]:
+        return self.__quay_radas_registry_config
+
+    def radas_sign_timeout_retry_count(self) -> int:
+        return self.__radas_sign_timeout_retry_count
+
+    def radas_sign_timeout_retry_interval(self) -> int:
+        return self.__radas_sign_timeout_retry_interval
 
 
 class CharonConfig(object):
@@ -102,9 +126,10 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
+        self.__radas_config__: Optional[RadasConfig] = None
         radas_config: Dict = data.get("radas", None)
         if radas_config:
-            self.__radas_config__: RadasConfig = RadasConfig(radas_config)
+            self.__radas_config__ = RadasConfig(radas_config)
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -133,7 +158,10 @@ class CharonConfig(object):
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
 
-    def get_radas_config(self) -> RadasConfig:
+    def is_radas_enabled(self) -> bool:
+        return bool(self.__radas_config__ and self.__radas_config__.validate())
+
+    def get_radas_config(self) -> Optional[RadasConfig]:
         return self.__radas_config__
 
 
@@ -141,14 +169,12 @@ def get_config(cfgPath=None) -> CharonConfig:
     config_file_path = cfgPath
     if not config_file_path or not os.path.isfile(config_file_path):
         config_file_path = os.path.join(os.getenv("HOME", ""), ".charon", CONFIG_FILE)
-    data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
+    data = read_yaml_from_file_path(config_file_path, "schemas/charon.json")
     return CharonConfig(data)
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME", ''), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME", ""), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()
