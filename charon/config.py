@@ -127,6 +127,7 @@ class CharonConfig(object):
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
         radas_config: Dict = data.get("radas", None)
+        self.__radas_config: Optional[RadasConfig] = None
         if radas_config:
             self.__radas_config = RadasConfig(radas_config)
             self.__radas_enabled = bool(self.__radas_config and self.__radas_config.validate())
@@ -163,7 +164,7 @@ class CharonConfig(object):
     def is_radas_enabled(self) -> bool:
         return self.__radas_enabled
 
-    def get_radas_config(self) -> RadasConfig:
+    def get_radas_config(self) -> Optional[RadasConfig]:
         return self.__radas_config
 
 
