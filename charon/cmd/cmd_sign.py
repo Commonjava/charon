@@ -15,7 +15,8 @@ limitations under the License.
 """
 from typing import List
 
-from charon.config import get_config, RadasConfig
+from charon.config import get_config
+from charon.pkgs.radas_signature_handler import sign_in_radas
 from charon.cmd.internal import (
     _decide_mode, _safe_delete
 )
@@ -126,23 +127,22 @@ def sign(
         if not radas_conf or not radas_conf.validate():
             logger.error("The configuration for radas is not valid!")
             sys.exit(1)
-        sign_in_radas(repo_url, requester, sign_key, result_path, radas_conf)
+        # All ignore files in global config should also be ignored in signing.
+        ig_patterns = conf.get_ignore_patterns()
+        if ignore_patterns:
+            ig_patterns.extend(ignore_patterns)
+        args = {
+            "repo_url": repo_url,
+            "requester": requester,
+            "sign_key": sign_key,
+            "result_path": result_path,
+            "ignore_patterns": ig_patterns,
+            "radas_config": radas_conf
+        }
+        sign_in_radas(**args)  # type: ignore
     except Exception:
         print(traceback.format_exc())
-        sys.exit(2)  # distinguish between exception and bad config or bad state
+        sys.exit(2)
     finally:
         if not debug and tmp_dir:
             _safe_delete(tmp_dir)
-
-
-def sign_in_radas(repo_url: str,
-                  requester: str,
-                  sign_key: str,
-                  result_path: str,
-                  radas_config: RadasConfig):
-    '''This function will be responsible to do the overall controlling of the whole process,
-    like trigger the send and register the receiver, and control the wait and timeout there.
-    '''
-    logger.debug("params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s,"
-                 "radas_config: %s", repo_url, requester, sign_key, result_path, radas_config)
-    logger.info("Not implemented yet!")

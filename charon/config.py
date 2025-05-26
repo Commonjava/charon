@@ -126,10 +126,12 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
-        self.__radas_config__: Optional[RadasConfig] = None
         radas_config: Dict = data.get("radas", None)
         if radas_config:
-            self.__radas_config__ = RadasConfig(radas_config)
+            self.__radas_config = RadasConfig(radas_config)
+            self.__radas_enabled = bool(self.__radas_config and self.__radas_config.validate())
+        else:
+            self.__radas_enabled = False
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -159,10 +161,10 @@ class CharonConfig(object):
         return self.__aws_cf_enable
 
     def is_radas_enabled(self) -> bool:
-        return bool(self.__radas_config__ and self.__radas_config__.validate())
+        return self.__radas_enabled
 
-    def get_radas_config(self) -> Optional[RadasConfig]:
-        return self.__radas_config__
+    def get_radas_config(self) -> RadasConfig:
+        return self.__radas_config
 
 
 def get_config(cfgPath=None) -> CharonConfig:

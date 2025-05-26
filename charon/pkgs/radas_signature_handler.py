@@ -20,7 +20,7 @@ import os
 import asyncio
 import sys
 from typing import List, Any, Tuple, Callable, Dict
-from charon.config import get_config
+from charon.config import get_config, RadasConfig
 from charon.pkgs.oras_client import OrasClient
 from proton import Event
 from proton.handlers import MessagingHandler
@@ -28,9 +28,10 @@ from proton.handlers import MessagingHandler
 logger = logging.getLogger(__name__)
 
 
-class UmbListener(MessagingHandler):
+class RadasReceiver(MessagingHandler):
     """
-    UmbListener class (AMQP version), register this when setup UmbClient
+    This receiver will listen to UMB message queue to receive signing message for
+    signing result.
     Attributes:
         sign_result_loc (str): Local save path (e.g. “/tmp/sign”) for oras pull result,
         this value transfers from the cmd flag, should register UmbListener when the client starts
@@ -179,3 +180,12 @@ def __do_path_cut_and(
     loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.gather(*tasks))
     return (failed_paths, generated_signs)
+
+
+def sign_in_radas(repo_url: str,
+                  requester: str,
+                  sign_key: str,
+                  result_path: str,
+                  ignore_patterns: List[str],
+                  radas_config: RadasConfig):
+    logger.info("Start signing for %s", repo_url)
