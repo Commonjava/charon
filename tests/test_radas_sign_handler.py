@@ -121,7 +121,7 @@ class RadasSignHandlerTest(unittest.TestCase):
         data = {
             "request-id": "request-id",
             "file-reference": "quay.io/org/maven-zip@hash",
-            "result": [
+            "results": [
                 {
                     "file": "maven-repository/foo/bar/1.0/foo-bar-1.0.jar",
                     "signature": (
