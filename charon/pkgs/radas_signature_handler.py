@@ -37,9 +37,10 @@ class RadasReceiver(MessagingHandler):
         this value transfers from the cmd flag, should register UmbListener when the client starts
     """
 
-    def __init__(self, sign_result_loc: str) -> None:
+    def __init__(self, sign_result_loc: str, request_id: str) -> None:
         super().__init__()
         self.sign_result_loc = sign_result_loc
+        self.request_id = request_id
 
     def on_start(self, event: Event) -> None:
         """
@@ -82,8 +83,19 @@ class RadasReceiver(MessagingHandler):
             msg: The message body received
         """
         msg_dict = json.loads(msg)
-        result_reference_url = msg_dict.get("result_reference")
+        msg_request_id = msg_dict.get("request_id")
+        if msg_request_id != self.request_id:
+            logger.info(
+                "Message request_id %s does not match the request_id %s from sender, ignoring",
+                msg_request_id,
+                self.request_id,
+            )
+            return
 
+        logger.info(
+            "Start to process the sign event message, request_id %s is matched", msg_request_id
+        )
+        result_reference_url = msg_dict.get("result_reference")
         if not result_reference_url:
             logger.warning("Not found result_reference in message，ignore.")
             return
