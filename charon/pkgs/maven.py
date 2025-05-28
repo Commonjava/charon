@@ -423,7 +423,7 @@ def handle_maven_uploading(
             )
             if not _generated_signs:
                 logger.error(
-                    "No sign result files were downloaded, "
+                    "No sign result files were generated, "
                     "please make sure the sign process is already done and without timeout")
                 return (tmp_root, False)
 

@@ -103,6 +103,10 @@ def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str]
     """
     Generate .asc files based on RADAS sign result json file
     """
+    if not os.path.isdir(sign_result_loc):
+        logger.error("Sign result loc dir does not exist: %s", sign_result_loc)
+        return [], []
+
     files = [
         os.path.join(sign_result_loc, f)
         for f in os.listdir(sign_result_loc)
@@ -156,7 +160,7 @@ def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str]
                 failed_paths.append(signature_path)
                 logger.error("Failed to write .asc file for %s: %s", artifact_path, e)
 
-    result = data.get("result", [])
+    result = data.get("results", [])
     return __do_path_cut_and(path_handler=generate_single_sign_file, data=result)
 
 
