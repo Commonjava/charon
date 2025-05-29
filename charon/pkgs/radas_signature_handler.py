@@ -19,7 +19,7 @@ import json
 import os
 import asyncio
 import sys
-from typing import List, Any, Tuple, Callable, Dict
+from typing import List, Any, Tuple, Callable, Dict, Optional
 from charon.config import get_config, RadasConfig
 from charon.pkgs.oras_client import OrasClient
 from proton import Event
@@ -33,14 +33,23 @@ class RadasReceiver(MessagingHandler):
     This receiver will listen to UMB message queue to receive signing message for
     signing result.
     Attributes:
-        sign_result_loc (str): Local save path (e.g. “/tmp/sign”) for oras pull result,
-        this value transfers from the cmd flag, should register UmbListener when the client starts
+        sign_result_loc (str):
+            Local save path (e.g. “/tmp/sign”) for oras pull result, this value transfers
+            from the cmd flag,should register UmbListener when the client starts
+        request_id (str):
+            Identifier of the request for the signing result
+        sign_result_status (str):
+            Result of the signing(success/failed)
+        sign_result_errors (list):
+            Any errors encountered if signing fails, this will be empty list if successful
     """
 
     def __init__(self, sign_result_loc: str, request_id: str) -> None:
         super().__init__()
         self.sign_result_loc = sign_result_loc
         self.request_id = request_id
+        self.sign_result_status: Optional[str] = None
+        self.sign_result_errors: List[str] = []
 
     def on_start(self, event: Event) -> None:
         """
@@ -95,6 +104,8 @@ class RadasReceiver(MessagingHandler):
         logger.info(
             "Start to process the sign event message, request_id %s is matched", msg_request_id
         )
+        self.sign_result_status = msg_dict.get("signing_status")
+        self.sign_result_errors = msg_dict.get("errors", [])
         result_reference_url = msg_dict.get("result_reference")
         if not result_reference_url:
             logger.warning("Not found result_reference in message，ignore.")
