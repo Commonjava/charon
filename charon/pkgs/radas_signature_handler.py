@@ -19,11 +19,13 @@ import json
 import os
 import asyncio
 import sys
+import uuid
 from typing import List, Any, Tuple, Callable, Dict, Optional
 from charon.config import get_config, RadasConfig
 from charon.pkgs.oras_client import OrasClient
-from proton import Event
+from proton import SSLDomain, Message, Event
 from proton.handlers import MessagingHandler
+from proton.reactor import Container
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ class RadasReceiver(MessagingHandler):
         super().__init__()
         self.sign_result_loc = sign_result_loc
         self.request_id = request_id
+        self.conn = None
         self.sign_result_status: Optional[str] = None
         self.sign_result_errors: List[str] = []
 
@@ -63,8 +66,23 @@ class RadasReceiver(MessagingHandler):
         # explicit check to pass the type checker
         if rconf is None:
             sys.exit(1)
-        conn = event.container.connect(rconf.umb_target())
-        event.container.create_receiver(conn, rconf.result_queue())
+
+        ssl_domain = SSLDomain(SSLDomain.MODE_CLIENT)
+        ssl_domain.set_credentials(
+            rconf.client_ca(),
+            rconf.client_key(),
+            rconf.client_key_password()
+        )
+        ssl_domain.set_trusted_ca_db(rconf.root_ca())
+        ssl_domain.set_peer_authentication(SSLDomain.VERIFY_PEER)
+
+        self.conn = event.container.connect(
+            url=rconf.umb_target(),
+            ssl_domain=ssl_domain
+        )
+        event.container.create_receiver(
+            self.conn, rconf.result_queue(), dynamic=True
+        )
         logger.info("Listening on %s, queue: %s", rconf.umb_target(), rconf.result_queue())
 
     def on_message(self, event: Event) -> None:
@@ -120,6 +138,60 @@ class RadasReceiver(MessagingHandler):
             result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
         )
         logger.info("Number of files pulled: %d, path: %s", len(files), files[0])
+
+
+class RadasSender(MessagingHandler):
+    """
+    This simple sender will send given string massage to UMB message queue to request signing.
+    Attributes:
+        payload (str): payload json string for radas to read,
+        this value construct from the cmd flag
+    """
+    def __init__(self, payload: str):
+        super().__init__()
+        self.payload = payload
+        self.container = None
+        self.conn = None
+        self.sender = None
+
+    def on_start(self, event):
+        """
+        On start callback
+        """
+        conf = get_config()
+        if not (conf and conf.is_radas_enabled()):
+            sys.exit(1)
+
+        rconf = conf.get_radas_config()
+        if rconf is None:
+            sys.exit(1)
+
+        ssl_domain = SSLDomain(SSLDomain.MODE_CLIENT)
+        ssl_domain.set_credentials(
+            rconf.client_ca(),
+            rconf.client_key(),
+            rconf.client_key_password()
+        )
+        ssl_domain.set_trusted_ca_db(rconf.root_ca())
+        ssl_domain.set_peer_authentication(SSLDomain.VERIFY_PEER)
+
+        self.container = event.container
+        self.conn = event.container.connect(
+            url=rconf.umb_target(),
+            ssl_domain=ssl_domain
+        )
+        self.sender = event.container.create_sender(self.conn, rconf.request_queue())
+
+    def on_sendable(self):
+        """
+        On message able to send callback
+        """
+        request = self.payload
+        msg = Message(body=request)
+        if self.sender:
+            self.sender.send(msg)
+        if self.container:
+            self.container.stop()
 
 
 def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str], List[str]]:
@@ -215,4 +287,33 @@ def sign_in_radas(repo_url: str,
                   result_path: str,
                   ignore_patterns: List[str],
                   radas_config: RadasConfig):
-    logger.info("Start signing for %s", repo_url)
+    """
+    This function will be responsible to do the overall controlling of the whole process,
+    like trigger the send and register the receiver, and control the wait and timeout there.
+    """
+    logger.debug("params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s,"
+                 "radas_config: %s", repo_url, requester, sign_key, result_path, radas_config)
+    request_id = str(uuid.uuid4())
+    exclude = ignore_patterns if ignore_patterns else []
+
+    payload = {
+        "request_id": request_id,
+        "requested_by": requester,
+        "type": "mrrc",
+        "file_reference": repo_url,
+        "sig_keyname": sign_key,
+        "exclude": exclude
+    }
+
+    listener = RadasReceiver(result_path, request_id)
+    sender = RadasSender(json.dumps(payload))
+
+    try:
+        Container(sender).run()
+        logger.info("Successfully sent signing request ID: %s", request_id)
+        Container(listener).run()
+    finally:
+        if listener.conn is not None:
+            listener.conn.close()
+        if sender.conn is not None:
+            sender.conn.close()
