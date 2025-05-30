@@ -16,10 +16,9 @@ limitations under the License.
 from typing import List
 
 from charon.config import get_config
-from charon.pkgs.radas_signature_handler import sign_in_radas
-from charon.cmd.internal import (
-    _decide_mode, _safe_delete
-)
+from charon.pkgs.radas_sign import sign_in_radas
+from charon.cmd.internal import _decide_mode
+
 from click import command, option, argument
 
 import traceback
@@ -39,14 +38,16 @@ logger = logging.getLogger(__name__)
     "-r",
     help="""
     The requester who sends the signing request.
-    """
+    """,
+    required=True
 )
 @option(
     "--result_path",
     "-p",
     help="""
     The path which will save the sign result file.
-    """
+    """,
+    required=True
 )
 @option(
     "--ignore_patterns",
@@ -55,14 +56,6 @@ logger = logging.getLogger(__name__)
     help="""
     The regex patterns list to filter out the files which should
     not be allowed to upload to S3. Can accept more than one pattern.
-    """
-)
-@option(
-    "--work_dir",
-    "-w",
-    help="""
-    The temporary working directory into which archives should
-    be extracted, when needed.
     """
 )
 @option(
@@ -79,7 +72,8 @@ logger = logging.getLogger(__name__)
     help="""
     rpm-sign key to be used, will replace {{ key }} in default configuration for signature.
     Does noting if detach_signature_command does not contain {{ key }} field.
-    """
+    """,
+    required=True
 )
 @option(
     "--debug",
@@ -100,10 +94,9 @@ def sign(
     repo_url: str,
     requester: str,
     result_path: str,
+    sign_key: str,
     ignore_patterns: List[str] = None,
-    work_dir: str = None,
     config: str = None,
-    sign_key: str = "redhatdevel",
     debug=False,
     quiet=False,
     dryrun=False
@@ -112,7 +105,6 @@ def sign(
     radas service. The repo_url points to the maven zip repository
     in quay.io, which will be sent as the source of the signing.
     """
-    tmp_dir = work_dir
     logger.debug("%s", ignore_patterns)
     try:
         current = datetime.datetime.now().strftime("%Y%m%d%I%M")
@@ -139,10 +131,8 @@ def sign(
             "ignore_patterns": ig_patterns,
             "radas_config": radas_conf
         }
+        logger.debug("params: %s", args)
         sign_in_radas(**args)  # type: ignore
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)
-    finally:
-        if not debug and tmp_dir:
-            _safe_delete(tmp_dir)

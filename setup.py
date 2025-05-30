@@ -57,6 +57,7 @@ setup(
         "subresource-integrity>=0.2",
         "jsonschema>=4.9.1",
         "urllib3>=1.25.10",
-        "semantic-version>=2.10.0"
+        "semantic-version>=2.10.0",
+        "python-qpid-proton>=0.39.0"
     ],
 )
