@@ -23,7 +23,7 @@ import shutil
 import builtins
 from unittest import mock
 from charon.utils.files import overwrite_file
-from charon.pkgs.radas_signature_handler import generate_radas_sign
+from charon.pkgs.radas_sign import generate_radas_sign
 
 logger = logging.getLogger(__name__)
 

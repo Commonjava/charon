@@ -16,7 +16,7 @@ limitations under the License.
 from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
 import charon.pkgs.signature as signature
-import charon.pkgs.radas_signature_handler as radas_signature
+import charon.pkgs.radas_sign as radas_signature
 from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix

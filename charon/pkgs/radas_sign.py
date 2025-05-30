@@ -21,9 +21,9 @@ import asyncio
 import sys
 import uuid
 from typing import List, Any, Tuple, Callable, Dict, Optional
-from charon.config import get_config, RadasConfig
+from charon.config import RadasConfig
 from charon.pkgs.oras_client import OrasClient
-from proton import SSLDomain, Message, Event
+from proton import SSLDomain, Message, Event, Sender
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
@@ -46,61 +46,42 @@ class RadasReceiver(MessagingHandler):
             Any errors encountered if signing fails, this will be empty list if successful
     """
 
-    def __init__(self, sign_result_loc: str, request_id: str) -> None:
+    def __init__(self, sign_result_loc: str, request_id: str, rconf: RadasConfig) -> None:
         super().__init__()
         self.sign_result_loc = sign_result_loc
         self.request_id = request_id
         self.conn = None
         self.sign_result_status: Optional[str] = None
         self.sign_result_errors: List[str] = []
+        self.rconf = rconf
+        self.ssl = SSLDomain(SSLDomain.MODE_CLIENT)
+        self.ssl.set_trusted_ca_db(self.rconf.root_ca())
+        self.ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
+        self.ssl.set_credentials(
+            self.rconf.client_ca(),
+            self.rconf.client_key(),
+            self.rconf.client_key_password()
+        )
 
     def on_start(self, event: Event) -> None:
-        """
-        On start callback
-        """
-        conf = get_config()
-        if not (conf and conf.is_radas_enabled()):
-            sys.exit(1)
-
-        rconf = conf.get_radas_config()
-        # explicit check to pass the type checker
-        if rconf is None:
-            sys.exit(1)
-
-        ssl_domain = SSLDomain(SSLDomain.MODE_CLIENT)
-        ssl_domain.set_credentials(
-            rconf.client_ca(),
-            rconf.client_key(),
-            rconf.client_key_password()
-        )
-        ssl_domain.set_trusted_ca_db(rconf.root_ca())
-        ssl_domain.set_peer_authentication(SSLDomain.VERIFY_PEER)
-
         self.conn = event.container.connect(
-            url=rconf.umb_target(),
-            ssl_domain=ssl_domain
+            url=self.rconf.umb_target(),
+            ssl_domain=self.ssl
         )
         event.container.create_receiver(
-            self.conn, rconf.result_queue(), dynamic=True
+            self.conn, self.rconf.result_queue(), dynamic=True
         )
-        logger.info("Listening on %s, queue: %s", rconf.umb_target(), rconf.result_queue())
+        logger.info("Listening on %s, queue: %s",
+                    self.rconf.umb_target(),
+                    self.rconf.result_queue())
 
     def on_message(self, event: Event) -> None:
-        """
-        On message callback
-        """
         self._process_message(event.message.body)
 
     def on_connection_error(self, event: Event) -> None:
-        """
-        On connection error callback
-        """
         logger.error("Received an error event:\n%s", event)
 
     def on_disconnected(self, event: Event) -> None:
-        """
-        On disconnected callback
-        """
         logger.error("Disconnected from AMQP broker.")
 
     def _process_message(self, msg: Any) -> None:
@@ -146,52 +127,105 @@ class RadasSender(MessagingHandler):
     Attributes:
         payload (str): payload json string for radas to read,
         this value construct from the cmd flag
+        rconf (RadasConfig): the configurations for the radas messaging
+        system.
     """
-    def __init__(self, payload: str):
-        super().__init__()
+    def __init__(self, payload: Any, rconf: RadasConfig):
+        super(RadasSender, self).__init__()
         self.payload = payload
-        self.container = None
-        self.conn = None
-        self.sender = None
+        self.rconf = rconf
+        self.message_sent = False  # Flag to track if message was sent
+        self.status: Optional[str] = None
+        self.retried = 0
+        self.pending: Optional[Message] = None
+        self.message: Optional[Message] = None
+        self.container: Optional[Container] = None
+        self.sender: Optional[Sender] = None
+        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasSender")
+        self.ssl = SSLDomain(SSLDomain.MODE_CLIENT)
+        self.ssl.set_trusted_ca_db(self.rconf.root_ca())
+        self.ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
+        self.ssl.set_credentials(
+            self.rconf.client_ca(),
+            self.rconf.client_key(),
+            self.rconf.client_key_password()
+        )
 
     def on_start(self, event):
-        """
-        On start callback
-        """
-        conf = get_config()
-        if not (conf and conf.is_radas_enabled()):
-            sys.exit(1)
-
-        rconf = conf.get_radas_config()
-        if rconf is None:
-            sys.exit(1)
-
-        ssl_domain = SSLDomain(SSLDomain.MODE_CLIENT)
-        ssl_domain.set_credentials(
-            rconf.client_ca(),
-            rconf.client_key(),
-            rconf.client_key_password()
-        )
-        ssl_domain.set_trusted_ca_db(rconf.root_ca())
-        ssl_domain.set_peer_authentication(SSLDomain.VERIFY_PEER)
-
         self.container = event.container
-        self.conn = event.container.connect(
-            url=rconf.umb_target(),
-            ssl_domain=ssl_domain
+        conn = self.container.connect(
+            url=self.rconf.umb_target(),
+            ssl_domain=self.ssl
         )
-        self.sender = event.container.create_sender(self.conn, rconf.request_queue())
+        if conn:
+            self.sender = self.container.create_sender(conn, self.rconf.request_queue())
 
-    def on_sendable(self):
-        """
-        On message able to send callback
-        """
-        request = self.payload
-        msg = Message(body=request)
+    def on_sendable(self, event):
+        if not self.message_sent:
+            msg = Message(body=self.payload, durable=True)
+            self.log.debug("Sending message: %s to %s", msg.id, event.sender.target.address)
+            self._send_msg(msg)
+            self.message = msg
+            self.message_sent = True
+
+    def on_error(self, event):
+        self.log.error("Error happened during message sending, reason %s",
+                       event.description)
+        self.status = "failed"
+
+    def on_rejected(self, event):
+        self.pending = self.message
+        self._handle_failed_delivery("Rejected")
+
+    def on_released(self, event):
+        self.pending = self.message
+        self._handle_failed_delivery("Released")
+
+    def on_accepted(self, event):
+        self.log.info("Message accepted by receiver: %s", event.delivery)
+        self.status = "success"
+        self.close()  # Close connection after confirmation
+
+    def on_timer_task(self, event):
+        message_to_retry = self.message
+        self._send_msg(message_to_retry)
+        self.pending = None
+
+    def close(self):
+        self.log.info("Message has been sent successfully, close connection")
         if self.sender:
-            self.sender.send(msg)
+            self.sender.close()
         if self.container:
             self.container.stop()
+
+    def _send_msg(self, msg: Message):
+        if self.sender and self.sender.credit > 0:
+            self.sender.send(msg)
+            self.log.debug("Message %s sent", msg.id)
+        else:
+            self.log.warning("Sender not ready or no credit available")
+
+    def _handle_failed_delivery(self, reason: str):
+        if self.pending:
+            msg = self.pending
+            self.log.warning("Message %s failed for reason: %s", msg.id, reason)
+            max_retries = self.rconf.radas_sign_timeout_retry_count()
+            if self.retried < max_retries:
+                # Schedule retry
+                self.retried = self.retried + 1
+                self.log.info("Scheduling retry %s/%s for message %s",
+                              self.retried, max_retries, msg.id)
+                # Schedule retry after delay
+                if self.container:
+                    self.container.schedule(self.rconf.radas_sign_timeout_retry_interval(), self)
+            else:
+                # Max retries exceeded
+                self.log.error("Message %s failed after %s retries", msg.id, max_retries)
+                self.status = "failed"
+            self.pending = None
+        else:
+            self.log.info("Message has been sent successfully, close connection")
+            self.close()
 
 
 def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str], List[str]]:
@@ -291,8 +325,8 @@ def sign_in_radas(repo_url: str,
     This function will be responsible to do the overall controlling of the whole process,
     like trigger the send and register the receiver, and control the wait and timeout there.
     """
-    logger.debug("params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s,"
-                 "radas_config: %s", repo_url, requester, sign_key, result_path, radas_config)
+    logger.debug("params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s",
+                 repo_url, requester, sign_key, result_path)
     request_id = str(uuid.uuid4())
     exclude = ignore_patterns if ignore_patterns else []
 
@@ -305,15 +339,16 @@ def sign_in_radas(repo_url: str,
         "exclude": exclude
     }
 
-    listener = RadasReceiver(result_path, request_id)
-    sender = RadasSender(json.dumps(payload))
+    sender = RadasSender(json.dumps(payload), radas_config)
+    container = Container(sender)
+    container.run()
 
-    try:
-        Container(sender).run()
-        logger.info("Successfully sent signing request ID: %s", request_id)
-        Container(listener).run()
-    finally:
-        if listener.conn is not None:
-            listener.conn.close()
-        if sender.conn is not None:
-            sender.conn.close()
+    if not sender.status == "success":
+        logger.error("Something wrong happened in message sending, see logs")
+        sys.exit(1)
+
+    listener = RadasReceiver(result_path, request_id, radas_config)
+    Container(listener).run()
+
+    if listener.conn:
+        listener.conn.close()

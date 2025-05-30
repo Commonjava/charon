@@ -75,34 +75,36 @@ class RadasConfig(object):
         return True
 
     def umb_target(self) -> str:
-        return f"amqps://{self.__umb_host}:{self.__umb_host_port}"
+        return f"amqps://{self.__umb_host.strip()}:{self.__umb_host_port}"
 
     def result_queue(self) -> str:
-        return self.__result_queue
+        return self.__result_queue.strip()
 
     def request_queue(self) -> str:
-        return self.__request_queue
+        return self.__request_queue.strip()
 
     def client_ca(self) -> str:
-        return self.__client_ca
+        return self.__client_ca.strip()
 
     def client_key(self) -> str:
-        return self.__client_key
+        return self.__client_key.strip()
 
     def client_key_password(self) -> str:
         pass_file = self.__client_key_pass_file
         if os.access(pass_file, os.R_OK):
             with open(pass_file, "r") as f:
-                return f.read()
+                return f.read().strip()
         elif pass_file:
             logger.warning("The key password file is not accessible. Will ignore the password.")
         return ""
 
     def root_ca(self) -> str:
-        return self.__root_ca
+        return self.__root_ca.strip()
 
     def quay_radas_registry_config(self) -> Optional[str]:
-        return self.__quay_radas_registry_config
+        if self.__quay_radas_registry_config:
+            return self.__quay_radas_registry_config.strip()
+        return None
 
     def radas_sign_timeout_retry_count(self) -> int:
         return self.__radas_sign_timeout_retry_count
