@@ -36,7 +36,7 @@ class RadasConfigTest(unittest.TestCase):
 radas:
     umb_host: test.umb.api.com
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -59,7 +59,7 @@ targets:
         radas_settings = """
 radas:
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -79,7 +79,7 @@ targets:
         radas_settings = """
 radas:
     umb_host: test.umb.api.com
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -120,7 +120,7 @@ targets:
 radas:
     umb_host: test.umb.api.com
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -142,7 +142,7 @@ targets:
 radas:
     umb_host: test.umb.api.com
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -164,7 +164,7 @@ targets:
 radas:
     umb_host: test.umb.api.com
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}
@@ -186,7 +186,7 @@ targets:
 radas:
     umb_host: test.umb.api.com
     result_queue: queue.result.test
-    request_queue: queue.request.test
+    request_channel: topic://topic.request.test
     client_ca: {}
     client_key: {}
     client_key_pass_file: {}

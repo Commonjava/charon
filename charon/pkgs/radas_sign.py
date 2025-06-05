@@ -206,7 +206,7 @@ class RadasSender(MessagingHandler):
             ssl_domain=self._ssl
         )
         if conn:
-            self._sender = self._container.create_sender(conn, self.rconf.request_queue())
+            self._sender = self._container.create_sender(conn, self.rconf.request_channel())
 
     def on_sendable(self, event):
         if not self._message_sent:
