@@ -42,6 +42,7 @@ class RadasConfig(object):
         self.__radas_sign_timeout_retry_interval: int = data.get(
             "radas_sign_timeout_retry_interval", 60
         )
+        self.__radas_receiver_timeout: int = int(data.get("radas_receiver_timeout", 1800))
 
     def validate(self) -> bool:
         if not self.__umb_host:
@@ -111,6 +112,9 @@ class RadasConfig(object):
 
     def radas_sign_timeout_retry_interval(self) -> int:
         return self.__radas_sign_timeout_retry_interval
+
+    def receiver_timeout(self) -> int:
+        return self.__radas_receiver_timeout
 
 
 class CharonConfig(object):

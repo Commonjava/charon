@@ -4,7 +4,7 @@ import unittest
 from charon.pkgs.radas_sign import RadasSender
 
 
-class RadasSignHandlerTest(unittest.TestCase):
+class RadasSignSenderTest(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
 
