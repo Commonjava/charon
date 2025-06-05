@@ -17,13 +17,14 @@ limitations under the License.
 import logging
 import json
 import os
-import asyncio
 import sys
+import asyncio
 import uuid
+import time
 from typing import List, Any, Tuple, Callable, Dict, Optional
 from charon.config import RadasConfig
 from charon.pkgs.oras_client import OrasClient
-from proton import SSLDomain, Message, Event, Sender
+from proton import SSLDomain, Message, Event, Sender, Connection
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
@@ -40,6 +41,8 @@ class RadasReceiver(MessagingHandler):
             from the cmd flag,should register UmbListener when the client starts
         request_id (str):
             Identifier of the request for the signing result
+        rconf (RadasConfig):
+            the configurations for the radas messaging system.
         sign_result_status (str):
             Result of the signing(success/failed)
         sign_result_errors (list):
@@ -50,10 +53,13 @@ class RadasReceiver(MessagingHandler):
         super().__init__()
         self.sign_result_loc = sign_result_loc
         self.request_id = request_id
-        self.conn = None
+        self.conn: Optional[Connection] = None
+        self.message_handled = False
         self.sign_result_status: Optional[str] = None
         self.sign_result_errors: List[str] = []
         self.rconf = rconf
+        self.start_time = 0.0
+        self.timeout_check_delay = 30.0
         self.ssl = SSLDomain(SSLDomain.MODE_CLIENT)
         self.ssl.set_trusted_ca_db(self.rconf.root_ca())
         self.ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
@@ -62,27 +68,58 @@ class RadasReceiver(MessagingHandler):
             self.rconf.client_key(),
             self.rconf.client_key_password()
         )
+        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasReceiver")
 
     def on_start(self, event: Event) -> None:
-        self.conn = event.container.connect(
-            url=self.rconf.umb_target(),
-            ssl_domain=self.ssl
+        umb_target = self.rconf.umb_target()
+        container = event.container
+        self.conn = container.connect(
+            url=umb_target,
+            ssl_domain=self.ssl,
+            heartbeat=500
         )
-        event.container.create_receiver(
-            self.conn, self.rconf.result_queue(), dynamic=True
+        receiver = container.create_receiver(
+            context=self.conn, source=self.rconf.result_queue(),
         )
-        logger.info("Listening on %s, queue: %s",
-                    self.rconf.umb_target(),
-                    self.rconf.result_queue())
+        self.log.info("Listening on %s, queue: %s",
+                      umb_target,
+                      receiver.source.address)
+        self.start_time = time.time()
+        container.schedule(self.timeout_check_delay, self)
+
+    def on_timer_task(self, event: Event) -> None:
+        current = time.time()
+        timeout = self.rconf.receiver_timeout()
+        idle_time = current - self.start_time
+        self.log.debug("Checking timeout: passed %s seconds, timeout time %s seconds",
+                       idle_time, timeout)
+        if idle_time > self.rconf.receiver_timeout():
+            self.log.error("The receiver did not receive messages for more than %s seconds,"
+                           " and needs to stop receiving and quit.", timeout)
+            self._close(event)
+        else:
+            event.container.schedule(self.timeout_check_delay, self)
 
     def on_message(self, event: Event) -> None:
+        self.log.debug("Got message: %s", event.message.body)
         self._process_message(event.message.body)
+        if self.message_handled:
+            self.log.debug("The signing result is handled.")
+            self._close(event)
 
-    def on_connection_error(self, event: Event) -> None:
-        logger.error("Received an error event:\n%s", event)
+    def on_error(self, event: Event) -> None:
+        self.log.error("Received an error event:\n%s", event.message.body)
 
     def on_disconnected(self, event: Event) -> None:
-        logger.error("Disconnected from AMQP broker.")
+        self.log.info("Disconnected from AMQP broker: %s",
+                      event.connection.connected_address)
+
+    def _close(self, event: Event) -> None:
+        if event:
+            if event.connection:
+                event.connection.close()
+            if event.container:
+                event.container.stop()
 
     def _process_message(self, msg: Any) -> None:
         """
@@ -93,32 +130,37 @@ class RadasReceiver(MessagingHandler):
         msg_dict = json.loads(msg)
         msg_request_id = msg_dict.get("request_id")
         if msg_request_id != self.request_id:
-            logger.info(
+            self.log.info(
                 "Message request_id %s does not match the request_id %s from sender, ignoring",
                 msg_request_id,
                 self.request_id,
             )
             return
 
-        logger.info(
+        self.message_handled = True
+        self.log.info(
             "Start to process the sign event message, request_id %s is matched", msg_request_id
         )
         self.sign_result_status = msg_dict.get("signing_status")
         self.sign_result_errors = msg_dict.get("errors", [])
-        result_reference_url = msg_dict.get("result_reference")
-        if not result_reference_url:
-            logger.warning("Not found result_reference in message，ignore.")
-            return
+        if self.sign_result_status == "success":
+            result_reference_url = msg_dict.get("result_reference")
+            if not result_reference_url:
+                self.log.warning("Not found result_reference in message，ignore.")
+                return
 
-        logger.info("Using SIGN RESULT LOC: %s", self.sign_result_loc)
-        sign_result_parent_dir = os.path.dirname(self.sign_result_loc)
-        os.makedirs(sign_result_parent_dir, exist_ok=True)
+            self.log.info("Using SIGN RESULT LOC: %s", self.sign_result_loc)
+            sign_result_parent_dir = os.path.dirname(self.sign_result_loc)
+            os.makedirs(sign_result_parent_dir, exist_ok=True)
 
-        oras_client = OrasClient()
-        files = oras_client.pull(
-            result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
-        )
-        logger.info("Number of files pulled: %d, path: %s", len(files), files[0])
+            oras_client = OrasClient()
+            files = oras_client.pull(
+                result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
+            )
+            self.log.info("Number of files pulled: %d, path: %s", len(files), files[0])
+        else:
+            self.log.error("The signing result received with failed status. Errors: %s",
+                           self.sign_result_errors)
 
 
 class RadasSender(MessagingHandler):
@@ -141,7 +183,6 @@ class RadasSender(MessagingHandler):
         self.message: Optional[Message] = None
         self.container: Optional[Container] = None
         self.sender: Optional[Sender] = None
-        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasSender")
         self.ssl = SSLDomain(SSLDomain.MODE_CLIENT)
         self.ssl.set_trusted_ca_db(self.rconf.root_ca())
         self.ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
@@ -150,6 +191,7 @@ class RadasSender(MessagingHandler):
             self.rconf.client_key(),
             self.rconf.client_key_password()
         )
+        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasSender")
 
     def on_start(self, event):
         self.container = event.container
@@ -329,7 +371,6 @@ def sign_in_radas(repo_url: str,
                  repo_url, requester, sign_key, result_path)
     request_id = str(uuid.uuid4())
     exclude = ignore_patterns if ignore_patterns else []
-
     payload = {
         "request_id": request_id,
         "requested_by": requester,
@@ -347,8 +388,12 @@ def sign_in_radas(repo_url: str,
         logger.error("Something wrong happened in message sending, see logs")
         sys.exit(1)
 
-    listener = RadasReceiver(result_path, request_id, radas_config)
-    Container(listener).run()
+    # request_id = "some-request-id-1" # for test purpose
+    receiver = RadasReceiver(result_path, request_id, radas_config)
+    Container(receiver).run()
 
-    if listener.conn:
-        listener.conn.close()
+    status = receiver.sign_result_status
+    if status != "success":
+        logger.error("The signing result is processed with errors: %s",
+                     receiver.sign_result_errors)
+        sys.exit(1)
