@@ -109,8 +109,6 @@ def sign(
     try:
         current = datetime.datetime.now().strftime("%Y%m%d%I%M")
         _decide_mode("radas_sign", current, is_quiet=quiet, is_debug=debug)
-        if dryrun:
-            logger.info("Running in dry-run mode, no files will signed.")
         conf = get_config(config)
         if not conf:
             logger.error("The charon configuration is not valid!")

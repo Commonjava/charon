@@ -14,7 +14,7 @@ class RadasSignReceiverTest(unittest.TestCase):
         super().tearDown()
 
     def reset_receiver(self, r_receiver: RadasReceiver) -> None:
-        r_receiver.message_handled = False
+        r_receiver._message_handled = False
         r_receiver.sign_result_errors = []
         r_receiver.sign_result_status = None
 
@@ -54,8 +54,8 @@ class RadasSignReceiverTest(unittest.TestCase):
             r_receiver.on_start(event)
             self.assertEqual(mock_container.connect.call_count, 1)
             self.assertEqual(mock_container.create_receiver.call_count, 1)
-            self.assertTrue(r_receiver.start_time > 0.0)
-            self.assertTrue(r_receiver.start_time < time.time())
+            self.assertTrue(r_receiver._start_time > 0.0)
+            self.assertTrue(r_receiver._start_time < time.time())
             self.assertEqual(mock_container.schedule.call_count, 1)
 
             # test on_message: unmatched case
@@ -71,7 +71,7 @@ class RadasSignReceiverTest(unittest.TestCase):
             r_receiver.on_message(event)
             self.assertEqual(event.connection.close.call_count, 0)
             self.assertEqual(mock_container.stop.call_count, 0)
-            self.assertFalse(r_receiver.message_handled)
+            self.assertFalse(r_receiver._message_handled)
             self.assertIsNone(r_receiver.sign_result_status)
             self.assertEqual(r_receiver.sign_result_errors, [])
             self.assertEqual(oras_client.call_count, 0)
@@ -90,7 +90,7 @@ class RadasSignReceiverTest(unittest.TestCase):
             r_receiver.on_message(event)
             self.assertEqual(event.connection.close.call_count, 1)
             self.assertEqual(mock_container.stop.call_count, 1)
-            self.assertTrue(r_receiver.message_handled)
+            self.assertTrue(r_receiver._message_handled)
             self.assertEqual(r_receiver.sign_result_status, "failed")
             self.assertEqual(r_receiver.sign_result_errors, ["error1", "error2"])
             self.assertEqual(oras_client.call_count, 0)
@@ -109,7 +109,7 @@ class RadasSignReceiverTest(unittest.TestCase):
             r_receiver.on_message(event)
             self.assertEqual(event.connection.close.call_count, 2)
             self.assertEqual(mock_container.stop.call_count, 2)
-            self.assertTrue(r_receiver.message_handled)
+            self.assertTrue(r_receiver._message_handled)
             self.assertEqual(r_receiver.sign_result_status, "success")
             self.assertEqual(r_receiver.sign_result_errors, [])
             self.assertEqual(oras_client.call_count, 1)

@@ -41,8 +41,8 @@ class RadasSignSenderTest(unittest.TestCase):
             self.assertEqual(ssl_domain.call_count, 1)
             self.assertEqual(r_sender.payload, json_payload)
             self.assertIs(r_sender.rconf, mock_radas_config)
-            self.assertIsNone(r_sender.message)
-            self.assertIsNone(r_sender.pending)
+            self.assertIsNone(r_sender._message)
+            self.assertIsNone(r_sender._pending)
 
             # test on_start
             mock_sender = mock.MagicMock()
@@ -57,30 +57,30 @@ class RadasSignSenderTest(unittest.TestCase):
             # test on_sendable
             mock_sender.credit = 1
             r_sender.on_sendable(event)
-            self.assertIsNotNone(r_sender.message)
+            self.assertIsNotNone(r_sender._message)
             self.assertEqual(mock_sender.send.call_count, 1)
 
             # test on_accepted
             r_sender.on_accepted(event)
             self.assertEqual(r_sender.status, "success")
-            self.assertEqual(r_sender.retried, 0)
-            self.assertEqual(r_sender.sender.close.call_count, 1)
-            self.assertEqual(r_sender.container.stop.call_count, 1)
+            self.assertEqual(r_sender._retried, 0)
+            self.assertEqual(r_sender._sender.close.call_count, 1)
+            self.assertEqual(r_sender._container.stop.call_count, 1)
 
             # test on_rejected
             r_sender.on_rejected(event)
-            self.assertIsNone(r_sender.pending)
-            self.assertEqual(r_sender.retried, 1)
-            self.assertEqual(r_sender.container.schedule.call_count, 1)
+            self.assertIsNone(r_sender._pending)
+            self.assertEqual(r_sender._retried, 1)
+            self.assertEqual(r_sender._container.schedule.call_count, 1)
 
             # test on_released
             r_sender.on_released(event)
-            self.assertIsNone(r_sender.pending)
-            self.assertEqual(r_sender.retried, 2)
-            self.assertEqual(r_sender.container.schedule.call_count, 2)
+            self.assertIsNone(r_sender._pending)
+            self.assertEqual(r_sender._retried, 2)
+            self.assertEqual(r_sender._container.schedule.call_count, 2)
 
             # test on_released
             r_sender.on_timer_task(event)
-            self.assertIsNone(r_sender.pending)
-            self.assertEqual(r_sender.retried, 2)
+            self.assertIsNone(r_sender._pending)
+            self.assertEqual(r_sender._retried, 2)
             self.assertEqual(mock_sender.send.call_count, 2)
