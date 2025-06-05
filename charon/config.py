@@ -30,7 +30,7 @@ class RadasConfig(object):
         self.__umb_host: str = data.get("umb_host", None)
         self.__umb_host_port: str = data.get("umb_host_port", "5671")
         self.__result_queue: str = data.get("result_queue", None)
-        self.__request_queue: str = data.get("request_queue", None)
+        self.__request_chan: str = data.get("request_channel", None)
         self.__client_ca: str = data.get("client_ca", None)
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
@@ -51,7 +51,7 @@ class RadasConfig(object):
         if not self.__result_queue:
             logger.error("Missing the queue setting to receive signing result in UMB!")
             return False
-        if not self.__request_queue:
+        if not self.__request_chan:
             logger.error("Missing the queue setting to send signing request in UMB!")
             return False
         if self.__client_ca and not os.access(self.__client_ca, os.R_OK):
@@ -81,8 +81,8 @@ class RadasConfig(object):
     def result_queue(self) -> str:
         return self.__result_queue.strip()
 
-    def request_queue(self) -> str:
-        return self.__request_queue.strip()
+    def request_channel(self) -> str:
+        return self.__request_chan.strip()
 
     def client_ca(self) -> str:
         return self.__client_ca.strip()
