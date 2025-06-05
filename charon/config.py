@@ -102,6 +102,9 @@ class RadasConfig(object):
     def root_ca(self) -> str:
         return self.__root_ca.strip()
 
+    def ssl_enabled(self) -> bool:
+        return bool(self.__client_ca and self.__client_key and self.__root_ca)
+
     def quay_radas_registry_config(self) -> Optional[str]:
         if self.__quay_radas_registry_config:
             return self.__quay_radas_registry_config.strip()
