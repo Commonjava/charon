@@ -23,7 +23,11 @@ from charon.utils.files import digest_content
 from jinja2 import Template
 import os
 import logging
+<<<<<<< HEAD
 from typing import List, Set, Dict
+=======
+from typing import List, Dict
+>>>>>>> release
 
 from charon.utils.strings import remove_prefix
 
@@ -48,7 +52,7 @@ NPM_INDEX_TEMPLATE = __get_index_template(PACKAGE_TYPE_NPM)
 
 class IndexedHTML(object):
     # object for holding index html file data
-    def __init__(self, title: str, header: str, items: Set[str]):
+    def __init__(self, title: str, header: str, items: List[str]):
         self.title = title
         self.header = header
         self.items = items
@@ -174,8 +178,8 @@ def __to_html_content(package_type: str, contents: List[str], folder: str) -> st
             items = temp_items
     else:
         items.extend(contents)
-    items_set = set(__sort_index_items(items))
-    index = IndexedHTML(title=folder, header=folder, items=items_set)
+    items_result = list(filter(lambda c: c.strip(), __sort_index_items(set(items))))
+    index = IndexedHTML(title=folder, header=folder, items=items_result)
     return index.generate_index_file_content(package_type)
 
 
@@ -303,8 +307,8 @@ def re_index(
                         real_contents.append(c)
         else:
             real_contents = contents
-        logger.debug(real_contents)
         index_content = __to_html_content(package_type, real_contents, path)
+        logger.debug("The re-indexed page content: %s", index_content)
         if not dry_run:
             index_path = os.path.join(path, "index.html")
             if path == "/":

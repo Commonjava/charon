@@ -136,6 +136,16 @@ logger = logging.getLogger(__name__)
     default=False
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
+@option(
+    "--sign_result_loc",
+    "-l",
+    default="/tmp/sign",
+    help="""
+    The local save path for oras to pull the radas signature result.
+    Sign request will use this path to download the signature result,
+    Upload will use the file on this path to generate the corresponding .asc files
+    """,
+)
 @command()
 def upload(
     repo: str,
@@ -150,7 +160,8 @@ def upload(
     sign_key: str = "redhatdevel",
     debug=False,
     quiet=False,
-    dryrun=False
+    dryrun=False,
+    sign_result_loc="/tmp/sign"
 ):
     """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
@@ -221,7 +232,8 @@ def upload(
                 key=sign_key,
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name,
-                config=config
+                config=config,
+                sign_result_loc=sign_result_loc
             )
             if not succeeded:
                 sys.exit(1)
