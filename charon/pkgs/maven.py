@@ -16,6 +16,7 @@ limitations under the License.
 from charon.utils.files import HashType
 import charon.pkgs.indexing as indexing
 import charon.pkgs.signature as signature
+import charon.pkgs.radas_sign as radas_signature
 from charon.utils.files import overwrite_file, digest, write_manifest
 from charon.utils.archive import extract_zip_all
 from charon.utils.strings import remove_prefix
@@ -274,7 +275,8 @@ def handle_maven_uploading(
     key=None,
     dry_run=False,
     manifest_bucket_name=None,
-    config=None
+    config=None,
+    sign_result_loc="/tmp/sign"
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -408,11 +410,38 @@ def handle_maven_uploading(
                 if cf_enable:
                     cf_invalidate_paths.extend(archetype_files)
 
-        # 10. Generate signature file if contain_signature is set to True
-        if gen_sign:
-            conf = get_config(config)
-            if not conf:
-                sys.exit(1)
+        # 10. Generate signature file if radas sign is enabled,
+        # or do detached sign if contain_signature is set to True
+        conf = get_config(config)
+        if not conf:
+            sys.exit(1)
+
+        if conf.is_radas_enabled():
+            logger.info("Start generating radas signature files for s3 bucket %s\n", bucket_name)
+            (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(
+                top_level=top_level, sign_result_loc=sign_result_loc
+            )
+            if not _generated_signs:
+                logger.error(
+                    "No sign result files were generated, "
+                    "please make sure the sign process is already done and without timeout")
+                return (tmp_root, False)
+
+            failed_metas.extend(_failed_metas)
+            generated_signs.extend(_generated_signs)
+            logger.info("Radas signature files generation done.\n")
+
+            logger.info("Start upload radas signature files to s3 bucket %s\n", bucket_name)
+            _failed_metas = s3_client.upload_signatures(
+                meta_file_paths=generated_signs,
+                target=(bucket_name, prefix),
+                product=None,
+                root=top_level
+            )
+            failed_metas.extend(_failed_metas)
+            logger.info("Radas signature files uploading done.\n")
+
+        elif gen_sign:
             suffix_list = __get_suffix(PACKAGE_TYPE_MAVEN, conf)
             command = conf.get_detach_signature_command()
             artifacts = [s for s in valid_mvn_paths if not s.endswith(tuple(suffix_list))]
