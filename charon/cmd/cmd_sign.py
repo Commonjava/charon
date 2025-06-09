@@ -18,6 +18,7 @@ from typing import List
 from charon.config import get_config
 from charon.pkgs.radas_sign import sign_in_radas
 from charon.cmd.internal import _decide_mode
+from charon.constants import DEFAULT_RADAS_SIGN_IGNORES
 
 from click import command, option, argument
 
@@ -98,8 +99,7 @@ def sign(
     ignore_patterns: List[str] = None,
     config: str = None,
     debug=False,
-    quiet=False,
-    dryrun=False
+    quiet=False
 ):
     """Do signing against files in the repo zip in repo_url through
     radas service. The repo_url points to the maven zip repository
@@ -119,8 +119,10 @@ def sign(
             sys.exit(1)
         # All ignore files in global config should also be ignored in signing.
         ig_patterns = conf.get_ignore_patterns()
+        ig_patterns.extend(DEFAULT_RADAS_SIGN_IGNORES)
         if ignore_patterns:
             ig_patterns.extend(ignore_patterns)
+        ig_patterns = list(set(ig_patterns))
         args = {
             "repo_url": repo_url,
             "requester": requester,
