@@ -177,3 +177,8 @@ DEFAULT_ERRORS_LOG = "errors.log"
 DEFAULT_REGISTRY = "localhost"
 DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_COUNT = 10
 DEFAULT_RADAS_SIGN_TIMEOUT_RETRY_INTERVAL = 60
+
+DEFAULT_RADAS_SIGN_IGNORES = [
+    r".*\.md5$", r".*\.sha1$", r".*\.sha128$", r".*\.sha256$",
+    r".*\.sha512$", r".*\.asc$"
+]
