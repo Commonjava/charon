@@ -15,7 +15,7 @@ limitations under the License.
 """
 from setuptools import setup, find_packages
 
-version = "1.3.4"
+version = "1.4.0"
 
 long_description = """
 This charon is a tool to synchronize several types of

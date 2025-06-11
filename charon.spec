@@ -1,7 +1,7 @@
 %global owner Commonjava
 %global modulename charon
 
-%global charon_version 1.3.4
+%global charon_version 1.4.0
 %global sdist_tar_name %{modulename}-%{charon_version}
 
 %global python3_pkgversion 3
