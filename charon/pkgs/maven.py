@@ -276,7 +276,7 @@ def handle_maven_uploading(
     dry_run=False,
     manifest_bucket_name=None,
     config=None,
-    sign_result_loc="/tmp/sign"
+    sign_result_file=None
 ) -> Tuple[str, bool]:
     """ Handle the maven product release tarball uploading process.
         * repo is the location of the tarball in filesystem
@@ -416,10 +416,10 @@ def handle_maven_uploading(
         if not conf:
             sys.exit(1)
 
-        if conf.is_radas_enabled():
+        if conf.is_radas_enabled() and sign_result_file and os.path.isfile(sign_result_file):
             logger.info("Start generating radas signature files for s3 bucket %s\n", bucket_name)
             (_failed_metas, _generated_signs) = radas_signature.generate_radas_sign(
-                top_level=top_level, sign_result_loc=sign_result_loc
+                top_level=top_level, sign_result_file=sign_result_file
             )
             if not _generated_signs:
                 logger.error(
