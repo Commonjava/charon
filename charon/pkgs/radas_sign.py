@@ -276,31 +276,17 @@ class RadasSender(MessagingHandler):
             self.close()
 
 
-def generate_radas_sign(top_level: str, sign_result_loc: str) -> Tuple[List[str], List[str]]:
+def generate_radas_sign(top_level: str, sign_result_file: str) -> Tuple[List[str], List[str]]:
     """
     Generate .asc files based on RADAS sign result json file
     """
-    if not os.path.isdir(sign_result_loc):
-        logger.error("Sign result loc dir does not exist: %s", sign_result_loc)
-        return [], []
-
-    files = [
-        os.path.join(sign_result_loc, f)
-        for f in os.listdir(sign_result_loc)
-        if os.path.isfile(os.path.join(sign_result_loc, f))
-    ]
-
-    if not files:
-        return [], []
-
-    if len(files) > 1:
-        logger.error("Multiple files found in %s. Expected only one file.", sign_result_loc)
+    if not sign_result_file or not os.path.isfile(sign_result_file):
+        logger.error("Sign result file does not exist: %s", sign_result_file)
         return [], []
 
     # should only have the single sign result json file from the radas registry
-    json_file_path = files[0]
     try:
-        with open(json_file_path, "r") as f:
+        with open(sign_result_file, "r") as f:
             data = json.load(f)
     except Exception as e:
         logger.error("Failed to read or parse the JSON file: %s", e)
