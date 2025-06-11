@@ -161,7 +161,7 @@ def upload(
     debug=False,
     quiet=False,
     dryrun=False,
-    sign_result_loc="/tmp/sign"
+    sign_result_file=None,
 ):
     """Upload all files from a released product REPO to Ronda
     Service. The REPO points to a product released tarball which
@@ -233,7 +233,7 @@ def upload(
                 dry_run=dryrun,
                 manifest_bucket_name=manifest_bucket_name,
                 config=config,
-                sign_result_loc=sign_result_loc
+                sign_result_file=sign_result_file
             )
             if not succeeded:
                 sys.exit(1)

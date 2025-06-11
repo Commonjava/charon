@@ -39,7 +39,7 @@ class RadasSignHandlerTest(unittest.TestCase):
 
     def test_multi_sign_files_generation(self):
         self.__prepare_artifacts()
-        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_loc)
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
@@ -55,7 +55,7 @@ class RadasSignHandlerTest(unittest.TestCase):
         self.assertIn("signature2@hash", content2)
 
     def test_sign_files_generation_with_missing_artifacts(self):
-        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_loc)
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
@@ -82,7 +82,7 @@ class RadasSignHandlerTest(unittest.TestCase):
                     raise IOError("mock write error")
                 return real_open(path, *args, **kwargs)
             mock_open.side_effect = side_effect
-            failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_loc)
+            failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_file)
 
         self.assertEqual(len(failed), 1)
         self.assertNotIn(expected_asc1, generated)
@@ -93,20 +93,7 @@ class RadasSignHandlerTest(unittest.TestCase):
         # simulate missing pull result by removing the sign result file loc
         shutil.rmtree(self.__sign_result_loc)
 
-        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_loc)
-        self.assertEqual(failed, [])
-        expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
-        expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
-        self.assertEqual(generated, [])
-        self.assertFalse(os.path.exists(expected_asc1))
-        self.assertFalse(os.path.exists(expected_asc2))
-
-    def test_sign_files_generation_with_not_single_results(self):
-        self.__prepare_artifacts()
-        another_result_file = os.path.join(self.__sign_result_loc, "result2.json")
-        overwrite_file(another_result_file, "test_json")
-
-        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_loc)
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
