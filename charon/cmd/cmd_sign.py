@@ -131,7 +131,6 @@ def sign(
             "ignore_patterns": ig_patterns,
             "radas_config": radas_conf
         }
-        logger.debug("params: %s", args)
         sign_in_radas(**args)  # type: ignore
     except Exception:
         print(traceback.format_exc())
