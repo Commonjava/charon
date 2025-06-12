@@ -76,7 +76,10 @@ class RadasConfig(object):
         return True
 
     def umb_target(self) -> str:
-        return f"amqps://{self.__umb_host.strip()}:{self.__umb_host_port}"
+        if self.ssl_enabled():
+            return f"amqps://{self.__umb_host.strip()}:{self.__umb_host_port}"
+        else:
+            return f"amqp://{self.__umb_host.strip()}:{self.__umb_host_port}"
 
     def result_queue(self) -> str:
         return self.__result_queue.strip()

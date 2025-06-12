@@ -201,19 +201,25 @@ class RadasSender(MessagingHandler):
 
     def on_start(self, event):
         self._container = event.container
-        self.log.debug("Start creating connection for sender")
+        self.log.debug("Start creating connection for sender to %s", self.rconf.umb_target())
         conn = self._container.connect(
             url=self.rconf.umb_target(),
-            ssl_domain=self._ssl
+            ssl_domain=self._ssl,
+            heartbeat=500
         )
-        self.log.debug("Connection to %s is created.", conn.hostname)
         if conn:
+            self.log.debug("Start creating sender")
             self._sender = self._container.create_sender(conn, self.rconf.request_channel())
+            self.log.debug("Sender created. Remote address: %s", self._sender.target.address)
+
+    def on_connection_opened(self, event):
+        conn = event.connection
+        self.log.debug("Connection to %s is created.", conn.hostname)
 
     def on_sendable(self, event):
         if not self._message_sent:
             msg = Message(body=self.payload, durable=True)
-            self.log.debug("Sending message: %s to %s", msg.id, event.sender.target.address)
+            self.log.debug("Sending message: %s to %s", msg.body, event.sender.target.address)
             self._send_msg(msg)
             self._message = msg
             self._message_sent = True
@@ -232,7 +238,7 @@ class RadasSender(MessagingHandler):
         self._handle_failed_delivery("Released")
 
     def on_accepted(self, event):
-        self.log.info("Message accepted by receiver: %s", event.delivery)
+        self.log.info("Message accepted by receiver: %s", event.delivery.link.target.address)
         self.status = "success"
         self.close()  # Close connection after confirmation
 
@@ -251,26 +257,26 @@ class RadasSender(MessagingHandler):
     def _send_msg(self, msg: Message):
         if self._sender and self._sender.credit > 0:
             self._sender.send(msg)
-            self.log.debug("Message %s sent", msg.id)
+            self.log.debug("Message %s sent", msg.body)
         else:
             self.log.warning("Sender not ready or no credit available")
 
     def _handle_failed_delivery(self, reason: str):
         if self._pending:
             msg = self._pending
-            self.log.warning("Message %s failed for reason: %s", msg.id, reason)
+            self.log.warning("Message %s failed for reason: %s", msg.body, reason)
             max_retries = self.rconf.radas_sign_timeout_retry_count()
             if self._retried < max_retries:
                 # Schedule retry
                 self._retried = self._retried + 1
                 self.log.info("Scheduling retry %s/%s for message %s",
-                              self._retried, max_retries, msg.id)
+                              self._retried, max_retries, msg.body)
                 # Schedule retry after delay
                 if self._container:
                     self._container.schedule(self.rconf.radas_sign_timeout_retry_interval(), self)
             else:
                 # Max retries exceeded
-                self.log.error("Message %s failed after %s retries", msg.id, max_retries)
+                self.log.error("Message %s failed after %s retries", msg.body, max_retries)
                 self.status = "failed"
             self._pending = None
         else:
