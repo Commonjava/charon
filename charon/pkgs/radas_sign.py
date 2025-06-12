@@ -201,10 +201,12 @@ class RadasSender(MessagingHandler):
 
     def on_start(self, event):
         self._container = event.container
+        self.log.debug("Start creating connection for sender")
         conn = self._container.connect(
             url=self.rconf.umb_target(),
             ssl_domain=self._ssl
         )
+        self.log.debug("Connection to %s is created.", conn.hostname)
         if conn:
             self._sender = self._container.create_sender(conn, self.rconf.request_channel())
 
