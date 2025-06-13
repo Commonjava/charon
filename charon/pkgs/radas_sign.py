@@ -130,7 +130,15 @@ class RadasReceiver(MessagingHandler):
             msg: The message body received
         """
         msg_dict = json.loads(msg)
-        msg_request_id = msg_dict.get("request_id")
+        radas_response = msg_dict.get("msg")
+        if not radas_response:
+            self.log.info(
+                "Message %s is not valid, ignoring",
+                msg_dict
+            )
+            return
+
+        msg_request_id = radas_response.get("request_id")
         if msg_request_id != self.request_id:
             self.log.info(
                 "Message request_id %s does not match the request_id %s from sender, ignoring",
@@ -143,10 +151,10 @@ class RadasReceiver(MessagingHandler):
         self.log.info(
             "Start to process the sign event message, request_id %s is matched", msg_request_id
         )
-        self.sign_result_status = msg_dict.get("signing_status")
-        self.sign_result_errors = msg_dict.get("errors", [])
+        self.sign_result_status = radas_response.get("signing_status")
+        self.sign_result_errors = radas_response.get("errors", [])
         if self.sign_result_status == "success":
-            result_reference_url = msg_dict.get("result_reference")
+            result_reference_url = radas_response.get("result_reference")
             if not result_reference_url:
                 self.log.warning("Not found result_reference in message，ignore.")
                 return

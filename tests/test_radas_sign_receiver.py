@@ -60,12 +60,19 @@ class RadasSignReceiverTest(unittest.TestCase):
 
             # test on_message: unmatched case
             test_ummatch_result = {
-                "request_id": "test-request-id-no-match",
-                "file_reference": "quay.io/example/test-repo",
-                "result_reference": "quay.io/example-sign/sign-repo",
-                "sig_keyname": "testkey",
-                "signing_status": "success",
-                "errors": []
+                "i": "1",
+                "msg_id": "test-id",
+                "timestamp": time.time(),
+                "topic": "test-topic",
+                "username": "test-user",
+                "msg": {
+                    "request_id": "test-request-id-no-match",
+                    "file_reference": "quay.io/example/test-repo",
+                    "result_reference": "quay.io/example-sign/sign-repo",
+                    "sig_keyname": "testkey",
+                    "signing_status": "success",
+                    "errors": []
+                }
             }
             event.message.body = json.dumps(test_ummatch_result)
             r_receiver.on_message(event)
@@ -79,12 +86,19 @@ class RadasSignReceiverTest(unittest.TestCase):
             # test on_message: matched case with failed status
             self.reset_receiver(r_receiver)
             test_failed_result = {
-                "request_id": "test-request-id",
-                "file_reference": "quay.io/example/test-repo",
-                "result_reference": "quay.io/example-sign/sign-repo",
-                "sig_keyname": "testkey",
-                "signing_status": "failed",
-                "errors": ["error1", "error2"]
+                "i": "1",
+                "msg_id": "test-id",
+                "timestamp": time.time(),
+                "topic": "test-topic",
+                "username": "test-user",
+                "msg": {
+                    "request_id": "test-request-id",
+                    "file_reference": "quay.io/example/test-repo",
+                    "result_reference": "quay.io/example-sign/sign-repo",
+                    "sig_keyname": "testkey",
+                    "signing_status": "failed",
+                    "errors": ["error1", "error2"]
+                }
             }
             event.message.body = json.dumps(test_failed_result)
             r_receiver.on_message(event)
@@ -98,12 +112,19 @@ class RadasSignReceiverTest(unittest.TestCase):
             # test on_message: matched case with success status
             self.reset_receiver(r_receiver)
             test_success_result = {
-                "request_id": "test-request-id",
-                "file_reference": "quay.io/example/test-repo",
-                "result_reference": "quay.io/example-sign/sign-repo",
-                "sig_keyname": "testkey",
-                "signing_status": "success",
-                "errors": []
+                "i": "1",
+                "msg_id": "test-id",
+                "timestamp": time.time(),
+                "topic": "test-topic",
+                "username": "test-user",
+                "msg": {
+                    "request_id": "test-request-id",
+                    "file_reference": "quay.io/example/test-repo",
+                    "result_reference": "quay.io/example-sign/sign-repo",
+                    "sig_keyname": "testkey",
+                    "signing_status": "success",
+                    "errors": []
+                }
             }
             event.message.body = json.dumps(test_success_result)
             r_receiver.on_message(event)
