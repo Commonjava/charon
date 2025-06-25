@@ -19,7 +19,7 @@ from charon.storage import S3Client
 # from charon.pkgs.pkg_utils import invalidate_cf_paths
 from charon.constants import (INDEX_HTML_TEMPLATE, NPM_INDEX_HTML_TEMPLATE,
                               PACKAGE_TYPE_MAVEN, PACKAGE_TYPE_NPM, PROD_INFO_SUFFIX)
-from charon.utils.files import digest_content
+from charon.utils.files import digest_content, overwrite_file
 from jinja2 import Template
 import os
 import logging
@@ -155,8 +155,7 @@ def __to_html(package_type: str, contents: List[str], folder: str, top_level: st
     if folder == "/":
         html_path = os.path.join(top_level, "index.html")
     os.makedirs(os.path.dirname(html_path), exist_ok=True)
-    with open(html_path, 'w', encoding='utf-8') as html:
-        html.write(html_content)
+    overwrite_file(html_path, html_content)
     return html_path
 
 
