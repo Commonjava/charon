@@ -137,13 +137,11 @@ logger = logging.getLogger(__name__)
 )
 @option("--dryrun", "-n", is_flag=True, default=False)
 @option(
-    "--sign_result_loc",
+    "--sign_result_file",
     "-l",
-    default="/tmp/sign",
     help="""
-    The local save path for oras to pull the radas signature result.
-    Sign request will use this path to download the signature result,
-    Upload will use the file on this path to generate the corresponding .asc files
+    The path of the file which contains radas signature result.
+    Upload will use the file to generate the corresponding .asc files
     """,
 )
 @command()
