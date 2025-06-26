@@ -24,6 +24,7 @@ import time
 from typing import List, Any, Tuple, Callable, Dict, Optional
 from charon.config import RadasConfig
 from charon.pkgs.oras_client import OrasClient
+from charon.utils import files
 from proton import SSLDomain, Message, Event, Sender, Connection
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
@@ -327,20 +328,25 @@ def generate_radas_sign(top_level: str, sign_result_file: str) -> Tuple[List[str
             signature_path = os.path.join(top_level, asc_filename)
 
             if not os.path.isfile(artifact_path):
-                logger.warning("Artifact missing, skip signature file generation")
+                logger.warning(
+                    "Artifact %s missing, skip signature file generation.",
+                    artifact_path)
                 return
 
             try:
-                with open(signature_path, "w") as asc_file:
-                    asc_file.write(signature)
+                files.overwrite_file(signature_path, signature)
                 generated_signs.append(signature_path)
-                logger.info("Generated .asc file: %s", signature_path)
+                logger.debug("Generated .asc file: %s", signature_path)
             except Exception as e:
                 failed_paths.append(signature_path)
                 logger.error("Failed to write .asc file for %s: %s", artifact_path, e)
 
     result = data.get("results", [])
-    return __do_path_cut_and(path_handler=generate_single_sign_file, data=result)
+    (_failed_metas, _generated_signs) = __do_path_cut_and(generate_single_sign_file, result)
+    logger.info(
+        "Signature generation done. There are %s signature files generated.",
+        len(_generated_signs))
+    return (_failed_metas, _generated_signs)
 
 
 def __do_path_cut_and(
