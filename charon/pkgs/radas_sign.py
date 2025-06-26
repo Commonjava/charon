@@ -168,7 +168,8 @@ class RadasReceiver(MessagingHandler):
             files = oras_client.pull(
                 result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
             )
-            self.log.info("Number of files pulled: %d, path: %s", len(files), files[0])
+            if files and len(files) > 0:
+                self.log.info("Number of files pulled: %d, path: %s", len(files), files[0])
         else:
             self.log.error("The signing result received with failed status. Errors: %s",
                            self.sign_result_errors)
