@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 from typing import Dict, List, Optional
@@ -22,6 +23,104 @@ from charon.utils.yaml import read_yaml_from_file_path
 CONFIG_FILE = "charon.yaml"
 
 logger = logging.getLogger(__name__)
+
+
+class RadasConfig(object):
+    def __init__(self, data: Dict):
+        self.__umb_host: str = data.get("umb_host", None)
+        self.__umb_host_port: str = data.get("umb_host_port", "5671")
+        self.__result_queue: str = data.get("result_queue", None)
+        self.__request_chan: str = data.get("request_channel", None)
+        self.__client_ca: str = data.get("client_ca", None)
+        self.__client_key: str = data.get("client_key", None)
+        self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
+        self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
+        self.__quay_radas_registry_config: Optional[str] = data.get(
+            "quay_radas_registry_config", None
+        )
+        self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
+        self.__radas_sign_timeout_retry_interval: int = data.get(
+            "radas_sign_timeout_retry_interval", 60
+        )
+        self.__radas_receiver_timeout: int = int(data.get("radas_receiver_timeout", 1800))
+
+    def validate(self) -> bool:
+        if not self.__umb_host:
+            logger.error("Missing host name setting for UMB!")
+            return False
+        if not self.__result_queue:
+            logger.error("Missing the queue setting to receive signing result in UMB!")
+            return False
+        if not self.__request_chan:
+            logger.error("Missing the queue setting to send signing request in UMB!")
+            return False
+        if self.__client_ca and not os.access(self.__client_ca, os.R_OK):
+            logger.error("The client CA file is not valid!")
+            return False
+        if self.__client_key and not os.access(self.__client_key, os.R_OK):
+            logger.error("The client key file is not valid!")
+            return False
+        if self.__client_key_pass_file and not os.access(self.__client_key_pass_file, os.R_OK):
+            logger.error("The client key password file is not valid!")
+            return False
+        if self.__root_ca and not os.access(self.__root_ca, os.R_OK):
+            logger.error("The root ca file is not valid!")
+            return False
+        if self.__quay_radas_registry_config and not os.access(
+            self.__quay_radas_registry_config, os.R_OK
+        ):
+            self.__quay_radas_registry_config = None
+            logger.warning(
+                "The quay registry config for oras is not valid, will ignore the registry config!"
+            )
+        return True
+
+    def umb_target(self) -> str:
+        if self.ssl_enabled():
+            return f"amqps://{self.__umb_host.strip()}:{self.__umb_host_port}"
+        else:
+            return f"amqp://{self.__umb_host.strip()}:{self.__umb_host_port}"
+
+    def result_queue(self) -> str:
+        return self.__result_queue.strip()
+
+    def request_channel(self) -> str:
+        return self.__request_chan.strip()
+
+    def client_ca(self) -> str:
+        return self.__client_ca.strip()
+
+    def client_key(self) -> str:
+        return self.__client_key.strip()
+
+    def client_key_password(self) -> str:
+        pass_file = self.__client_key_pass_file
+        if os.access(pass_file, os.R_OK):
+            with open(pass_file, "r") as f:
+                return f.read().strip()
+        elif pass_file:
+            logger.warning("The key password file is not accessible. Will ignore the password.")
+        return ""
+
+    def root_ca(self) -> str:
+        return self.__root_ca.strip()
+
+    def ssl_enabled(self) -> bool:
+        return bool(self.__client_ca and self.__client_key and self.__root_ca)
+
+    def quay_radas_registry_config(self) -> Optional[str]:
+        if self.__quay_radas_registry_config:
+            return self.__quay_radas_registry_config.strip()
+        return None
+
+    def radas_sign_timeout_retry_count(self) -> int:
+        return self.__radas_sign_timeout_retry_count
+
+    def radas_sign_timeout_retry_interval(self) -> int:
+        return self.__radas_sign_timeout_retry_interval
+
+    def receiver_timeout(self) -> int:
+        return self.__radas_receiver_timeout
 
 
 class CharonConfig(object):
@@ -39,6 +138,13 @@ class CharonConfig(object):
         self.__ignore_signature_suffix: Dict = data.get("ignore_signature_suffix", None)
         self.__signature_command: str = data.get("detach_signature_command", None)
         self.__aws_cf_enable: bool = data.get("aws_cf_enable", False)
+        radas_config: Dict = data.get("radas", None)
+        self.__radas_config: Optional[RadasConfig] = None
+        if radas_config:
+            self.__radas_config = RadasConfig(radas_config)
+            self.__radas_enabled = bool(self.__radas_config and self.__radas_config.validate())
+        else:
+            self.__radas_enabled = False
 
     def get_ignore_patterns(self) -> List[str]:
         return self.__ignore_patterns
@@ -67,19 +173,23 @@ class CharonConfig(object):
     def is_aws_cf_enable(self) -> bool:
         return self.__aws_cf_enable
 
+    def is_radas_enabled(self) -> bool:
+        return self.__radas_enabled
+
+    def get_radas_config(self) -> Optional[RadasConfig]:
+        return self.__radas_config
+
 
 def get_config(cfgPath=None) -> CharonConfig:
     config_file_path = cfgPath
     if not config_file_path or not os.path.isfile(config_file_path):
         config_file_path = os.path.join(os.getenv("HOME", ""), ".charon", CONFIG_FILE)
-    data = read_yaml_from_file_path(config_file_path, 'schemas/charon.json')
+    data = read_yaml_from_file_path(config_file_path, "schemas/charon.json")
     return CharonConfig(data)
 
 
 def get_template(template_file: str) -> str:
-    template = os.path.join(
-        os.getenv("HOME", ''), ".charon/template", template_file
-    )
+    template = os.path.join(os.getenv("HOME", ""), ".charon/template", template_file)
     if os.path.isfile(template):
         with open(template, encoding="utf-8") as file_:
             return file_.read()

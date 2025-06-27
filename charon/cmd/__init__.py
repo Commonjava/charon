@@ -13,16 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from click import group
+from click import group, version_option, pass_context
 from charon.cmd.cmd_upload import upload
 from charon.cmd.cmd_delete import delete
 from charon.cmd.cmd_index import index
 from charon.cmd.cmd_checksum import init_checksum, checksum
 from charon.cmd.cmd_cache import init_cf, cf
+from charon.cmd.cmd_sign import sign
 
 
 @group()
-def cli():
+@version_option()
+@pass_context
+def cli(ctx):
     """Charon is a tool to synchronize several types of
        artifacts repository data to Red Hat Ronda
        service (maven.repository.redhat.com).
@@ -41,3 +44,6 @@ cli.add_command(cf)
 # init checksum command
 init_checksum()
 cli.add_command(checksum)
+
+# radas sign cmd
+cli.add_command(sign)
