@@ -15,7 +15,7 @@ limitations under the License.
 """
 from setuptools import setup, find_packages
 
-version = "1.3.3"
+version = "1.4.0"
 
 long_description = """
 This charon is a tool to synchronize several types of
@@ -57,6 +57,8 @@ setup(
         "subresource-integrity>=0.2",
         "jsonschema>=4.9.1",
         "urllib3>=1.25.10",
-        "semantic-version>=2.10.0"
+        "semantic-version>=2.10.0",
+        "oras<=0.2.31",
+        "python-qpid-proton>=0.39.0"
     ],
 )

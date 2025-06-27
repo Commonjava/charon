@@ -30,6 +30,44 @@
       "type": "string",
       "description": "signature command to be used for signature"
     },
+    "radas": {
+      "type": "object",
+      "descrition": "",
+      "properties": {
+        "umb_host": {
+          "type": "string",
+          "description": "The host of UMB"
+        },
+        "umb_host_port": {
+          "type": "string",
+          "description": "The port of UMB host"
+        },
+        "result_queue": {
+          "type": "string",
+          "description": "The queue in UMB to receive radas signing result"
+        },
+        "request_queue": {
+          "type": "string",
+          "description": "The queue in UMB to send signing request to RADAS"
+        },
+        "client_ca": {
+          "type": "string",
+          "description": "the client ca file path"
+        },
+        "client_key": {
+          "type": "string",
+          "description": "the client key file path"
+        },
+        "client_key_pass_file":{
+          "type": "string",
+          "description": "the file contains password of the client key"
+        },
+        "root_ca": {
+          "type": "string",
+          "description": "the root ca file path"
+        }
+      }
+    },
     "targets": {
       "type": "object",
       "patternProperties": {
