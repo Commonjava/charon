@@ -1,7 +1,7 @@
 %global owner Commonjava
 %global modulename charon
 
-%global charon_version 1.3.4
+%global charon_version 1.4.0
 %global sdist_tar_name %{modulename}-%{charon_version}
 
 %global python3_pkgversion 3
@@ -64,6 +64,23 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 
 
 %changelog
+* Fri Jun 27 2025 Gang Li <gli@redhat.com>
+- 1.4.0 release
+- Add RADAS signature support
+
+* Mon Jun 23 2025 Gang Li <gli@redhat.com>
+- 1.3.4 release
+- Fix the sorting problem of index page items
+
+* Mon Dec 16 2024 Gang Li <gli@redhat.com>
+- 1.3.3 release
+- Fix npm del error when deleting a package which has overlapped name with others
+- Some code refinement
+
+* Thu Jul 11 2024 Gang Li <gli@redhat.com>
+- 1.3.2 release
+- Some updates in the Containerfile.
+
 * Tue May 7 2024 Gang Li <gli@redhat.com>
 - 1.3.1 release
 - Add checksum refresh command: refresh checksum files for maven artifacts
