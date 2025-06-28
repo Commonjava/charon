@@ -58,7 +58,7 @@ setup(
         "jsonschema>=4.9.1",
         "urllib3>=1.25.10",
         "semantic-version>=2.10.0",
-        "oras<=0.2.31",
+        "oras<=0.2.37",
         "python-qpid-proton>=0.39.0"
     ],
 )
