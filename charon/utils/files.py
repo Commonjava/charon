@@ -125,6 +125,5 @@ def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, 
     if not os.path.isfile(manifest_path):
         with open(manifest_path, mode="a", encoding="utf-8"):
             pass
-    with open(manifest_path, mode="w", encoding="utf-8") as f:
-        f.write('\n'.join(artifacts))
+    overwrite_file(manifest_path, '\n'.join(artifacts))
     return manifest_name, manifest_path

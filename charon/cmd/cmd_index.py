@@ -43,6 +43,13 @@ logger = logging.getLogger(__name__)
     required=True
 )
 @option(
+    "--recursive",
+    "-r",
+    help="If do indexing recursively under $path",
+    is_flag=True,
+    default=False
+)
+@option(
     "--config",
     "-c",
     help="""
@@ -69,6 +76,7 @@ logger = logging.getLogger(__name__)
 def index(
     path: str,
     target: str,
+    recursive: bool = False,
     config: str = None,
     debug: bool = False,
     quiet: bool = False,
@@ -120,7 +128,15 @@ def index(
             if not aws_bucket:
                 logger.error("No bucket specified for target %s!", target)
             else:
-                re_index(b, path, package_type, aws_profile, dryrun)
+                args = {
+                    "target": b,
+                    "path": path,
+                    "package_type": package_type,
+                    "aws_profile": aws_profile,
+                    "recursive": recursive,
+                    "dry_run": dryrun
+                }
+                re_index(**args)  # type: ignore
 
     except Exception:
         print(traceback.format_exc())

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from charon.utils.files import digest, HashType
+from charon.utils.files import digest, HashType, overwrite_file
 from charon.storage import S3Client
 from typing import Tuple, List, Dict, Optional
 from html.parser import HTMLParser
@@ -169,9 +169,10 @@ def _gen_report(
     def _write_one_col_file(items: List[str], file_name: str):
         if items and len(items) > 0:
             _check_and_remove_file(file_name)
-            with open(file_name, "w") as f:
-                for i in items:
-                    f.write(i + "\n")
+            content = ""
+            for i in items:
+                content = content + i + "\n"
+            overwrite_file(file_name, content)
             logger.info("The report file %s is generated.", file_name)
 
     _write_one_col_file(content[0], os.path.join(work_dir, "mismatched_files.csv"))
@@ -180,10 +181,9 @@ def _gen_report(
     if content[2] and len(content[2]) > 0:
         error_file = os.path.join(work_dir, "error_files.csv")
         _check_and_remove_file(error_file)
-        with open(error_file, "w") as f:
-            f.write("path,error\n")
-            for d in content[2]:
-                f.write("{path},{error}\n".format(path=d["path"], error=d["error"]))
+        f_content_lines: List[str] = []
+        f_content = "path,error\n" + "\n".join(f_content_lines)
+        overwrite_file(error_file, f_content)
         logger.info("The report file %s is generated.", error_file)
 
 
