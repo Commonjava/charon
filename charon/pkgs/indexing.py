@@ -266,7 +266,7 @@ def re_index(
     path: str,
     package_type: str,
     aws_profile: str = None,
-    # cf_enable: bool = False,
+    recursive: bool = False,
     dry_run: bool = False
 ):
     """Refresh the index.html for the specified folder in the bucket.
@@ -306,6 +306,7 @@ def re_index(
         logger.debug("The re-indexed page content: %s", index_content)
         if not dry_run:
             index_path = os.path.join(path, "index.html")
+            logger.info("Start re-indexing %s in bucket %s", index_path, bucket_name)
             if path == "/":
                 index_path = "index.html"
             s3_client.simple_delete_file(index_path, (bucket_name, real_prefix))
@@ -313,10 +314,23 @@ def re_index(
                 index_path, index_content, (bucket_name, real_prefix),
                 "text/html", digest_content(index_content)
             )
-            # We will not invalidate index.html per cost consideration
-            # if cf_enable:
-            #     cf_client = CFClient(aws_profile=aws_profile)
-            #     invalidate_cf_paths(cf_client, bucket, [index_path])
+            logger.info("%s re-indexing finished", index_path)
+        if recursive:
+            for c in contents:
+                if c.endswith("/"):
+                    sub_path = c.removeprefix(real_prefix).strip()
+                    if sub_path.startswith("/"):
+                        sub_path = sub_path.removeprefix("/")
+                    logger.debug("subpath: %s", sub_path)
+                    args = {
+                        "target": target,
+                        "path": sub_path,
+                        "package_type": package_type,
+                        "aws_profile": aws_profile,
+                        "recursive": recursive,
+                        "dry_run": dry_run
+                    }
+                    re_index(**args)  # type: ignore
     else:
         logger.warning(
             "The path %s does not contain any contents in bucket %s. "
