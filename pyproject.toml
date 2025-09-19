@@ -10,12 +10,11 @@ authors = [
 ]
 readme = "README.md"
 keywords = ["charon", "mrrc", "maven", "npm", "build", "java"]
-license = {file="LICENSE"}
+license = "Apache-2.0"
 requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 1 - Planning",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
   "Topic :: Software Development :: Build Tools",
   "Topic :: Utilities",
   "Programming Language :: Python :: 3 :: Only",
@@ -61,8 +60,8 @@ test = [
 [project.scripts]
 charon = "charon.cmd:cli"
 
-[tool.setuptools]
-packages = ["charon"]
+[tool.setuptools.packages.find]
+include = ["charon*"]
 
 [tool.setuptools_scm]
 fallback_version = "1.3.4+dev.fallback"
