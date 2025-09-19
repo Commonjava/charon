@@ -1,0 +1,8 @@
+  include LICENSE
+  include README.md
+  include pyproject.toml
+  include setup.py
+  recursive-include charon *.py *.json
+  recursive-include tests *.py *.txt *.tgz *.zip *.json *.sha1
+  exclude .github .gitignore
+
