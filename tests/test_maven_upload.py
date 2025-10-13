@@ -110,6 +110,68 @@ class MavenUploadTest(PackageBaseTest):
         self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
         self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
 
+    def test_multi_zips_upload(self):
+        mvn_tarballs = [
+            os.path.join(INPUTS, "commons-client-4.5.6.zip"),
+            os.path.join(INPUTS, "commons-client-4.5.9.zip")
+        ]
+        product_45 = "commons-client-4.5"
+
+        handle_maven_uploading(
+            mvn_tarballs, product_45,
+            targets=[('', TEST_BUCKET, '', '')],
+            dir_=self.tempdir, do_index=False
+        )
+
+        objs = list(self.test_bucket.objects.all())
+        actual_files = [obj.key for obj in objs]
+        # need to double mvn num because of .prodinfo files
+        self.assertEqual(
+            COMMONS_CLIENT_MVN_NUM * 2 + COMMONS_CLIENT_META_NUM,
+            len(actual_files)
+        )
+
+        filesets = [
+            COMMONS_CLIENT_METAS, COMMONS_CLIENT_456_FILES,
+            COMMONS_CLIENT_459_FILES,
+            ARCHETYPE_CATALOG_FILES
+        ]
+        for fileset in filesets:
+            for f in fileset:
+                self.assertIn(f, actual_files)
+
+        product_mix = [product_45]
+        for f in COMMONS_LOGGING_FILES:
+            self.assertIn(f, actual_files)
+            self.check_product(f, product_mix)
+        for f in COMMONS_LOGGING_METAS:
+            self.assertIn(f, actual_files)
+
+        meta_obj_client = self.test_bucket.Object(COMMONS_CLIENT_METAS[0])
+        meta_content_client = str(meta_obj_client.get()["Body"].read(), "utf-8")
+        self.assertIn(
+            "<groupId>org.apache.httpcomponents</groupId>", meta_content_client
+        )
+        self.assertIn("<artifactId>httpclient</artifactId>", meta_content_client)
+        self.assertIn("<latest>4.5.9</latest>", meta_content_client)
+        self.assertIn("<release>4.5.9</release>", meta_content_client)
+        self.assertIn("<version>4.5.6</version>", meta_content_client)
+        self.assertIn("<version>4.5.9</version>", meta_content_client)
+
+        meta_obj_logging = self.test_bucket.Object(COMMONS_LOGGING_METAS[0])
+        meta_content_logging = str(meta_obj_logging.get()["Body"].read(), "utf-8")
+        self.assertIn("<groupId>commons-logging</groupId>", meta_content_logging)
+        self.assertIn("<artifactId>commons-logging</artifactId>", meta_content_logging)
+        self.assertIn("<version>1.2</version>", meta_content_logging)
+        self.assertIn("<latest>1.2</latest>", meta_content_logging)
+        self.assertIn("<release>1.2</release>", meta_content_logging)
+
+        catalog = self.test_bucket.Object(ARCHETYPE_CATALOG)
+        cat_content = str(catalog.get()["Body"].read(), "utf-8")
+        self.assertIn("<version>4.5.9</version>", cat_content)
+        self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
+        self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
+
     def test_ignore_upload(self):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"

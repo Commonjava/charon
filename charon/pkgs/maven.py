@@ -32,11 +32,12 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime
 from zipfile import ZipFile, BadZipFile
 from tempfile import mkdtemp
+from shutil import rmtree, copy2
 from defusedxml import ElementTree
 
 import os
@@ -261,7 +262,7 @@ def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -
 
 
 def handle_maven_uploading(
-    repo: str,
+    repos: Union[str, List[str]],
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
@@ -294,8 +295,10 @@ def handle_maven_uploading(
     """
     if targets is None:
         targets = []
-    # 1. extract tarball
-    tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
+    if isinstance(repos, str):
+        repos = [repos]
+    # 1. extract tarballs
+    tmp_root = _extract_tarballs(repos, root, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
@@ -671,6 +674,135 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
             sys.exit(1)
     logger.error("Error: archive %s does not exist", repo)
     sys.exit(1)
+
+
+def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str:
+    """ Extract multiple zip archives to a temporary directory.
+        * repos are the list of repo paths to extract
+        * root is a prefix in the tarball to identify which path is
+          the beginning of the maven GAV path
+        * prefix is the prefix for temporary directory name
+        * dir__ is the directory where temporary directories will be created.
+
+        Returns the path to the merged temporary directory containing all extracted files
+    """
+    # Create final merge directory
+    final_tmp_root = mkdtemp(prefix=f"charon-{prefix}-final-", dir=dir__)
+
+    total_copied = 0
+    total_overwritten = 0
+    total_processed = 0
+
+    # Collect all extracted directories first
+    extracted_dirs = []
+
+    for repo in repos:
+        if os.path.exists(repo):
+            try:
+                logger.info("Extracting tarball %s", repo)
+                repo_zip = ZipFile(repo)
+                tmp_root = mkdtemp(prefix=f"charon-{prefix}-", dir=dir__)
+                extract_zip_all(repo_zip, tmp_root)
+                extracted_dirs.append(tmp_root)
+
+            except BadZipFile as e:
+                logger.error("Tarball extraction error: %s", e)
+                sys.exit(1)
+        else:
+            logger.error("Error: archive %s does not exist", repo)
+            sys.exit(1)
+
+    # Merge all extracted directories
+    if extracted_dirs:
+        # Get top-level directory names for merged from all repos
+        top_level_merged_name_dirs = []
+        for extracted_dir in extracted_dirs:
+            for item in os.listdir(extracted_dir):
+                item_path = os.path.join(extracted_dir, item)
+                # Check the root maven-repository subdirectory existence
+                maven_repo_path = os.path.join(item_path, root)
+                if os.path.isdir(item_path) and os.path.exists(maven_repo_path):
+                    top_level_merged_name_dirs.append(item)
+                    break
+
+        # Create merged directory name
+        merged_dir_name = (
+            "_".join(top_level_merged_name_dirs) if top_level_merged_name_dirs else "merged"
+        )
+        merged_dest_dir = os.path.join(final_tmp_root, merged_dir_name)
+
+        # Merge content from all extracted directories
+        for extracted_dir in extracted_dirs:
+            copied, overwritten, processed = _merge_directories_with_rename(
+                extracted_dir, merged_dest_dir, root
+            )
+            total_copied += copied
+            total_overwritten += overwritten
+            total_processed += processed
+
+            # Clean up temporary extraction directory
+            rmtree(extracted_dir)
+
+    logger.info(
+        "All zips merged! Total copied: %s, Total overwritten: %s, Total processed: %s",
+        total_copied,
+        total_overwritten,
+        total_processed,
+    )
+    return final_tmp_root
+
+
+def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
+    """ Recursively copy files from src_dir to dest_dir, overwriting existing files.
+        * src_dir is the source directory to copy from
+        * dest_dir is the destination directory to copy to.
+
+        Returns Tuple of (copied_count, overwritten_count, processed_count)
+    """
+    copied_count = 0
+    overwritten_count = 0
+    processed_count = 0
+
+    # Find the actual content directory
+    content_root = src_dir
+    for item in os.listdir(src_dir):
+        item_path = os.path.join(src_dir, item)
+        # Check the root maven-repository subdirectory existence
+        maven_repo_path = os.path.join(item_path, root)
+        if os.path.isdir(item_path) and os.path.exists(maven_repo_path):
+            content_root = item_path
+            break
+
+    # pylint: disable=unused-variable
+    for root_dir, dirs, files in os.walk(content_root):
+        # Calculate relative path from content root
+        rel_path = os.path.relpath(root_dir, content_root)
+        dest_root = os.path.join(dest_dir, rel_path) if rel_path != '.' else dest_dir
+
+        # Create destination directory if it doesn't exist
+        os.makedirs(dest_root, exist_ok=True)
+
+        # Copy all files, overwriting existing ones
+        for file in files:
+            src_file = os.path.join(root_dir, file)
+            dest_file = os.path.join(dest_root, file)
+            if os.path.exists(dest_file):
+                overwritten_count += 1
+                logger.debug("Overwritten: %s -> %s", src_file, dest_file)
+            else:
+                copied_count += 1
+                logger.debug("Copied: %s -> %s", src_file, dest_file)
+
+            processed_count += 1
+            copy2(src_file, dest_file)
+
+    logger.info(
+        "One zip merged! Files copied: %s, Files overwritten: %s, Total files processed: %s",
+        copied_count,
+        overwritten_count,
+        processed_count,
+    )
+    return copied_count, overwritten_count, processed_count
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str],
