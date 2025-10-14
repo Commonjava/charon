@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 @argument(
     "repos",
     type=str,
-    nargs='+',  # This allows multiple arguments for zip urls
-    required=True
+    nargs=-1  # This allows multiple arguments for zip urls
 )
 @option(
     "--product",
