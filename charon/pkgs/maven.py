@@ -32,7 +32,7 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 from jinja2 import Template
 from datetime import datetime
 from zipfile import ZipFile, BadZipFile
@@ -262,7 +262,7 @@ def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -
 
 
 def handle_maven_uploading(
-    repos: Union[str, List[str]],
+    repos: List[str],
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
@@ -295,8 +295,7 @@ def handle_maven_uploading(
     """
     if targets is None:
         targets = []
-    if isinstance(repos, str):
-        repos = [repos]
+
     # 1. extract tarballs
     tmp_root = _extract_tarballs(repos, root, prod_key, dir__=dir_)
 
@@ -706,7 +705,7 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
                 extracted_dirs.append(tmp_root)
 
             except BadZipFile as e:
-                logger.error("Tarball extraction error: %s", e)
+                logger.error("Tarball extraction error for repo %s: %s", repo, e)
                 sys.exit(1)
         else:
             logger.error("Error: archive %s does not exist", repo)
@@ -714,21 +713,8 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
 
     # Merge all extracted directories
     if extracted_dirs:
-        # Get top-level directory names for merged from all repos
-        top_level_merged_name_dirs = []
-        for extracted_dir in extracted_dirs:
-            for item in os.listdir(extracted_dir):
-                item_path = os.path.join(extracted_dir, item)
-                # Check the root maven-repository subdirectory existence
-                maven_repo_path = os.path.join(item_path, root)
-                if os.path.isdir(item_path) and os.path.exists(maven_repo_path):
-                    top_level_merged_name_dirs.append(item)
-                    break
-
         # Create merged directory name
-        merged_dir_name = (
-            "_".join(top_level_merged_name_dirs) if top_level_merged_name_dirs else "merged"
-        )
+        merged_dir_name = "merged_repositories"
         merged_dest_dir = os.path.join(final_tmp_root, merged_dir_name)
 
         # Merge content from all extracted directories

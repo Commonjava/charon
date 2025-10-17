@@ -13,7 +13,7 @@ class ArchiveTest(BaseTest):
         ]
         final_merged_path = _extract_tarballs(mvn_tarballs, "maven-repository")
         expected_dir = os.path.join(
-            final_merged_path, "commons-client-4.5.6_commons-client-4.5.9", "maven-repository"
+            final_merged_path, "merged_repositories", "maven-repository"
         )
         self.assertTrue(os.path.exists(expected_dir))
 
@@ -26,6 +26,3 @@ class ArchiveTest(BaseTest):
         for expected_file in expected_files:
             file_path = os.path.join(expected_dir, expected_file)
             self.assertTrue(os.path.exists(file_path))
-
-    def test_download_archive(self):
-        pass

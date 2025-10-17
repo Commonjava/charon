@@ -47,7 +47,7 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            [test_zip], product_456,
             targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
@@ -55,7 +55,7 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459,
+            [test_zip], product_459,
             targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
@@ -176,7 +176,7 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456, [".*.sha1"],
+            [test_zip], product_456, [".*.sha1"],
             targets=[('', TEST_BUCKET, '', '')],
             dir_=self.tempdir, do_index=False
         )
@@ -205,7 +205,7 @@ class MavenUploadTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            [test_zip], product,
             targets=[('', TEST_BUCKET, prefix, '')],
             dir_=self.tempdir,
             do_index=False

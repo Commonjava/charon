@@ -156,6 +156,7 @@ def upload(
     """Upload all files from released product REPOs to Ronda
     Service. The REPOs point to a product released tarballs which
     are hosted in remote urls or local paths.
+    Notes: It does not support multiple repos for NPM archives
     """
     tmp_dir = work_dir
     try:
