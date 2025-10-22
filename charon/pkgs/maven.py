@@ -689,7 +689,7 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
     final_tmp_root = mkdtemp(prefix=f"charon-{prefix}-final-", dir=dir__)
 
     total_copied = 0
-    total_overwritten = 0
+    total_duplicated = 0
     total_processed = 0
 
     # Collect all extracted directories first
@@ -719,20 +719,20 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
 
         # Merge content from all extracted directories
         for extracted_dir in extracted_dirs:
-            copied, overwritten, processed = _merge_directories_with_rename(
+            copied, duplicated, processed = _merge_directories_with_rename(
                 extracted_dir, merged_dest_dir, root
             )
             total_copied += copied
-            total_overwritten += overwritten
+            total_duplicated += duplicated
             total_processed += processed
 
             # Clean up temporary extraction directory
             rmtree(extracted_dir)
 
     logger.info(
-        "All zips merged! Total copied: %s, Total overwritten: %s, Total processed: %s",
+        "All zips merged! Total copied: %s, Total duplicated: %s, Total processed: %s",
         total_copied,
-        total_overwritten,
+        total_duplicated,
         total_processed,
     )
     return final_tmp_root
@@ -743,10 +743,10 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
         * src_dir is the source directory to copy from
         * dest_dir is the destination directory to copy to.
 
-        Returns Tuple of (copied_count, overwritten_count, processed_count)
+        Returns Tuple of (copied_count, duplicated_count, processed_count)
     """
     copied_count = 0
-    overwritten_count = 0
+    duplicated_count = 0
     processed_count = 0
 
     # Find the actual content directory
@@ -768,27 +768,27 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
         # Create destination directory if it doesn't exist
         os.makedirs(dest_root, exist_ok=True)
 
-        # Copy all files, overwriting existing ones
+        # Copy all files, skip existing ones
         for file in files:
             src_file = os.path.join(root_dir, file)
             dest_file = os.path.join(dest_root, file)
             if os.path.exists(dest_file):
-                overwritten_count += 1
-                logger.debug("Overwritten: %s -> %s", src_file, dest_file)
+                duplicated_count += 1
+                logger.debug("Duplicated: %s, skipped", dest_file)
             else:
                 copied_count += 1
+                copy2(src_file, dest_file)
                 logger.debug("Copied: %s -> %s", src_file, dest_file)
 
             processed_count += 1
-            copy2(src_file, dest_file)
 
     logger.info(
-        "One zip merged! Files copied: %s, Files overwritten: %s, Total files processed: %s",
+        "One zip merged! Files copied: %s, Files duplicated: %s, Total files processed: %s",
         copied_count,
-        overwritten_count,
+        duplicated_count,
         processed_count,
     )
-    return copied_count, overwritten_count, processed_count
+    return copied_count, duplicated_count, processed_count
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str],
