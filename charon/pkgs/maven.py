@@ -690,6 +690,7 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
 
     total_copied = 0
     total_duplicated = 0
+    total_merged = 0
     total_processed = 0
 
     # Collect all extracted directories first
@@ -719,20 +720,23 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
 
         # Merge content from all extracted directories
         for extracted_dir in extracted_dirs:
-            copied, duplicated, processed = _merge_directories_with_rename(
+            copied, duplicated, merged, processed = _merge_directories_with_rename(
                 extracted_dir, merged_dest_dir, root
             )
             total_copied += copied
             total_duplicated += duplicated
+            total_merged += merged
             total_processed += processed
 
             # Clean up temporary extraction directory
             rmtree(extracted_dir)
 
     logger.info(
-        "All zips merged! Total copied: %s, Total duplicated: %s, Total processed: %s",
+        "All zips merged! Total copied: %s, Total duplicated: %s, "
+        "Total merged: %s, Total processed: %s",
         total_copied,
         total_duplicated,
+        total_merged,
         total_processed,
     )
     return final_tmp_root
@@ -743,10 +747,11 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
         * src_dir is the source directory to copy from
         * dest_dir is the destination directory to copy to.
 
-        Returns Tuple of (copied_count, duplicated_count, processed_count)
+        Returns Tuple of (copied_count, duplicated_count, merged_count, processed_count)
     """
     copied_count = 0
     duplicated_count = 0
+    merged_count = 0
     processed_count = 0
 
     # Find the actual content directory
@@ -772,23 +777,95 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
         for file in files:
             src_file = os.path.join(root_dir, file)
             dest_file = os.path.join(dest_root, file)
+
+            if file == ARCHETYPE_CATALOG_FILENAME:
+                _handle_archetype_catalog_merge(src_file, dest_file)
+                merged_count += 1
+                logger.debug("Merged archetype catalog: %s -> %s", src_file, dest_file)
             if os.path.exists(dest_file):
                 duplicated_count += 1
                 logger.debug("Duplicated: %s, skipped", dest_file)
             else:
-                copied_count += 1
                 copy2(src_file, dest_file)
+                copied_count += 1
                 logger.debug("Copied: %s -> %s", src_file, dest_file)
 
             processed_count += 1
 
     logger.info(
-        "One zip merged! Files copied: %s, Files duplicated: %s, Total files processed: %s",
+        "One zip merged! Files copied: %s, Files duplicated: %s, "
+        "Files merged: %s, Total files processed: %s",
         copied_count,
         duplicated_count,
+        merged_count,
         processed_count,
     )
-    return copied_count, duplicated_count, processed_count
+    return copied_count, duplicated_count, merged_count, processed_count
+
+
+def _handle_archetype_catalog_merge(src_catalog: str, dest_catalog: str):
+    """
+    Handle merging of archetype-catalog.xml files during directory merge.
+
+    Args:
+        src_catalog: Source archetype-catalog.xml file path
+        dest_catalog: Destination archetype-catalog.xml file path
+    """
+    try:
+        with open(src_catalog, "rb") as sf:
+            src_archetypes = _parse_archetypes(sf.read())
+    except ElementTree.ParseError as e:
+        logger.warning("Failed to read source archetype catalog %s: %s", src_catalog, e)
+        return
+
+    if len(src_archetypes) < 1:
+        logger.warning(
+            "No archetypes found in source archetype-catalog.xml: %s, "
+            "even though the file exists! Skipping.",
+            src_catalog
+        )
+        return
+
+    # Copy directly if dest_catalog doesn't exist
+    if not os.path.exists(dest_catalog):
+        copy2(src_catalog, dest_catalog)
+        return
+
+    try:
+        with open(dest_catalog, "rb") as df:
+            dest_archetypes = _parse_archetypes(df.read())
+    except ElementTree.ParseError as e:
+        logger.warning("Failed to read dest archetype catalog %s: %s", dest_catalog, e)
+        return
+
+    if len(dest_archetypes) < 1:
+        logger.warning(
+            "No archetypes found in dest archetype-catalog.xml: %s, "
+            "even though the file exists! Copy directly from the src_catalog, %s.",
+            dest_catalog, src_catalog
+        )
+        copy2(src_catalog, dest_catalog)
+        return
+
+    else:
+        original_dest_size = len(dest_archetypes)
+        for sa in src_archetypes:
+            if sa not in dest_archetypes:
+                dest_archetypes.append(sa)
+            else:
+                logger.debug("DUPLICATE ARCHETYPE: %s", sa)
+
+        if len(dest_archetypes) != original_dest_size:
+            with open(dest_catalog, 'wb'):
+                content = MavenArchetypeCatalog(dest_archetypes).generate_meta_file_content()
+                try:
+                    overwrite_file(dest_catalog, content)
+                except FileNotFoundError as e:
+                    logger.error(
+                        "Error: Can not create file %s because of some missing folders",
+                        dest_catalog,
+                    )
+                    raise e
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str],

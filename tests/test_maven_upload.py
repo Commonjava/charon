@@ -168,6 +168,7 @@ class MavenUploadTest(PackageBaseTest):
 
         catalog = self.test_bucket.Object(ARCHETYPE_CATALOG)
         cat_content = str(catalog.get()["Body"].read(), "utf-8")
+        self.assertIn("<version>4.5.6</version>", cat_content)
         self.assertIn("<version>4.5.9</version>", cat_content)
         self.assertIn("<artifactId>httpclient</artifactId>", cat_content)
         self.assertIn("<groupId>org.apache.httpcomponents</groupId>", cat_content)
