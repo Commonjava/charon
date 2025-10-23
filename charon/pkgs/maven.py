@@ -1032,17 +1032,16 @@ def _generate_rollback_archetype_catalog(
                     else:
                         # Re-render the result of our archetype un-merge to the
                         # local file, in preparation for upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(remote_archetypes)\
+                            .generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return 1
 
@@ -1148,17 +1147,16 @@ def _generate_upload_archetype_catalog(
                         # Re-render the result of our archetype merge /
                         # un-merge to the local file, in preparation for
                         # upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(remote_archetypes)\
+                            .generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return True
 
