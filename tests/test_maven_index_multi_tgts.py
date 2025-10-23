@@ -46,7 +46,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            [test_zip], product,
             targets=targets_,
             dir_=self.tempdir
         )
@@ -106,7 +106,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            [test_zip], product_456,
             targets=targets_,
             dir_=self.tempdir
         )
@@ -114,7 +114,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459,
+            [test_zip], product_459,
             targets=targets_,
             dir_=self.tempdir
         )
@@ -194,7 +194,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product,
+            [test_zip], product,
             targets=targets_,
             dir_=self.tempdir
         )
@@ -417,7 +417,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            [test_zip], product_456,
             targets=targets_,
             dir_=self.tempdir
         )
@@ -425,7 +425,7 @@ class MavenFileIndexMultiTgtsTest(PackageBaseTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.9.zip")
         product_459 = "commons-client-4.5.9"
         handle_maven_uploading(
-            test_zip, product_459,
+            [test_zip], product_459,
             targets=targets_,
             dir_=self.tempdir
         )
