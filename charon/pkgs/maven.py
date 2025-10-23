@@ -856,16 +856,12 @@ def _handle_archetype_catalog_merge(src_catalog: str, dest_catalog: str):
                 logger.debug("DUPLICATE ARCHETYPE: %s", sa)
 
         if len(dest_archetypes) != original_dest_size:
-            with open(dest_catalog, 'wb'):
-                content = MavenArchetypeCatalog(dest_archetypes).generate_meta_file_content()
-                try:
-                    overwrite_file(dest_catalog, content)
-                except FileNotFoundError as e:
-                    logger.error(
-                        "Error: Can not create file %s because of some missing folders",
-                        dest_catalog,
-                    )
-                    raise e
+            content = MavenArchetypeCatalog(dest_archetypes).generate_meta_file_content()
+            try:
+                overwrite_file(dest_catalog, content)
+            except Exception as e:
+                logger.error("Failed to merge archetype catalog: %s", dest_catalog)
+                raise e
 
 
 def _scan_paths(files_root: str, ignore_patterns: List[str],
