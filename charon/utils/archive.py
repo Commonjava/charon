@@ -182,6 +182,19 @@ def detect_npm_archive(repo):
     return NpmArchiveType.NOT_NPM
 
 
+def detect_npm_archives(repos):
+    """Detects, if the archives need to have npm workflow.
+    :parameter repos list of repository directories
+    :return list of NpmArchiveType values
+    """
+    results = []
+    for repo in repos:
+        result = detect_npm_archive(repo)
+        results.append(result)
+
+    return results
+
+
 def download_archive(url: str, base_dir=None) -> str:
     dir_ = base_dir
     if not dir_ or not os.path.isdir(dir_):
