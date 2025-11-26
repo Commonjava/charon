@@ -32,7 +32,7 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime
 from zipfile import ZipFile, BadZipFile
@@ -217,7 +217,8 @@ def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]
     return gavs
 
 
-def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=True) -> List[str]:
+def gen_meta_file(group_id, artifact_id: str,
+                  versions: list, root="/", do_digest=True) -> List[str]:
     content = MavenMetadata(
         group_id, artifact_id, versions
     ).generate_meta_file_content()
@@ -229,7 +230,7 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=T
         meta_files.append(final_meta_path)
     except FileNotFoundError as e:
         raise e
-    if digest:
+    if do_digest:
         meta_files.extend(__gen_all_digest_files(final_meta_path))
     return meta_files
 
@@ -782,7 +783,7 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
                 _handle_archetype_catalog_merge(src_file, dest_file)
                 merged_count += 1
                 logger.debug("Merged archetype catalog: %s -> %s", src_file, dest_file)
-            if os.path.exists(dest_file):
+            elif os.path.exists(dest_file):
                 duplicated_count += 1
                 logger.debug("Duplicated: %s, skipped", dest_file)
             else:
@@ -1303,8 +1304,8 @@ def __wildcard_metadata_paths(paths: List[str]) -> List[str]:
             new_paths.append(path[:-len(".xml")] + ".*")
         elif path.endswith(".md5")\
             or path.endswith(".sha1")\
-            or path.endswith(".sha128")\
-                or path.endswith(".sha256"):
+            or path.endswith(".sha256")\
+                or path.endswith(".sha512"):
             continue
         else:
             new_paths.append(path)
@@ -1313,7 +1314,7 @@ def __wildcard_metadata_paths(paths: List[str]) -> List[str]:
 
 class VersionCompareKey:
     'Used as key function for version sorting'
-    def __init__(self, obj):
+    def __init__(self, obj: str):
         self.obj = obj
 
     def __lt__(self, other):
@@ -1344,36 +1345,61 @@ class VersionCompareKey:
         big = max(len(xitems), len(yitems))
         for i in range(big):
             try:
-                xitem = xitems[i]
+                xitem: Union[str, int] = xitems[i]
             except IndexError:
                 return -1
             try:
-                yitem = yitems[i]
+                yitem: Union[str, int] = yitems[i]
             except IndexError:
                 return 1
-            if xitem.isnumeric() and yitem.isnumeric():
+            if (isinstance(xitem, str) and isinstance(yitem, str) and
+                    xitem.isnumeric() and yitem.isnumeric()):
                 xitem = int(xitem)
                 yitem = int(yitem)
-            elif xitem.isnumeric() and not yitem.isnumeric():
+            elif (isinstance(xitem, str) and xitem.isnumeric() and
+                  (not isinstance(yitem, str) or not yitem.isnumeric())):
                 return 1
-            elif not xitem.isnumeric() and yitem.isnumeric():
+            elif (isinstance(yitem, str) and yitem.isnumeric() and
+                  (not isinstance(xitem, str) or not xitem.isnumeric())):
                 return -1
-            if xitem > yitem:
-                return 1
-            elif xitem < yitem:
-                return -1
+            # At this point, both are the same type (both int or both str)
+            if isinstance(xitem, int) and isinstance(yitem, int):
+                if xitem > yitem:
+                    return 1
+                elif xitem < yitem:
+                    return -1
+            elif isinstance(xitem, str) and isinstance(yitem, str):
+                if xitem > yitem:
+                    return 1
+                elif xitem < yitem:
+                    return -1
             else:
                 continue
         return 0
 
 
-class ArchetypeCompareKey(VersionCompareKey):
-    'Used as key function for GAV sorting'
-    def __init__(self, gav):
-        super().__init__(gav.version)
+class ArchetypeCompareKey:
+    def __init__(self, gav: ArchetypeRef):
         self.gav = gav
 
-    # pylint: disable=unused-private-member
+    def __lt__(self, other):
+        return self.__compare(other) < 0
+
+    def __gt__(self, other):
+        return self.__compare(other) > 0
+
+    def __le__(self, other):
+        return self.__compare(other) <= 0
+
+    def __ge__(self, other):
+        return self.__compare(other) >= 0
+
+    def __eq__(self, other):
+        return self.__compare(other) == 0
+
+    def __hash__(self):
+        return self.gav.__hash__()
+
     def __compare(self, other) -> int:
         x = self.gav.group_id + ":" + self.gav.artifact_id
         y = other.gav.group_id + ":" + other.gav.artifact_id
