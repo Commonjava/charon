@@ -77,6 +77,8 @@ logger = logging.getLogger(__name__)
     "-m",
     help="""
     The path of the final merged zip file will be compressed and saved.
+    Default is the ZIP file which is created in a temporary directory based on work_dir.
+    e.g. /tmp/work/jboss-eap-8.1.0_merged_a1b2c3/jboss-eap-8.1.0_merged.zip
     """,
 )
 @option(
