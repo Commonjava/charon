@@ -37,7 +37,6 @@ jobs:
           path: __pytest_reports/charon-unit-tests.html
           name: charon-unit-tests_python${{ matrix.os.python }}.html
 
-
       - name: Run coveralls-python
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,3 +57,21 @@ jobs:
           /home/runner/.local/bin/coveralls --finish --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - name: Coveralls Parallel
+  #       uses: coverallsapp/github-action@v2
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         flag-name: python${{ matrix.python-version }}
+  #         parallel: true
+  # finish:
+  #   needs: test
+  #   if: ${{ always() }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Coveralls Finished
+  #     uses: coverallsapp/github-action@v2
+  #     with:
+  #       parallel-finished: true
+  #       github-token: ${{ secrets.GITHUB_TOKEN }}
+  #       carryforward: "python3.9, python3.10, python3.11, python3.12"
