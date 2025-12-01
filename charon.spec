@@ -64,14 +64,14 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 
 
 %changelog
-* Fri Jun 27 2025 Gang Li <gli@redhat.com>
-- 1.4.0 release
-- Add RADAS signature support
-
 * Wed Oct 29 2025 Gang Li <gli@redhat.com>
 - 1.3.5 release
 - Support recursive indexing for index function
 - Accept multiple maven zips for uploading
+
+* Fri Jun 27 2025 Gang Li <gli@redhat.com>
+- 1.4.0 release
+- Add RADAS signature support
 
 * Mon Jun 23 2025 Gang Li <gli@redhat.com>
 - 1.3.4 release
