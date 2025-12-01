@@ -68,18 +68,24 @@ export LANG=en_US.UTF-8 LANGUAGE=en_US.en LC_ALL=en_US.UTF-8
 - 1.4.0 release
 - Add RADAS signature support
 
+* Wed Oct 29 2025 Gang Li <gli@redhat.com>
+- 1.3.5 release
+- Support recursive indexing for index function
+- Accept multiple maven zips for uploading
+
 * Mon Jun 23 2025 Gang Li <gli@redhat.com>
 - 1.3.4 release
-- Fix the sorting problem of index page items
+- Add --version flag to support version check
+- Bug fix: MMENG-4362 re-sort the indexing page items
+- Add pyproject.toml
 
 * Mon Dec 16 2024 Gang Li <gli@redhat.com>
 - 1.3.3 release
-- Fix npm del error when deleting a package which has overlapped name with others
-- Some code refinement
+- Bug fix: MMENG-4284 npm del error when deleting a package which has overlapped name with others
 
-* Thu Jul 11 2024 Gang Li <gli@redhat.com>
+* Wed Jul 10 2024 Gang Li <gli@redhat.com>
 - 1.3.2 release
-- Some updates in the Containerfile.
+- Container file update
 
 * Tue May 7 2024 Gang Li <gli@redhat.com>
 - 1.3.1 release

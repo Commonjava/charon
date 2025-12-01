@@ -75,6 +75,14 @@ def _get_local_repo(url: str) -> str:
     return archive_path
 
 
+def _get_local_repos(urls: list) -> list:
+    archive_paths = []
+    for url in urls:
+        archive_path = _get_local_repo(url)
+        archive_paths.append(archive_path)
+    return archive_paths
+
+
 def _validate_prod_key(product: str, version: str) -> bool:
     if not product or product.strip() == "":
         logger.error("Error: product can not be empty!")
