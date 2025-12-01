@@ -20,6 +20,7 @@ from charon.cmd.cmd_index import index
 from charon.cmd.cmd_checksum import init_checksum, checksum
 from charon.cmd.cmd_cache import init_cf, cf
 from charon.cmd.cmd_sign import sign
+from charon.cmd.cmd_merge import merge
 
 
 @group()
@@ -47,3 +48,6 @@ cli.add_command(checksum)
 
 # radas sign cmd
 cli.add_command(sign)
+
+# maven zips merge cmd
+cli.add_command(merge)

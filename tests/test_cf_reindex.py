@@ -40,7 +40,7 @@ class CFReIndexTest(CFBasedTest):
         test_zip = os.path.join(INPUTS, "commons-client-4.5.6.zip")
         product_456 = "commons-client-4.5.6"
         handle_maven_uploading(
-            test_zip, product_456,
+            [test_zip], product_456,
             targets=[('', TEST_BUCKET, 'ga', '', 'maven.repository.redhat.com')],
             dir_=self.tempdir
         )
