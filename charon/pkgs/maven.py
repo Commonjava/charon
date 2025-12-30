@@ -718,6 +718,21 @@ def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str
     # Create final merge directory
     final_tmp_root = mkdtemp(prefix=f"charon-{prefix}-final-", dir=dir__)
 
+    if len(repos) == 1:
+        if os.path.exists(repos[0]):
+            try:
+                logger.info("Extracting the single tarball %s", repos[0])
+                repo_zip = ZipFile(repos[0])
+                extract_zip_all(repo_zip, final_tmp_root)
+
+            except BadZipFile as e:
+                logger.error("Tarball extraction error for repo %s: %s", repos[0], e)
+                sys.exit(1)
+        else:
+            logger.error("Error: archive %s does not exist", repos[0])
+            sys.exit(1)
+        return final_tmp_root
+
     total_copied = 0
     total_duplicated = 0
     total_merged = 0
