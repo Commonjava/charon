@@ -151,6 +151,7 @@ def _create_merged_zip(
             for file in files:
                 file_path = os.path.join(root, file)
                 # Calculate relative path to preserve directory structure
-                arcname = os.path.relpath(file_path, root_path)
+                merged_repos_path = os.path.join(root_path, "merged_repositories")
+                arcname = os.path.relpath(file_path, merged_repos_path)
                 zipf.write(file_path, arcname)
         logger.info("Done for the merged zip generation: %s", zip_path)
