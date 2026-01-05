@@ -20,7 +20,6 @@ import tempfile
 import os
 import json
 import shutil
-import builtins
 from unittest import mock
 from charon.utils.files import overwrite_file
 from charon.pkgs.radas_sign import generate_radas_sign
@@ -68,20 +67,14 @@ class RadasSignHandlerTest(unittest.TestCase):
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
 
-        # simulate expected_asc1 can not open to write properly
-        real_open = builtins.open
-        with mock.patch("builtins.open") as mock_open:
-            def side_effect(path, *args, **kwargs):
-                # this is for pylint check
-                mode = "r"
-                if len(args) > 0:
-                    mode = args[0]
-                elif "mode" in kwargs:
-                    mode = kwargs["mode"]
-                if path == expected_asc1 and "w" in mode:
+        # simulate expected_asc1 can not be written properly
+        real_overwrite = overwrite_file
+        with mock.patch("charon.pkgs.radas_sign.files.overwrite_file") as mock_overwrite:
+            def side_effect(path, content):
+                if path == expected_asc1:
                     raise IOError("mock write error")
-                return real_open(path, *args, **kwargs)
-            mock_open.side_effect = side_effect
+                return real_overwrite(path, content)
+            mock_overwrite.side_effect = side_effect
             failed, generated = generate_radas_sign(self.__repo_dir, self.__sign_result_file)
 
         self.assertEqual(len(failed), 1)

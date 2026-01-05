@@ -86,8 +86,8 @@ class CFClient(object):
             The default value is 3000 which is the maximum number in official doc:
             https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html#InvalidationLimits
         """
-        INPRO_W_SECS = 5
-        NEXT_W_SECS = 1
+        INPRO_W_SECS = 10
+        NEXT_W_SECS = 2
         real_paths = [paths]
         # Split paths into batches by batch_size
         if batch_size:

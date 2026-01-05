@@ -33,11 +33,12 @@ from charon.constants import (META_FILE_GEN_KEY, META_FILE_DEL_KEY,
                               META_FILE_FAILED, MAVEN_METADATA_TEMPLATE,
                               ARCHETYPE_CATALOG_TEMPLATE, ARCHETYPE_CATALOG_FILENAME,
                               PACKAGE_TYPE_MAVEN)
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from jinja2 import Template
 from datetime import datetime
 from zipfile import ZipFile, BadZipFile
 from tempfile import mkdtemp
+from shutil import rmtree, copy2
 from defusedxml import ElementTree
 
 import os
@@ -217,7 +218,8 @@ def parse_gavs(pom_paths: List[str], root="/") -> Dict[str, Dict[str, List[str]]
     return gavs
 
 
-def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=True) -> List[str]:
+def gen_meta_file(group_id, artifact_id: str,
+                  versions: list, root="/", do_digest=True) -> List[str]:
     content = MavenMetadata(
         group_id, artifact_id, versions
     ).generate_meta_file_content()
@@ -229,7 +231,7 @@ def gen_meta_file(group_id, artifact_id: str, versions: list, root="/", digest=T
         meta_files.append(final_meta_path)
     except FileNotFoundError as e:
         raise e
-    if digest:
+    if do_digest:
         meta_files.extend(__gen_all_digest_files(final_meta_path))
     return meta_files
 
@@ -262,7 +264,7 @@ def __gen_digest_file(hash_file_path, meta_file_path: str, hashtype: HashType) -
 
 
 def handle_maven_uploading(
-    repo: str,
+    repos: List[str],
     prod_key: str,
     ignore_patterns=None,
     root="maven-repository",
@@ -296,8 +298,9 @@ def handle_maven_uploading(
     """
     if targets is None:
         targets = []
-    # 1. extract tarball
-    tmp_root = _extract_tarball(repo, prod_key, dir__=dir_)
+
+    # 1. extract tarballs
+    tmp_root = _extract_tarballs(repos, root, prod_key, dir__=dir_)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
@@ -702,6 +705,210 @@ def _extract_tarball(repo: str, prefix="", dir__=None) -> str:
     sys.exit(1)
 
 
+def _extract_tarballs(repos: List[str], root: str, prefix="", dir__=None) -> str:
+    """ Extract multiple zip archives to a temporary directory.
+        * repos are the list of repo paths to extract
+        * root is a prefix in the tarball to identify which path is
+          the beginning of the maven GAV path
+        * prefix is the prefix for temporary directory name
+        * dir__ is the directory where temporary directories will be created.
+
+        Returns the path to the merged temporary directory containing all extracted files
+    """
+    # Create final merge directory
+    final_tmp_root = mkdtemp(prefix=f"charon-{prefix}-final-", dir=dir__)
+
+    if len(repos) == 1:
+        if os.path.exists(repos[0]):
+            try:
+                logger.info("Extracting the single tarball %s", repos[0])
+                repo_zip = ZipFile(repos[0])
+                extract_zip_all(repo_zip, final_tmp_root)
+
+            except BadZipFile as e:
+                logger.error("Tarball extraction error for repo %s: %s", repos[0], e)
+                sys.exit(1)
+        else:
+            logger.error("Error: archive %s does not exist", repos[0])
+            sys.exit(1)
+        return final_tmp_root
+
+    total_copied = 0
+    total_duplicated = 0
+    total_merged = 0
+    total_processed = 0
+
+    # Collect all extracted directories first
+    extracted_dirs = []
+
+    for repo in repos:
+        if os.path.exists(repo):
+            try:
+                logger.info("Extracting tarball %s", repo)
+                repo_zip = ZipFile(repo)
+                tmp_root = mkdtemp(prefix=f"charon-{prefix}-", dir=dir__)
+                extract_zip_all(repo_zip, tmp_root)
+                extracted_dirs.append(tmp_root)
+
+            except BadZipFile as e:
+                logger.error("Tarball extraction error for repo %s: %s", repo, e)
+                sys.exit(1)
+        else:
+            logger.error("Error: archive %s does not exist", repo)
+            sys.exit(1)
+
+    # Merge all extracted directories
+    if extracted_dirs:
+        # Create merged directory name
+        merged_dir_name = "merged_repositories"
+        merged_dest_dir = os.path.join(final_tmp_root, merged_dir_name)
+
+        # Merge content from all extracted directories
+        for extracted_dir in extracted_dirs:
+            copied, duplicated, merged, processed = _merge_directories_with_rename(
+                extracted_dir, merged_dest_dir, root
+            )
+            total_copied += copied
+            total_duplicated += duplicated
+            total_merged += merged
+            total_processed += processed
+
+            # Clean up temporary extraction directory
+            rmtree(extracted_dir)
+
+    logger.info(
+        "All zips merged! Total copied: %s, Total duplicated: %s, "
+        "Total merged: %s, Total processed: %s",
+        total_copied,
+        total_duplicated,
+        total_merged,
+        total_processed,
+    )
+    return final_tmp_root
+
+
+def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
+    """ Recursively copy files from src_dir to dest_dir, overwriting existing files.
+        * src_dir is the source directory to copy from
+        * dest_dir is the destination directory to copy to.
+
+        Returns Tuple of (copied_count, duplicated_count, merged_count, processed_count)
+    """
+    copied_count = 0
+    duplicated_count = 0
+    merged_count = 0
+    processed_count = 0
+
+    # Find the actual content directory
+    content_root = src_dir
+    for item in os.listdir(src_dir):
+        item_path = os.path.join(src_dir, item)
+        # Check the root maven-repository subdirectory existence
+        maven_repo_path = os.path.join(item_path, root)
+        if os.path.isdir(item_path) and os.path.exists(maven_repo_path):
+            content_root = item_path
+            break
+
+    # pylint: disable=unused-variable
+    for root_dir, dirs, files in os.walk(content_root):
+        # Calculate relative path from content root
+        rel_path = os.path.relpath(root_dir, content_root)
+        dest_root = os.path.join(dest_dir, rel_path) if rel_path != '.' else dest_dir
+
+        # Create destination directory if it doesn't exist
+        os.makedirs(dest_root, exist_ok=True)
+
+        # Copy all files, skip existing ones
+        for file in files:
+            src_file = os.path.join(root_dir, file)
+            dest_file = os.path.join(dest_root, file)
+
+            if file == ARCHETYPE_CATALOG_FILENAME:
+                _handle_archetype_catalog_merge(src_file, dest_file)
+                merged_count += 1
+                logger.debug("Merged archetype catalog: %s -> %s", src_file, dest_file)
+            elif os.path.exists(dest_file):
+                duplicated_count += 1
+                logger.debug("Duplicated: %s, skipped", dest_file)
+            else:
+                copy2(src_file, dest_file)
+                copied_count += 1
+                logger.debug("Copied: %s -> %s", src_file, dest_file)
+
+            processed_count += 1
+
+    logger.info(
+        "One zip merged! Files copied: %s, Files duplicated: %s, "
+        "Files merged: %s, Total files processed: %s",
+        copied_count,
+        duplicated_count,
+        merged_count,
+        processed_count,
+    )
+    return copied_count, duplicated_count, merged_count, processed_count
+
+
+def _handle_archetype_catalog_merge(src_catalog: str, dest_catalog: str):
+    """
+    Handle merging of archetype-catalog.xml files during directory merge.
+
+    Args:
+        src_catalog: Source archetype-catalog.xml file path
+        dest_catalog: Destination archetype-catalog.xml file path
+    """
+    try:
+        with open(src_catalog, "rb") as sf:
+            src_archetypes = _parse_archetypes(sf.read())
+    except ElementTree.ParseError as e:
+        logger.warning("Failed to read source archetype catalog %s: %s", src_catalog, e)
+        return
+
+    if len(src_archetypes) < 1:
+        logger.warning(
+            "No archetypes found in source archetype-catalog.xml: %s, "
+            "even though the file exists! Skipping.",
+            src_catalog
+        )
+        return
+
+    # Copy directly if dest_catalog doesn't exist
+    if not os.path.exists(dest_catalog):
+        copy2(src_catalog, dest_catalog)
+        return
+
+    try:
+        with open(dest_catalog, "rb") as df:
+            dest_archetypes = _parse_archetypes(df.read())
+    except ElementTree.ParseError as e:
+        logger.warning("Failed to read dest archetype catalog %s: %s", dest_catalog, e)
+        return
+
+    if len(dest_archetypes) < 1:
+        logger.warning(
+            "No archetypes found in dest archetype-catalog.xml: %s, "
+            "even though the file exists! Copy directly from the src_catalog, %s.",
+            dest_catalog, src_catalog
+        )
+        copy2(src_catalog, dest_catalog)
+        return
+
+    else:
+        original_dest_size = len(dest_archetypes)
+        for sa in src_archetypes:
+            if sa not in dest_archetypes:
+                dest_archetypes.append(sa)
+            else:
+                logger.debug("DUPLICATE ARCHETYPE: %s", sa)
+
+        if len(dest_archetypes) != original_dest_size:
+            content = MavenArchetypeCatalog(dest_archetypes).generate_meta_file_content()
+            try:
+                overwrite_file(dest_catalog, content)
+            except Exception as e:
+                logger.error("Failed to merge archetype catalog: %s", dest_catalog)
+                raise e
+
+
 def _scan_paths(files_root: str, ignore_patterns: List[str],
                 root: str) -> Tuple[str, List[str], List[str], List[str]]:
     # 2. scan for paths and filter out the ignored paths,
@@ -870,17 +1077,16 @@ def _generate_rollback_archetype_catalog(
                     else:
                         # Re-render the result of our archetype un-merge to the
                         # local file, in preparation for upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(remote_archetypes)\
+                            .generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return 1
 
@@ -986,17 +1192,16 @@ def _generate_upload_archetype_catalog(
                         # Re-render the result of our archetype merge /
                         # un-merge to the local file, in preparation for
                         # upload.
-                        with open(local, 'wb') as f:
-                            content = MavenArchetypeCatalog(remote_archetypes)\
-                                .generate_meta_file_content()
-                            try:
-                                overwrite_file(local, content)
-                            except FileNotFoundError as e:
-                                logger.error(
-                                    "Error: Can not create file %s because of some missing folders",
-                                    local,
-                                )
-                                raise e
+                        content = MavenArchetypeCatalog(remote_archetypes)\
+                            .generate_meta_file_content()
+                        try:
+                            overwrite_file(local, content)
+                        except FileNotFoundError as e:
+                            logger.error(
+                                "Error: Can not create file %s because of some missing folders",
+                                local,
+                            )
+                            raise e
                         __gen_all_digest_files(local)
                         return True
 
@@ -1143,8 +1348,8 @@ def __wildcard_metadata_paths(paths: List[str]) -> List[str]:
             new_paths.append(path[:-len(".xml")] + ".*")
         elif path.endswith(".md5")\
             or path.endswith(".sha1")\
-            or path.endswith(".sha128")\
-                or path.endswith(".sha256"):
+            or path.endswith(".sha256")\
+                or path.endswith(".sha512"):
             continue
         else:
             new_paths.append(path)
@@ -1153,7 +1358,7 @@ def __wildcard_metadata_paths(paths: List[str]) -> List[str]:
 
 class VersionCompareKey:
     'Used as key function for version sorting'
-    def __init__(self, obj):
+    def __init__(self, obj: str):
         self.obj = obj
 
     def __lt__(self, other):
@@ -1184,36 +1389,61 @@ class VersionCompareKey:
         big = max(len(xitems), len(yitems))
         for i in range(big):
             try:
-                xitem = xitems[i]
+                xitem: Union[str, int] = xitems[i]
             except IndexError:
                 return -1
             try:
-                yitem = yitems[i]
+                yitem: Union[str, int] = yitems[i]
             except IndexError:
                 return 1
-            if xitem.isnumeric() and yitem.isnumeric():
+            if (isinstance(xitem, str) and isinstance(yitem, str) and
+                    xitem.isnumeric() and yitem.isnumeric()):
                 xitem = int(xitem)
                 yitem = int(yitem)
-            elif xitem.isnumeric() and not yitem.isnumeric():
+            elif (isinstance(xitem, str) and xitem.isnumeric() and
+                  (not isinstance(yitem, str) or not yitem.isnumeric())):
                 return 1
-            elif not xitem.isnumeric() and yitem.isnumeric():
+            elif (isinstance(yitem, str) and yitem.isnumeric() and
+                  (not isinstance(xitem, str) or not xitem.isnumeric())):
                 return -1
-            if xitem > yitem:
-                return 1
-            elif xitem < yitem:
-                return -1
+            # At this point, both are the same type (both int or both str)
+            if isinstance(xitem, int) and isinstance(yitem, int):
+                if xitem > yitem:
+                    return 1
+                elif xitem < yitem:
+                    return -1
+            elif isinstance(xitem, str) and isinstance(yitem, str):
+                if xitem > yitem:
+                    return 1
+                elif xitem < yitem:
+                    return -1
             else:
                 continue
         return 0
 
 
-class ArchetypeCompareKey(VersionCompareKey):
-    'Used as key function for GAV sorting'
-    def __init__(self, gav):
-        super().__init__(gav.version)
+class ArchetypeCompareKey:
+    def __init__(self, gav: ArchetypeRef):
         self.gav = gav
 
-    # pylint: disable=unused-private-member
+    def __lt__(self, other):
+        return self.__compare(other) < 0
+
+    def __gt__(self, other):
+        return self.__compare(other) > 0
+
+    def __le__(self, other):
+        return self.__compare(other) <= 0
+
+    def __ge__(self, other):
+        return self.__compare(other) >= 0
+
+    def __eq__(self, other):
+        return self.__compare(other) == 0
+
+    def __hash__(self):
+        return self.gav.__hash__()
+
     def __compare(self, other) -> int:
         x = self.gav.group_id + ":" + self.gav.artifact_id
         y = other.gav.group_id + ":" + other.gav.artifact_id

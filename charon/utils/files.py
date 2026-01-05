@@ -17,7 +17,9 @@ from enum import Enum
 import os
 import hashlib
 import errno
-from typing import List, Tuple
+import tempfile
+import shutil
+from typing import List, Tuple, Optional
 from charon.constants import MANIFEST_SUFFIX
 
 
@@ -32,24 +34,37 @@ class HashType(Enum):
 
 def get_hash_type(type_str: str) -> HashType:
     """Get hash type from string"""
-    if type_str.lower() == "md5":
+    type_str_low = type_str.lower()
+    if type_str_low == "md5":
         return HashType.MD5
-    elif type_str.lower() == "sha1":
+    elif type_str_low == "sha1":
         return HashType.SHA1
-    elif type_str.lower() == "sha256":
+    elif type_str_low == "sha256":
         return HashType.SHA256
-    elif type_str.lower() == "sha512":
+    elif type_str_low == "sha512":
         return HashType.SHA512
     else:
         raise ValueError("Unsupported hash type: {}".format(type_str))
 
 
-def overwrite_file(file_path: str, content: str):
-    if not os.path.isfile(file_path):
-        with open(file_path, mode="a", encoding="utf-8"):
-            pass
-    with open(file_path, mode="w", encoding="utf-8") as f:
-        f.write(content)
+def overwrite_file(file_path: str, content: str) -> None:
+    parent_dir: Optional[str] = os.path.dirname(file_path)
+    if parent_dir:
+        if not os.path.exists(parent_dir):
+            os.makedirs(parent_dir, exist_ok=True)
+    else:
+        parent_dir = None  # None explicitly means current directory for tempfile
+
+    # Write to temporary file first, then atomically rename
+    fd, temp_path = tempfile.mkstemp(dir=parent_dir, text=True)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(content)
+        shutil.move(temp_path, file_path)
+    except Exception:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
 
 
 def read_sha1(file: str) -> str:
@@ -97,7 +112,6 @@ def digest_content(content: str, hash_type=HashType.SHA1) -> str:
 
 
 def _hash_object(hash_type: HashType):
-    hash_obj = None
     if hash_type == HashType.SHA1:
         hash_obj = hashlib.sha1()
     elif hash_type == HashType.SHA256:
@@ -107,7 +121,7 @@ def _hash_object(hash_type: HashType):
     elif hash_type == HashType.SHA512:
         hash_obj = hashlib.sha512()
     else:
-        raise Exception("Error: Unknown hash type for digesting.")
+        raise ValueError("Error: Unknown hash type for digesting.")
     return hash_obj
 
 
@@ -116,15 +130,8 @@ def write_manifest(paths: List[str], root: str, product_key: str) -> Tuple[str, 
     manifest_path = os.path.join(root, manifest_name)
     artifacts = []
     for path in paths:
-        if path.startswith(root):
-            path = path[len(root):]
-        if path.startswith("/"):
-            path = path[1:]
-        artifacts.append(path)
+        rel_path = os.path.relpath(path, root)
+        artifacts.append(rel_path)
 
-    if not os.path.isfile(manifest_path):
-        with open(manifest_path, mode="a", encoding="utf-8"):
-            pass
-    with open(manifest_path, mode="w", encoding="utf-8") as f:
-        f.write('\n'.join(artifacts))
+    overwrite_file(manifest_path, '\n'.join(artifacts))
     return manifest_name, manifest_path
