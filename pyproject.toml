@@ -51,7 +51,7 @@ dev = [
 test = [
   "flexmock>=0.10.6",
   "responses>=0.9.0",
-  "pytest<=9.0.1",
+  "pytest<=9.0.2",
   "pytest-cov",
   "pytest-html",
   "requests-mock",
