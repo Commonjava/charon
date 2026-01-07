@@ -16,12 +16,12 @@ limitations under the License.
 from typing import List
 
 from charon.config import get_config
-from charon.utils.archive import detect_npm_archive, NpmArchiveType
+from charon.utils.archive import detect_npm_archives, NpmArchiveType
 from charon.pkgs.maven import handle_maven_uploading
 from charon.pkgs.npm import handle_npm_uploading
 from charon.cmd.internal import (
     _decide_mode, _validate_prod_key,
-    _get_local_repo, _get_targets,
+    _get_local_repos, _get_targets,
     _get_ignore_patterns, _safe_delete
 )
 from click import command, option, argument
@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 @argument(
-    "repo",
+    "repos",
     type=str,
+    nargs=-1  # This allows multiple arguments for zip urls
 )
 @option(
     "--product",
@@ -146,7 +147,7 @@ logger = logging.getLogger(__name__)
 )
 @command()
 def upload(
-    repo: str,
+    repos: List[str],
     product: str,
     version: str,
     targets: List[str],
@@ -161,9 +162,10 @@ def upload(
     dryrun=False,
     sign_result_file=None,
 ):
-    """Upload all files from a released product REPO to Ronda
-    Service. The REPO points to a product released tarball which
-    is hosted in a remote url or a local path.
+    """Upload all files from released product REPOs to Ronda
+    Service. The REPOs point to a product released tarballs which
+    are hosted in remote urls or local paths.
+    Notes: It does not support multiple repos for NPM archives
     """
     tmp_dir = work_dir
     try:
@@ -182,8 +184,8 @@ def upload(
             logger.error("No AWS profile specified!")
             sys.exit(1)
 
-        archive_path = _get_local_repo(repo)
-        npm_archive_type = detect_npm_archive(archive_path)
+        archive_paths = _get_local_repos(repos)
+        archive_types = detect_npm_archives(archive_paths)
         product_key = f"{product}-{version}"
         manifest_bucket_name = conf.get_manifest_bucket()
         targets_ = _get_targets(targets, conf)
@@ -194,23 +196,10 @@ def upload(
                 " are set correctly.", targets_
             )
             sys.exit(1)
-        if npm_archive_type != NpmArchiveType.NOT_NPM:
-            logger.info("This is a npm archive")
-            tmp_dir, succeeded = handle_npm_uploading(
-                archive_path,
-                product_key,
-                targets=targets_,
-                aws_profile=aws_profile,
-                dir_=work_dir,
-                gen_sign=contain_signature,
-                cf_enable=conf.is_aws_cf_enable(),
-                key=sign_key,
-                dry_run=dryrun,
-                manifest_bucket_name=manifest_bucket_name
-            )
-            if not succeeded:
-                sys.exit(1)
-        else:
+
+        maven_count = archive_types.count(NpmArchiveType.NOT_NPM)
+        npm_count = len(archive_types) - maven_count
+        if maven_count == len(archive_types):
             ignore_patterns_list = None
             if ignore_patterns:
                 ignore_patterns_list = ignore_patterns
@@ -218,7 +207,7 @@ def upload(
                 ignore_patterns_list = _get_ignore_patterns(conf)
             logger.info("This is a maven archive")
             tmp_dir, succeeded = handle_maven_uploading(
-                archive_path,
+                archive_paths,
                 product_key,
                 ignore_patterns_list,
                 root=root_path,
@@ -235,6 +224,28 @@ def upload(
             )
             if not succeeded:
                 sys.exit(1)
+        elif npm_count == len(archive_types) and len(archive_types) == 1:
+            logger.info("This is a npm archive")
+            tmp_dir, succeeded = handle_npm_uploading(
+                archive_paths[0],
+                product_key,
+                targets=targets_,
+                aws_profile=aws_profile,
+                dir_=work_dir,
+                gen_sign=contain_signature,
+                cf_enable=conf.is_aws_cf_enable(),
+                key=sign_key,
+                dry_run=dryrun,
+                manifest_bucket_name=manifest_bucket_name
+            )
+            if not succeeded:
+                sys.exit(1)
+        elif npm_count == len(archive_types) and len(archive_types) > 1:
+            logger.error("Doesn't support multiple upload for npm")
+            sys.exit(1)
+        else:
+            logger.error("Upload types are not consistent")
+            sys.exit(1)
     except Exception:
         print(traceback.format_exc())
         sys.exit(2)  # distinguish between exception and bad config or bad state

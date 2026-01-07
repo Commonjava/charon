@@ -53,11 +53,13 @@ to configure AWS access credentials.
 ### charon-upload: upload a repo to S3
 
 ```bash
-usage: charon upload $tarball --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug] [--contain_signature] [--key]
+usage: charon upload $tarball [$tarball*] --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug] [--contain_signature] [--key]
 ```
 
 This command will upload the repo in tarball to S3.
 It will auto-detect if the tarball is for maven or npm
+
+**New in 1.3.5**: For Maven archives, this command now supports uploading multiple zip files at once. When multiple Maven zips are provided, they will be merged intelligently, including proper handling of archetype catalog files and duplicate artifact detection.
 
 * For maven type, it will:
 
@@ -99,10 +101,12 @@ This command will delete some paths from repo in S3.
 ### charon-index: refresh the index.html for the specified path
 
 ```bash
-usage: charon index $PATH [-t, --target] [-D, --debug] [-q, --quiet]
+usage: charon index $PATH [-t, --target] [-D, --debug] [-q, --quiet] [--recursive]
 ```
 
 This command will refresh the index.html for the specified path.
+
+**New in 1.3.5**: Added `--recursive` flag to support recursive indexing under the specified path.
 
 * Note that if the path is a NPM metadata path which contains package.json, this refreshment will not work because this type of folder will display the package.json instead of the index.html in http request.
 
