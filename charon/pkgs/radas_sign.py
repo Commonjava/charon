@@ -395,6 +395,7 @@ def sign_in_radas(repo_url: str,
         "exclude": exclude
     }
 
+    logger.info("Start sending signing message with id: %s", request_id)
     sender = RadasSender(json.dumps(payload), radas_config)
     container = Container(sender)
     container.run()
