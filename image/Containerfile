@@ -19,7 +19,7 @@
 # 4. Start using uploader
 #   charon upload/delete from /home/charon/upload/...
 ###
-FROM registry.access.redhat.com/ubi8-minimal:8.10-1770021813 as builder
+FROM registry.access.redhat.com/ubi8-minimal:8.10-1770223153 as builder
 
 ARG GIT_BRANCH=release
 
@@ -28,7 +28,7 @@ RUN git clone -b ${GIT_BRANCH} --depth 1 https://github.com/Commonjava/charon.gi
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 wheel ./charon
 
-FROM registry.access.redhat.com/ubi8-minimal:8.10-1770021813
+FROM registry.access.redhat.com/ubi8-minimal:8.10-1770223153
 
 ARG USER=charon
 ARG UID=10000
