@@ -38,7 +38,7 @@ WORKDIR ${HOME_DIR}
 
 USER root
 
-RUN microdnf install -y python3.12-devel python3.12-pip shadow-utils gcc openssl-devel && microdnf clean all
+RUN microdnf install -y python3.12-devel python3.12-pip shadow-utils gcc openssl-devel file && microdnf clean all
 RUN useradd -d ${HOME_DIR} -u ${UID} -g 0 -m -s /bin/bash ${USER} \
     && chown ${USER}:0 ${HOME_DIR} \
     && chmod -R g+rwx ${HOME_DIR} \
