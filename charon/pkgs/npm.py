@@ -488,7 +488,7 @@ def _gen_npm_package_metadata_for_del(
 
 
 def _scan_metadata_paths_from_archive(
-    path: str, registry: str, prod="", dir__=None, pkg_root="pakage"
+    path: str, registry: str, prod="", dir__=None, pkg_root="package"
 ) -> Tuple[str, list, Optional[NPMPackageMetadata]]:
     tmp_root = mkdtemp(prefix=f"npm-charon-{prod}-", dir=dir__)
     try:
