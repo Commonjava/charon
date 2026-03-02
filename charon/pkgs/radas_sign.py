@@ -294,7 +294,9 @@ class RadasSender(MessagingHandler):
             self.close()
 
 
-def generate_radas_sign(top_level: str, sign_result_file: str) -> Tuple[List[str], List[str]]:
+def generate_radas_sign(
+        top_level: str, root: str, sign_result_file: str
+) -> Tuple[List[str], List[str]]:
     """
     Generate .asc files based on RADAS sign result json file
     """
@@ -321,11 +323,28 @@ def generate_radas_sign(top_level: str, sign_result_file: str) -> Tuple[List[str
             if not file_path or not signature:
                 logger.error("Invalid JSON entry")
                 return
-            # remove the root path maven-repository
-            filename = file_path.split("/", 1)[1]
 
-            artifact_path = os.path.join(top_level, filename)
-            asc_filename = f"{filename}.asc"
+            if "/" not in file_path:
+                logger.warning("Invalid entry: %s, skip signature file generation.", file_path)
+                return
+
+            if root not in file_path:
+                logger.debug(
+                    "Root '%s' not found in file_path '%s', handling directly.", root, file_path
+                )
+                artifact_path = os.path.join(top_level, file_path)
+                asc_filename = f"{file_path}.asc"
+            else:
+                logger.debug(
+                    "Root '%s' found in file_path '%s', removing it as prefix.", root, file_path
+                )
+                stripped_file_path = file_path
+                parts = file_path.split(root, 1)
+                if len(parts) > 1:
+                    stripped_file_path = parts[1].lstrip("/")
+                artifact_path = os.path.join(top_level, stripped_file_path)
+                asc_filename = f"{stripped_file_path}.asc"
+
             signature_path = os.path.join(top_level, asc_filename)
 
             if not os.path.isfile(artifact_path):
