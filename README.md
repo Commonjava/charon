@@ -46,26 +46,38 @@ to configure AWS access credentials.
 * AWS configurations. The uploader uses aws boto3 to access AWS S3 bucket, and follows the AWS configurations statndards. You can use:
   * AWS configurations files: $HOME/.aws/config and $HOME/.aws/credentials. (For format see [AWS config format](https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html))
   * [System environment varaibles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html)
-* Configurations for uploader. We use $HOME/.charon/charon.conf to hold these configurations. Currently, The uploader has two configurations:
-  * ignore_patterns. This is used to filter out some files that are not allowed to upload. It is a json array of regular expressions. (Example: ["README.md", "example.txt"]). This can also be retrieved from "CHARON_IGNORE_PATTERNS" system environment variable.
-  * bucket. This is used to specify which AWS S3 bucket to upload to with the tool. This config can also be retrieved from "charon_bucket" system environment variable.
+* Configurations for uploader. We use $HOME/.charon/charon.yaml to hold these configurations. The configuration file uses YAML format and supports the following options:
+  * **targets** (required). Defines target S3 buckets for uploads. Each target can specify:
+    * `bucket`: S3 bucket name (required)
+    * `prefix`: Path prefix inside the bucket (optional)
+    * `registry`: NPM registry URL for NPM targets (optional)
+    * `domain`: Domain name for the bucket (optional)
+  * **ignore_patterns**. Array of regular expressions to filter out files from upload. (Example: `[".*^(redhat).*", ".*snapshot.*"]`). Can also be set via `CHARON_IGNORE_PATTERNS` environment variable (JSON array format).
+  * **aws_profile**. Specifies which AWS profile to use for S3 operations (overrides default boto3 profile selection).
+  * **aws_cf_enable**. Boolean flag to enable AWS CloudFront invalidation support.
+  * **manifest_bucket**. S3 bucket name for storing upload manifests.
+  * **ignore_signature_suffix**. Defines file suffixes to exclude from signing per package type (maven, npm, etc.).
+  * **detach_signature_command**. Command template for generating detached signatures.
+  * **radas**. Configuration for RADAS (Red Hat Artifact Distribution and Signing) service integration.
+
+  See [config/charon.yaml.sample](config/charon.yaml.sample) for a complete example configuration.
 
 ### charon-upload: upload a repo to S3
 
 ```bash
-usage: charon upload $tarball [$tarball*] --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug] [--contain_signature] [--key]
+usage: charon upload $archive [$archive*] --product/-p ${prod} --version/-v ${ver} [--root_path] [--ignore_patterns] [--debug] [--contain_signature] [--key]
 ```
 
-This command will upload the repo in tarball to S3.
-It will auto-detect if the tarball is for maven or npm
+This command will upload the repo in archive to S3.
+It will auto-detect if the archive is for maven or npm
 
 **New in 1.3.5**: For Maven archives, this command now supports uploading multiple zip files at once. When multiple Maven zips are provided, they will be merged intelligently, including proper handling of archetype catalog files and duplicate artifact detection.
 
 * For maven type, it will:
 
-  * Scan the tarball for all paths and collect them all.
+  * Scan the archive for all paths and collect them all.
   * Check the existence in S3 for all those paths.
-  * Filter out the paths in tarball based on:
+  * Filter out the paths in archive based on:
     * filter_pattern in flags, or
     * filter_pattern in config.json if no flag
   * Generate/refresh all maven-metadata.xml for all GA combined
@@ -73,7 +85,7 @@ It will auto-detect if the tarball is for maven or npm
   * Upload these artifacts to S3 with metadata of the product.
   * If the artifacts already exists in S3, update the metadata
     of the product by appending the new product.
-* NPM type (TBH): We need to know the exact tarball structure
+* NPM type (TBH): We need to know the exact archive structure
   of npm repo
 * For both types, after uploading the files, regenerate/refresh
   the index files for these paths.
@@ -81,19 +93,19 @@ It will auto-detect if the tarball is for maven or npm
 ### charon-delete: delete repo/paths from S3
 
 ```bash
-usage: charon delete $tarball|$pathfile --product/-p ${prod}
+usage: charon delete $archive|$pathfile --product/-p ${prod}
 --version/-v ${ver} [--root_path] [--debug]
 ```
 
 This command will delete some paths from repo in S3.
 
-* Scan tarball or read pathfile for the paths to delete
+* Scan archive or read pathfile for the paths to delete
 * Combine the product flag by --product and --version
-* Filter out the paths in tarball based on:
+* Filter out the paths in archive based on:
   * filter_pattern in flags, or
   * filter_pattern in config.json if no flag
 * If the artifacts have other products in the metadata,
-  remove the product of this tarball from the metadata
+  remove the product of this archive from the metadata
   but not delete the artifacts themselves.
 * During or after the paths' deletion, regenerate the
   metadata files and index files for both types.
