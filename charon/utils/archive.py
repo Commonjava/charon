@@ -67,7 +67,7 @@ def extract_npm_tarball(
     except KeyError:
         root_pkg_file_exists = False
         pkg_file = None
-    tgz.extractall()
+    tgz.extractall(target_dir)
     if not root_pkg_file_exists:
         logger.info(
             "Root package.json is not found for archive: %s, will search others",
@@ -79,7 +79,8 @@ def extract_npm_tarball(
                 pkg_file = f
                 break
     if pkg_file:
-        version_data, parse_paths = __parse_npm_package_version_paths(pkg_file.path)
+        extracted_pkg_path = os.path.join(target_dir, pkg_file.path)
+        version_data, parse_paths = __parse_npm_package_version_paths(extracted_pkg_path)
         package_name_path = parse_paths[0]
         os.makedirs(os.path.join(target_dir, parse_paths[0]))
         tarball_parent_path = os.path.join(target_dir, parse_paths[0], "-")
@@ -92,7 +93,7 @@ def extract_npm_tarball(
         if is_for_upload:
             tgz_relative_path = "/".join([parse_paths[0], "-", _get_tgz_name(path)])
             __write_npm_version_dist(
-                path, pkg_file.path, version_data, tgz_relative_path, registry
+                path, extracted_pkg_path, version_data, tgz_relative_path, registry
             )
 
             os.makedirs(tarball_parent_path)
@@ -100,7 +101,7 @@ def extract_npm_tarball(
             shutil.copyfile(path, target)
             os.makedirs(version_metadata_parent_path)
             target = os.path.join(version_metadata_parent_path, os.path.basename(pkg_file.path))
-            shutil.copyfile(pkg_file.path, target)
+            shutil.copyfile(extracted_pkg_path, target)
     return package_name_path, valid_paths
 
 
